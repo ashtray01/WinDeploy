@@ -26,7 +26,7 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Read Windows version/build and hostname via a read-only Windows adapter; parsing/error tests
   - [x] Read CPU model and logical processor count
   - [x] Read physical RAM totals and availability
-  - [ ] Enumerate local volumes and free space
+  - [x] Enumerate local volumes and free space
   - [ ] Enumerate interfaces, addresses and link state
   - [ ] Read adapter gateways, DNS and DHCP configuration
   - [ ] Enumerate installed apps in machine/user registry views
