@@ -31,7 +31,7 @@ type Adapter interface {
 // results also include unstarted tasks as Cancelled with zero StartedAt.
 // Diagnostics deliberately contain only the failed phase, never raw adapter errors
 // which may include credentials. Detailed sanitized diagnostics are future work.
-// Input tasks are not updated; resume/retry of non-Pending tasks is not supported.
+// Input tasks are not updated; use Resume to continue a saved session.
 func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, error) {
 	return RunWithOptions(ctx, tasks, adapter, RunOptions{})
 }

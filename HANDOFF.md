@@ -1,53 +1,90 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Этап 2 — Profiles. MULTI-TASK: восемь задач завершены (шесть ядра + модель профилей + YAML); далее inheritance и планы/примеры до лимита 10 задач.
-Ветка: master. Коммиты: dfdadde preview, 0626c5e retries, de54b7a concurrency; snapshot storage — последний feat в git log.
-Пользователь явно разрешил 5–10 последовательных задач и переход между этапами; это выше прежнего ограничения одной задачи. Работа выполняется одним агентом.
+Текущий этап: 3 — Inventory (не начат).
+Текущая задача: MULTI-TASK завершён, выполнено 10 задач, новых функций в этой сессии не добавлять.
+Последний завершённый этап: базовые критерии этапа 2 — Profiles (YAML/наследование/примеры формируют валидный план); ядро этапа 1 расширено retries/concurrency/state/resume.
+Текущая ветка: master. Последний коммит реализации: adef541 — `feat(profiles): build selected plans and add workstation examples`.
+Пользователь разрешил MULTI-TASK по 5–10 задач, отдельные коммиты и переходы этапов. Это выше прежнего ограничения одной задачи; не запускать несколько агентов без отдельного указания. AGENTS обновлён.
+
+Десять функциональных коммитов сессии:
+1. dfdadde — dry-run preview.
+2. 0626c5e — opt-in retries.
+3. de54b7a — bounded concurrency/resource keys.
+4. c3085b0 — file snapshots.
+5. 4e7fb24 — resume.
+6. f1a7ec8 — checkpoints/fail-closed storage.
+7. b0ca645 — profile model/validation.
+8. f4ea631 — strict YAML.
+9. 0863f13 — inheritance.
+10. adef541 — selected plans/clone/examples.
+Промежуточные docs checkpoint-коммиты: 5151f06, 5d3bd45, 3bebe07, 14db356. Итоговый docs-коммит — HEAD после завершения (см. git log).
 
 ## Что уже реализовано
-- Go-модуль windeploy, целевая версия ядра Go 1.20, без внешних зависимостей.
-- Task/TaskResult/статусы; структурная Validate; OrderTasks с проверкой DAG и стабильным порядком.
-- Run: последовательный Pending-only план, Adapter Precheck/Execute/Verify, блокировка зависимых задач, отмена и timeout.
-- PreviewPlan: независимые метаданные без Parameters и фиктивных результатов; scope structure-and-dag-only.
-- RunWithOptions: MaxAttempts, RetryDelay; повторы только RetryableError.Retryable()==true, новая попытка начинается с Precheck. Timeout включает все попытки/ожидания; TaskResult.Attempts считает попытки. Флаг перезагрузки сохраняется между попытками.
-- MaxParallel по умолчанию 1, одинаковые Task.ResourceKey сериализуются; MSI-адаптеры обязаны назначать WindowsInstallerResource. Результаты в порядке плана, активные операции дожидаются завершения при отмене. Adapter должен быть thread-safe при MaxParallel>1.
-- engine.Snapshot/NewSnapshot/Validate: версия, SHA-256 исходного плана, результаты без Parameters. Допускаются только известные безопасные diagnostics.
-- state.FileStore: ограниченный JSON (4 MiB), запрет неизвестных полей/trailing data, проверка формата, temp+Sync+Close+Rename без обнуления старого файла. Каталог создаёт вызывающий код.
-- Resume/ValidateForPlan: проверка точного плана и результатов до операций. Успешные результаты сохраняются, interrupted проходят Precheck, Failed требует RetryFailed. Attempts и reboot flag накапливаются. Обязательный reboot barrier пока отклоняется.
-- RunOptions.Store: initial snapshot, Running до запуска и результаты после завершения. Save failure => ErrCheckpoint, отмена и ожидание активных операций. Save использует отдельный context с timeout 5s для сохранения при отмене. Тест реального FileStore restart с fake-установкой подтверждает отсутствие дублирования.
-- profiles.Profile/Component schema v1, проверка категорий/ID/timeout/OS, tombstones Disabled. Запрещены распространённые secret keys и URL credentials; credential_ref ссылается на внешние credentials. Произвольные секреты в свободных значениях автоматически не распознаются.
-- profiles.Load/Marshal: single-document YAML, 1 MiB, KnownFields, дубли/anchors/aliases/merge keys отклоняются, глубина/число узлов ограничены. Ошибки парсера не раскрывают входные значения. Зависимость go.yaml.in/yaml/v3 v3.0.4, upstream go 1.16; GOMODCACHE=cache/go-mod. go.mod остаётся go 1.20; tidy выполнен.
+- engine: Task/TaskResult/статусы, Validate, OrderTasks, Run с Adapter Precheck/Execute/Verify, отмена/timeout, пропуск заблокированных зависимостей.
+- PreviewPlan: независимые метаданные без Parameters/фиктивных успешных результатов, scope structure-and-dag-only.
+- RunWithOptions: MaxAttempts/RetryDelay (только RetryableError=true, новый Precheck), MaxParallel (default 1), ResourceKey для взаимного исключения всех фаз/ожиданий. WindowsInstallerResource обязателен для будущих MSI-адаптеров.
+- Snapshot/NewSnapshot/Validate/ValidateForPlan: версия, SHA-256 точного Pending-плана, результаты без Parameters и сырого текста ошибок. Проверка ID/зависимостей до resume.
+- core/state.FileStore: JSON до 4 MiB, строгая загрузка, temp+Sync+Close+Rename. Не обнуляет старый checkpoint до успешной записи.
+- Resume: сохраняет Success/AlreadyInstalled/NotApplicable/намеренные Skipped; Failed требует RetryFailed; Running/Cancelled/зависимые Skipped проходят Precheck. RebootRequired flag и записанные Attempts накапливаются.
+- RunOptions.Store: initial snapshot, Running до запуска, финальный результат после операции; ошибка сохранения => ErrCheckpoint, отмена активных и запрет новых задач. Сохранение при отмене через отдельный 5s context.
+- profiles schema v1: модель/валидация; Load/Marshal strict YAML до 1 MiB; Single-parent Resolve с циклами/лимитом 64; Clone; BuildPlan с ручным выбором и closure зависимостей; Preview.
+- Восемь YAML-примеров: base, office, accounting, reception, warehouse, service, administrator, legacy. Все проверены до engine.PreviewPlan, реальных установщиков/серверов/credentials нет.
+- docs/architecture.md, docs/execution.md, docs/profiles.md описывают публичные API и ограничения.
 
 ## Что проверено
-Go 1.26.2 windows/amd64: go test ./core/engine/... ./core/state/... и go vet ./... — PASS; после задач профилей go test/vet ./core/profiles/... — PASS. Тесты каждой задачи запускались до её коммита; file replacement реально проверен на доступной Windows. C-компилятор не найден, race detector не запускался.
-GOCACHE: `$env:GOCACHE = Join-Path $PWD 'cache\go-build'` (игнорируется Git). Стандартный cache ранее был недоступен.
+Go 1.26.2, доступная Windows:
+- windows/amd64: `go test ./...`, `go vet ./...`, `go build ./...` — PASS.
+- windows/386: `go test ./...`, `go build ./...` — PASS; это не проверка Windows 7.
+- `go mod verify` — all modules verified; go mod tidy выполнен.
+- gofmt и git diff --check — PASS.
+- Тесты после каждой функциональной задачи. Concurrency проверяет реальное перекрытие/лимиты/ресурсы/ожидание отмены через каналы. Checkpoints: ошибки initial/running/completion Save, очистка активного адаптера, сохранение при отмене. FileStore restart + fake installation проверяет отсутствие повторной установки.
+- Profiles: malformed/unknown/duplicate YAML, aliases/merge keys, размеры, secret errors, inheritance/cycles/isolation, selection/disabled/missing deps, cloning и восемь примеров.
+- Race detector не запускался: gcc/clang не найдены.
+
+Команды окружения (не меняют глобальные настройки):
+```powershell
+$env:GOCACHE = Join-Path $PWD 'cache\go-build'
+$env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'
+go test ./...
+go vet ./...
+go build ./...
+```
+Для проверки x86 добавить `$env:GOARCH = '386'`; после неё убрать переменную в той же оболочке, если продолжаете amd64-проверки.
+Старый cache/go-mod был перенесён в cache/_go-mod: без подчёркивания `go test ./...` захватывал исходники скачанной test-зависимости без go.mod. Кэш исключён Git, исходники проекта не затронуты.
 
 ## Что сейчас не работает
-Нет реальных системных адаптеров/UI; inheritance и plans/examples профилей ещё не реализованы. Checkpoints/resume подключены, но live inventory завершённых задач не перепроверяется. Автозапуск после reboot/проверка смены boot ID не реализованы.
-Go 1.20 и Windows VM-матрица, включая Windows 7 SP1 x86/x64, не проверены. GitHub CLI отсутствовал, remote/CI/releases не создавались.
-Отмена требует кооперации адаптера; Run ждёт возврата и не прерывает его принудительно. Диагностика содержит только этап, исходные ошибки адаптера отбрасываются для защиты credentials.
+- Нет Inventory, GUI, реальных системных адаптеров/каталога пакетов. Примеры профилей описывают намерения, не готовые установочные действия.
+- Go 1.20 toolchain и VM-матрица Windows 10/11/7 SP1 x86/x64 не проверены. x86-тесты на текущей ОС не подтверждают Win7 runtime.
+- Отмена кооперативная: Adapter и Store должны соблюдать context, иначе Run ждёт. Не оставляет фоновые операции после возврата.
+- Snapshot хранится в доверенном каталоге, не аутентифицирован; SHA-256 — привязка плана, не защита от подмены. Завершённые результаты не перепроверяются по live inventory.
+- FileStore: один процесс-владелец пути, mutex защищает только экземпляр. Каталог создаёт вызывающий код и защищает Windows ACL; mode 0600 не заменяет ACL. Power-loss atomicity/durability зависит от filesystem и не гарантирована.
+- Checkpoint не делается между фазами и retry attempts, поэтому после внезапного завершения счётчик попыток может быть неполным; interrupted всегда проходит Precheck.
+- Обязательный reboot barrier/boot-ID/автозапуск после перезагрузки не реализованы. Resume отклоняет status RebootRequired; флаг после проверенного Success поддерживается.
+- Полное маскирование произвольных секретов и detailed diagnostic logging отсутствуют. Engine пишет только известные этапы ошибок. Profiles блокирует распространённые secret keys/URL userinfo, но не распознаёт секрет в произвольном значении.
+- GitHub CLI отсутствовал; remote/CI/releases не создавались.
 
 ## Незавершённая работа
-Следом в текущей сессии: наследование, планы/примеры. Не выдавать их за реализованные.
+Незавершённых исходников нет. Следующая работа — read-only Inventory. GUI редактора/импорта/экспорта профиля появится на этапе 4; backend API уже работает. Не считать этапы Inventory/GUI выполненными.
 
 ## Архитектурные решения
-- Task декларативен; методы в Adapter, не в сериализуемой модели. Adapter не меняет вложенные maps/slices.
-- Precheck: Pending — выполнять; AlreadyInstalled/NotApplicable/Skipped — закончить. Только Success/AlreadyInstalled удовлетворяют зависимости.
-- Success + RebootRequired означает, что Verify подтвердил готовность. Resume после обязательной перезагрузки ещё не реализован.
-- Ошибки задач находятся в results; error Run — неверный ввод или ctx.Err(). Pending-only защищает от случайного переисполнения.
-- OrderTasks O(V²+E), при равенстве выбирает наименьший исходный индекс. Выход — поверхностная копия Task. Preview копирует вложенные метаданные.
-- Retries включаются явно. Адаптер обязан гарантировать безопасность RetryableError; обычные ошибки не повторяются.
-- Snapshot не аутентифицирован и предназначен для доверенного локального каталога. Path принадлежит одному процессу; mutex FileStore защищает только экземпляр. Windows ACL задаёт администратор, 0600 не заменяет ACL. Не заявлять гарантии atomicity/durability при сбое питания: Rename зависит от файловой системы. Хеш связывает точный план, но не является защитой от подмены.
+- Общее ядро: go 1.20, без UI/Windows-команд. Единственная прямая зависимость — go.yaml.in/yaml/v3 v3.0.4 (upstream go 1.16; https://github.com/yaml/go-yaml/blob/v3.0.4/go.mod). go.mod/go.sum зафиксированы.
+- Task декларативен; Adapter не меняет вложенные maps/slices и должен быть thread-safe при MaxParallel>1. Только Success/AlreadyInstalled удовлетворяют зависимости. Success + RebootRequired означает подтверждённую Verify готовность.
+- Run принимает только Pending. Ошибки задач читать из results, error — invalid input/ctx/ErrCheckpoint. Resume требует точный исходный Pending-план. RetryFailed и RetryableError — разные разрешения: первое для сохранённого Failed, второе для повторов внутри запуска.
+- OrderTasks O(V²+E), tie-break по исходному индексу. Concurrent completion недетерминирован, results упорядочены. Общий windows-installer ResourceKey задаёт вызывающий код, движок не угадывает тип установщика.
+- Profiles: полный override компонента по ID на позиции родителя; новые добавляются, disabled — tombstone только с ID. YAML anchors/aliases/merge keys запрещены. Resolve не читает filesystem/network. BuildPlan(nil selection) — все enabled; пустой ненулевой selection — ни одного; зависимости включаются автоматически.
+- OS tokens профилей: windows-7-sp1/windows-10/windows-11; arch 386/amd64. Inventory должен использовать согласованное представление и не подменять реальные сведения предположениями.
 
 ## Следующая задача
-Реализовать single-parent inheritance, затем выбранные компоненты/планы/clone/examples; остановиться после десятой задачи.
+Этап 3: определить Windows version/build и hostname через read-only адаптер, без остальных датчиков/UI.
 
 ## Инструкция следующему агенту
-Прочитать AGENTS/TASKS, core/engine/task.go, plan.go, executor.go и тесты. Проверить status/log.
-Прочитать раздел 9 исходного ТЗ. Профили должны описывать компоненты, не выполнять операции и не содержать credentials. Schema version, строгая валидация, single-parent inheritance с циклами, преобразование в Pending Task-план и PreviewPlan. Для YAML использовать поддерживаемую YAML-org библиотеку go.yaml.in/yaml/v3 v3.0.4 (go.mod upstream: go 1.16; https://github.com/yaml/go-yaml/tree/v3.0.4), не писать собственный YAML parser.
-Каждую задачу сохранять отдельным коммитом с тестами; HANDOFF обновлять после 2–3 задач.
+1. Проверить status/log, прочитать AGENTS/TASKS и этот HANDOFF. Затем docs/architecture.md и только относящиеся engine/profile требования ОС.
+2. Создать core/inventory с моделью SystemInfo (hostname, version/build, architecture) и маленьким интерфейсом read-only provider для тестов. Windows-specific чтение изолировать build tags, сохранить компиляцию общего ядра на Go 1.20. Проверить API по первичным документам, включая Win7 SP1; не полагаться на GetVersionEx без учёта manifest/version lie.
+3. os.Hostname и проверенный способ чтения версии должны возвращать реальные данные; неизвестную версию показывать ошибкой/unknown, не угадывать. Не запускать PowerShell с административными изменениями.
+4. Unit-тесты данных/ошибок/fake provider; реальная read-only проверка на доступной Windows. Не называть это доказательством Win7. Выполнить go test ./core/inventory/... и go vet/build ./... с локальными кэшами.
+5. Коммит `feat(inventory): detect Windows version and hostname`; обновить TASKS/HANDOFF. В MULTI-TASK далее брать CPU/RAM/disks/network/apps небольшими задачами, не начинать весь GUI преждевременно.
 
 ## Чего нельзя делать
-Не устанавливать Wails, не запускать установщики и административные операции на хосте. Не заявлять Windows 7 совместимость без VM.
-Для записи .git ранее требовался escalated exec и `git -c safe.directory=C:/Users/ashtr/OneDrive/Desktop/git/WinDeploy ...`. Не менять глобальную конфигурацию и identity. Не коммитить binaries/runtime state/credentials.
+Не устанавливать Wails/драйверы/программы и не изменять сеть/защиту на хосте. Не выдавать fake/integration-тест за реальную установку или Win7-совместимость.
+Для записи .git требовался escalated exec с `git -c safe.directory=C:/Users/ashtr/OneDrive/Desktop/git/WinDeploy ...` из-за владельцев sandbox/user. Не менять глобальную Git-конфигурацию/identity и не коммитить cache/binaries/runtime state/credentials.

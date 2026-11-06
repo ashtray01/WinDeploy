@@ -30,6 +30,10 @@ go build ./...
 
 Если стандартный Go-кэш недоступен в sandbox, перед проверками задайте `$env:GOCACHE = Join-Path $PWD 'cache\go-build'`. Этот каталог исключён из Git.
 
-Сейчас доступны описания Task/TaskStatus/TaskResult, валидация DAG через `engine.OrderTasks` и последовательный `engine.Run` с интерфейсом Adapter (precheck/execute/verify), отменой, timeout и пропуском заблокированных зависимостей. Реальных системных адаптеров пока нет.
+Доступны модели задач, DAG, dry-run preview и `engine.Run`/`RunWithOptions` с Adapter (precheck/execute/verify), отменой, timeout, opt-in retries, ограниченной параллельностью и взаимным исключением ресурсов. `core/state.FileStore` сохраняет checkpoints; `engine.Resume` продолжает точный исходный план без повторения завершённых задач.
+
+`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Реальных системных адаптеров и GUI пока нет; примеры не являются подтверждением установки программ.
+
+Если стандартный module cache недоступен, задайте `$env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'`. Подчёркивание исключает скачанные пакеты из `go test ./...`. YAML-зависимость зафиксирована в go.mod/go.sum.
 
 Не запускайте установщики и административные операции на рабочей машине. Системные адаптеры проверяются в изолированной VM.

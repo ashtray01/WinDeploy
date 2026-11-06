@@ -30,7 +30,7 @@ func pendingPlan(tasks []Task) ([]Task, error) {
 	}
 	for _, task := range ordered {
 		if task.Status != Pending {
-			return nil, fmt.Errorf("task %q must be Pending; resume is not supported", task.ID)
+			return nil, fmt.Errorf("task %q must be Pending; use Resume for saved sessions", task.ID)
 		}
 	}
 	return ordered, nil
