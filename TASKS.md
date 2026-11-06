@@ -14,7 +14,7 @@ Stage 1 — Core Foundation: последовательный исполните
 - [x] Add dry-run plan preview without Adapter calls (engine tests/vet PASS)
 - [x] Add explicit retryable-error handling with bounded attempts and cancellable delay
 - [x] Add bounded concurrency and exclusive resource keys
-- [ ] Add validated file-backed session snapshots
+- [x] Add validated file-backed session snapshots
 - [ ] Resume completed tasks safely without duplicate execution
 - [ ] Persist checkpoints during execution and fail closed on storage errors
 - [ ] Stage 2 — Profiles
