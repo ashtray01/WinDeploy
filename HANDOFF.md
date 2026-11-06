@@ -4,6 +4,7 @@
 Ветка `master`, дерево чистое после финального коммита. Реализованы Stages 1–11: общее Go 1.20-ядро, Modern GUI (Wails v3.1.0/React), Legacy Win32 GUI (Go 1.20/Walk, Win7-совместимый), CLI и release-пакеты. Статус — **preview**, не production и не опубликованный релиз.
 
 Последние коммиты:
+- `8559cf8` — тесты CLI выполнения (plan/JSON, --yes, sessions/report).
 - `ed3483b` — CI, portable/offline bundles, SHA256SUMS.
 - `fc07bb0` — Legacy Windows 7 GUI.
 - `b7f7cf4` — выполнение профилей, сессии, отчёты.
@@ -29,7 +30,7 @@
 
 ### Modern
 - Wails v3.1.0 + React 19/TypeScript/Vite; страницы: Обзор, Профили, Установка ПО, Выполнение, Сеть, Сетевые папки, Драйверы, Принтеры, Браузеры, Windows, Журнал, Inventory.
-- 37 vitest-тестов, strict typecheck, production Vite, Go service tests/vet.
+- 37 vitest-тестов, strict typecheck, production Vite, Go service tests/vet; 5 CLI-тестов `windeploy-run`.
 - Сборка: `scripts/build-modern.ps1`; EXE `bin/WinDeploy-Windows-x64.exe`.
 
 ### Legacy
@@ -47,8 +48,9 @@
 - Modern: финальный `scripts/build-modern.ps1` PASS; 37 UI-тестов; Wails EXE собран; `go mod verify` PASS.
 - Legacy: test/vet x64/x86 PASS; `--selftest` PASS; реальное окно `--smoke` PASS на Windows 11 x64 и x86 (WOW64), auto-close 3 с.
 - Реальная read-only сессия `windeploy-run` (diagnostics DNS localhost) создала session JSON + HTML/JSON отчёты, exit 0; resume/отчёт проверены тестами.
+- GitHub Actions workflows: YAML parse PASS; `actionlint v1.7.12` — 0 ошибок (локально, без запуска на GitHub).
 - Ранние реальные проверки: 212 устройств/210 версий драйверов, 4 принтера, HTTPS-загрузки 7-Zip/SumatraPDF/PrinterOne с совпавшими SHA-256, Credential Manager, `.lnk`, сеть.
-- Preview-артефакты: `dist/WinDeploy-0.1.0-preview.1-{portable-x64,portable-x86,offline-x64}.zip`, `dist/SHA256SUMS.txt` (хеши см. файл).
+- Preview-артефакты: `dist/WinDeploy-0.1.0-preview.1-{portable-x64,portable-x86,offline-x64}.zip`, `dist/SHA256SUMS.txt` (актуальные хеши — в файле; после последней перепаковки: portable-x64 `0794b47b…`, portable-x86 `18268319…`, offline-x64 `00b0f504…`).
 
 ## Ограничения и блокеры
 - **Modern GUI smoke** на текущем хосте невозможен: WebView2 controller `0x8000FFFF` даже для минимального Wails. EXE собирается; startup-лог `%LOCALAPPDATA%\WinDeploy\logs\startup.log`.
