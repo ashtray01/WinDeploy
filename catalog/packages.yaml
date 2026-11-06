@@ -1,0 +1,530 @@
+version: 1
+packages:
+  - id: sevenzip
+    name: 7-Zip
+    publisher: Igor Pavlov
+    category: utilities
+    group: Архиваторы
+    description: Свободный архиватор с высокой степенью сжатия и поддержкой 7z, ZIP, RAR и других форматов.
+    requires_admin: true
+    requirements:
+      versions: [windows-7-sp1, windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^7-Zip'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: 7zip.7zip
+        version: '26.05'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\7z2605-x64.exe'
+        type: exe
+        version: '26.05'
+        arch: amd64
+        sha256: fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0
+        silent_args: ['/S']
+        size_bytes: 1609600
+        priority: 5
+      - id: offline-x86
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\7z2605.exe'
+        type: exe
+        version: '26.05'
+        arch: '386'
+        sha256: 6435a470fe7c4769962dbed8a60c641ee21401c833ced06077c80e33e7845a5e
+        silent_args: ['/S']
+        size_bytes: 1267200
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe
+        file_name: 7z2605-x64.exe
+        type: exe
+        version: '26.05'
+        arch: amd64
+        sha256: fd99e86f57d8f429ef5ed045bf98315af962e2309b0f1ba87a147a44c71647d0
+        silent_args: ['/S']
+        size_bytes: 1609600
+        priority: 10
+
+  - id: google-chrome
+    name: Google Chrome
+    publisher: Google LLC
+    category: browsers
+    group: Браузеры
+    description: Браузер Google Chrome с автоматическими обновлениями и изолированными процессами.
+    requires_admin: true
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^Google Chrome$'
+        publisher_pattern: '^Google LLC$'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: Google.Chrome
+        version: '157.0.8103.39'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\googlechromestandaloneenterprise64.msi'
+        type: msi
+        version: '157.0.8103.39'
+        arch: amd64
+        sha256: 55edacd348b4c1c9b291dab19e4665929c7a127c013d9625970be924f893273f
+        size_bytes: 116650000
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi
+        file_name: googlechromestandaloneenterprise64.msi
+        type: msi
+        version: '157.0.8103.39'
+        arch: amd64
+        sha256: 55edacd348b4c1c9b291dab19e4665929c7a127c013d9625970be924f893273f
+        size_bytes: 116650000
+        priority: 10
+
+  - id: mozilla-firefox
+    name: Mozilla Firefox
+    publisher: Mozilla
+    category: browsers
+    group: Браузеры
+    description: Независимый браузер с открытым исходным кодом и расширениями.
+    requires_admin: true
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^Mozilla Firefox'
+        publisher_pattern: '^Mozilla'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: Mozilla.Firefox
+        version: '159.0'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\Firefox-Setup-159.0-x64.exe'
+        type: exe
+        version: '159.0'
+        arch: amd64
+        sha256: 8776887b79925abbdd407fcdfe257d8382b54e24be52a6466426b95a804d6790
+        silent_args: ['/S', '/PreventRebootRequired=true']
+        priority: 5
+      - id: offline-x86
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\Firefox-Setup-159.0-x86.exe'
+        type: exe
+        version: '159.0'
+        arch: '386'
+        sha256: 2f0943a2cb926ca532bfd0e5ca87b0ffad21919dfd858cfd2c7252e53e17fa85
+        silent_args: ['/S', '/PreventRebootRequired=true']
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0/win64/en-US/Firefox%20Setup%20159.0.exe
+        file_name: Firefox-Setup-159.0-x64.exe
+        type: exe
+        version: '159.0'
+        arch: amd64
+        sha256: 8776887b79925abbdd407fcdfe257d8382b54e24be52a6466426b95a804d6790
+        silent_args: ['/S', '/PreventRebootRequired=true']
+        priority: 10
+
+  - id: yandex-browser
+    name: Яндекс Браузер
+    publisher: Yandex
+    category: browsers
+    group: Браузеры
+    description: Браузер Яндекса с Алисой, защитой от опасных сайтов и синхронизацией.
+    requires_admin: false
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^(Яндекс Браузер|Yandex Browser)'
+        publisher_pattern: 'Yandex'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: Yandex.Browser
+        version: '26.10.3.771'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\YandexSetup.exe'
+        type: exe
+        version: '26.10.3.771'
+        arch: amd64
+        sha256: 047ca0283f8882f8c6318575db25f7cc4d2b109f267c3e664afa8b04987ee99e
+        silent_args: ['--silent']
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://download.cdn.yandex.net/browser/int/26_10_3_771_120485/en/Yandex.exe
+        file_name: YandexSetup.exe
+        type: exe
+        version: '26.10.3.771'
+        arch: amd64
+        sha256: 047ca0283f8882f8c6318575db25f7cc4d2b109f267c3e664afa8b04987ee99e
+        silent_args: ['--silent']
+        priority: 10
+
+  - id: telegram-desktop
+    name: Telegram Desktop
+    publisher: Telegram FZ-LLC
+    category: messengers
+    group: Мессенджеры
+    description: Кроссплатформенный клиент Telegram для Windows.
+    requires_admin: false
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^Telegram Desktop$'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: Telegram.TelegramDesktop
+        version: '7.4.0'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\tsetup-x64-7.4.0.exe'
+        type: exe
+        version: '7.4.0'
+        arch: amd64
+        sha256: 90eb3ddc5bff99949dc821ef28ef12c98a3bff05593cda34390f6a54c0bf2959
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/NOCANCEL']
+        priority: 5
+      - id: offline-x86
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\tsetup-x86-7.4.0.exe'
+        type: exe
+        version: '7.4.0'
+        arch: '386'
+        sha256: df03131f068edf749eb4cfa499f8b339b1326c34f1306f48040239abe65f6b95
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/NOCANCEL']
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://github.com/telegramdesktop/tdesktop/releases/download/v7.4.0/td-setup-win-x64-7.4.0.exe
+        file_name: tsetup-x64-7.4.0.exe
+        type: exe
+        version: '7.4.0'
+        arch: amd64
+        sha256: 90eb3ddc5bff99949dc821ef28ef12c98a3bff05593cda34390f6a54c0bf2959
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/NOCANCEL']
+        priority: 10
+
+  - id: tg-ws-proxy
+    name: TG WS Proxy
+    publisher: Flowseal
+    category: messengers
+    group: Мессенджеры
+    description: Локальный MTProto-прокси для частичного обхода проблем с загрузкой Telegram.
+    requires_admin: false
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^TG WS Proxy'
+      - kind: file
+        path: '%LOCALAPPDATA%\Microsoft\WinGet\Packages\Flowseal.TGWSProxy_*\TgWsProxy_windows.exe'
+      - kind: file
+        path: '%LOCALAPPDATA%\WinDeploy\TGWSProxy\TgWsProxy_windows.exe'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: Flowseal.TGWSProxy
+        version: '1.11.4.0'
+        priority: 0
+      - id: offline-portable
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\TgWsProxy_windows.exe'
+        type: portable
+        version: '1.11.4.0'
+        arch: amd64
+        sha256: 454205cbcf76f333934108d893b58a528373bce8096624e27f0b6dc16eea660f
+        portable_dir: '%LOCALAPPDATA%\WinDeploy\TGWSProxy'
+        priority: 5
+      - id: vendor-http-portable
+        kind: http
+        url: https://github.com/Flowseal/tg-ws-proxy/releases/latest/download/TgWsProxy_windows.exe
+        file_name: TgWsProxy_windows.exe
+        type: portable
+        version: '1.11.4.0'
+        arch: amd64
+        sha256: 454205cbcf76f333934108d893b58a528373bce8096624e27f0b6dc16eea660f
+        portable_dir: '%LOCALAPPDATA%\WinDeploy\TGWSProxy'
+        priority: 10
+
+  - id: max-messenger
+    name: MAX
+    publisher: Communication Platform LLC
+    category: messengers
+    group: Мессенджеры
+    description: Российский мессенджер MAX с сообщениями, звонками и каналами.
+    requires_admin: true
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [amd64]
+    detection:
+      - kind: msi
+        product_code: '{5F612D39-9B0F-4E16-9395-947DBA76186B}'
+      - kind: uninstall
+        name_pattern: '^MAX$'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: CommunicationPlatform.MAX
+        version: '26.38.0'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\MAX-26.38.0-x64.msi'
+        type: msi
+        version: '26.38.0'
+        arch: amd64
+        sha256: d1028851e71218c341a94e97118accca846a99aa4324bae151a56b37ca791853
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://download.max.ru/win/release/26.38.0/MAX.msi
+        file_name: MAX-26.38.0-x64.msi
+        type: msi
+        version: '26.38.0'
+        arch: amd64
+        sha256: d1028851e71218c341a94e97118accca846a99aa4324bae151a56b37ca791853
+        priority: 10
+
+  - id: vlc
+    name: VLC media player
+    publisher: VideoLAN
+    category: media
+    group: Медиа
+    description: Универсальный медиаплеер с поддержкой большинства форматов и сетевыми потоками.
+    requires_admin: true
+    requirements:
+      versions: [windows-7-sp1, windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^VLC media player'
+        publisher_pattern: '^VideoLAN'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: VideoLAN.VLC
+        version: '3.0.24'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\vlc-3.0.24-win64.msi'
+        type: msi
+        version: '3.0.24'
+        arch: amd64
+        sha256: 22172095ce4c2d5f5b600bb4c142d78105db29a77fa59a931941876f3b20f6d0
+        size_bytes: 44400000
+        priority: 5
+      - id: offline-x86
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\vlc-3.0.24-win32.msi'
+        type: msi
+        version: '3.0.24'
+        arch: '386'
+        sha256: 6a55111e19cfd4b25390fed2744eedd6f6c32d3d5bce68ec4b3c2f0f47951eb0
+        size_bytes: 41400000
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://download.videolan.org/pub/videolan/vlc/3.0.24/win64/vlc-3.0.24-win64.msi
+        file_name: vlc-3.0.24-win64.msi
+        type: msi
+        version: '3.0.24'
+        arch: amd64
+        sha256: 22172095ce4c2d5f5b600bb4c142d78105db29a77fa59a931941876f3b20f6d0
+        size_bytes: 44400000
+        priority: 10
+
+  - id: mpc-hc
+    name: MPC-HC
+    publisher: MPC-HC Team
+    category: media
+    group: Медиа
+    description: Media Player Classic Home Cinema — лёгкий DirectShow-плеер.
+    requires_admin: true
+    requirements:
+      versions: [windows-7-sp1, windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^MPC-HC'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: clsid2.mpc-hc
+        version: '2.8.4'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\MPC-HC.2.8.4.x64.exe'
+        type: exe
+        version: '2.8.4'
+        arch: amd64
+        sha256: 8340eb8847006ee1efe154e3172e324565f05659439e31579ce9dff9bb6816b8
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES']
+        size_bytes: 18600000
+        priority: 5
+      - id: offline-x86
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\MPC-HC.2.8.4.x86.exe'
+        type: exe
+        version: '2.8.4'
+        arch: '386'
+        sha256: 1b62f3a862b534eb25c54f3523a2be2e78a03e4005e7b6577e9258a88080e5b9
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES']
+        size_bytes: 17900000
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://github.com/clsid2/mpc-hc/releases/download/2.8.4/MPC-HC.2.8.4.x64.exe
+        file_name: MPC-HC.2.8.4.x64.exe
+        type: exe
+        version: '2.8.4'
+        arch: amd64
+        sha256: 8340eb8847006ee1efe154e3172e324565f05659439e31579ce9dff9bb6816b8
+        silent_args: ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES']
+        size_bytes: 18600000
+        priority: 10
+
+  - id: sumatrapdf
+    name: SumatraPDF
+    publisher: Krzysztof Kowalczyk
+    category: utilities
+    group: Документы
+    description: Быстрый просмотрщик PDF, ePub, MOBI, Comic Book и DjVu.
+    requires_admin: true
+    requirements:
+      versions: [windows-7-sp1, windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^SumatraPDF'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: SumatraPDF.SumatraPDF
+        version: '3.6.1'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\SumatraPDF-3.6.1-64-install.exe'
+        type: exe
+        version: '3.6.1'
+        arch: amd64
+        sha256: 1eee71cccd2ea6e94d5bcea54ee2f759844da3e1a0ee2f6045035b1d17b94381
+        silent_args: ['-s']
+        size_bytes: 6200000
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://www.sumatrapdfreader.org/dl/rel/3.6.1/SumatraPDF-3.6.1-64-install.exe
+        file_name: SumatraPDF-3.6.1-64-install.exe
+        type: exe
+        version: '3.6.1'
+        arch: amd64
+        sha256: 1eee71cccd2ea6e94d5bcea54ee2f759844da3e1a0ee2f6045035b1d17b94381
+        silent_args: ['-s']
+        size_bytes: 6200000
+        priority: 10
+
+  - id: irfanview
+    name: IrfanView
+    publisher: Irfan Skiljan
+    category: utilities
+    group: Документы
+    description: Быстрый просмотрщик изображений. Бесплатен для некоммерческого использования.
+    requires_admin: true
+    requirements:
+      versions: [windows-7-sp1, windows-10, windows-11]
+      architectures: [386, amd64]
+    detection:
+      - kind: uninstall
+        name_pattern: '^IrfanView'
+        publisher_pattern: 'Irfan'
+    sources:
+      - id: winget
+        kind: winget
+        winget_id: IrfanSkiljan.IrfanView
+        version: '4.76'
+        priority: 0
+      - id: offline-x64
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\iview476_x64_setup.exe'
+        type: exe
+        version: '4.76'
+        arch: amd64
+        sha256: a2fd831e3962222c6ccb9db0d0de301c976a71df49763d82b9d82282480befb1
+        silent_args: ['/silent']
+        size_bytes: 5600000
+        priority: 5
+      - id: vendor-http-x64
+        kind: http
+        url: https://download.fileforum.com/download/967963863-1/iview476_x64_setup.exe
+        file_name: iview476_x64_setup.exe
+        type: exe
+        version: '4.76'
+        arch: amd64
+        sha256: a2fd831e3962222c6ccb9db0d0de301c976a71df49763d82b9d82282480befb1
+        silent_args: ['/silent']
+        size_bytes: 5600000
+        priority: 10
+
+  - id: printerone
+    name: PrinterOne
+    publisher: xtieume
+    category: printing
+    group: Печать
+    description: TCP-сервер печати с графическим управлением и работой в системном трее.
+    requires_admin: true
+    requirements:
+      versions: [windows-10, windows-11]
+      architectures: [amd64]
+    detection:
+      - kind: file
+        path: '%ProgramFiles%\WinDeploy\PrinterOne\PrinterOne.exe'
+    sources:
+      - id: offline-portable
+        kind: file
+        path: '%ProgramData%\WinDeploy\Packages\PrinterOne.exe'
+        type: portable
+        version: '1.0.1'
+        arch: amd64
+        sha256: d0211d52105b63e86689faa92dce63fe337d27b1b3e7f3504750454b60b60740
+        size_bytes: 21647518
+        portable_dir: '%ProgramFiles%\WinDeploy\PrinterOne'
+        priority: 5
+      - id: vendor-http-portable
+        kind: http
+        url: https://github.com/xtieume/PrinterOne/releases/download/v1.0.1/PrinterOne.exe
+        file_name: PrinterOne.exe
+        type: portable
+        version: '1.0.1'
+        arch: amd64
+        sha256: d0211d52105b63e86689faa92dce63fe337d27b1b3e7f3504750454b60b60740
+        size_bytes: 21647518
+        portable_dir: '%ProgramFiles%\WinDeploy\PrinterOne'
+        priority: 10
