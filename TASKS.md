@@ -30,7 +30,7 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Enumerate interfaces, addresses and link state
   - [x] Read adapter gateways, DNS and DHCP configuration
   - [x] Enumerate installed apps in machine/user registry views
-  - [ ] Collect inventory with explicit partial errors and cancellation
+  - [x] Collect inventory with explicit partial errors and cancellation
   - [ ] Enforce inventory-based OS/architecture applicability before task execution
   - [ ] Add read-only inventory/plan-preview CLI and whole-project smoke check
 - [ ] Stage 4 — GUI
