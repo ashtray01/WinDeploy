@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 3 — Inventory: базовые критерии Profiles выполнены; следующая задача — read-only Windows version/hostname. Реальная проверка ОС и Go 1.20 остаётся открытой.
+Stage 4 — GUI: Inventory и read-only CLI проверены на доступной Windows (amd64 и 386). Следующая задача — проверка совместимости Wails и отдельный Modern-модуль; Go 1.20/Win7 VM остаются открытыми.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -22,7 +22,7 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Add strict bounded YAML import/export
   - [x] Resolve single-parent inheritance with cycle detection
   - [x] Build selected-component plans, clone profiles and add examples
-- [ ] Stage 3 — Inventory
+- [x] Stage 3 — Inventory (real current-Windows reads + parsing/error/integration tests; target VM matrix pending)
   - [x] Read Windows version/build and hostname via a read-only Windows adapter; parsing/error tests
   - [x] Read CPU model and logical processor count
   - [x] Read physical RAM totals and availability
@@ -32,8 +32,10 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Enumerate installed apps in machine/user registry views
   - [x] Collect inventory with explicit partial errors and cancellation
   - [x] Enforce inventory-based OS/architecture applicability before task execution
-  - [ ] Add read-only inventory/plan-preview CLI and whole-project smoke check
+  - [x] Add read-only inventory/plan-preview CLI and whole-project smoke check
 - [ ] Stage 4 — GUI
+  - [ ] Verify current Wails version/toolchain/Windows compatibility and create isolated Modern module
+  - [ ] Add real Inventory dashboard and profile/plan preview with responsive Russian dark UI
 - [ ] Stage 5 — Package Manager
 - [ ] Stage 6 — Network & Shares
 - [ ] Stage 7 — Drivers & Printers
