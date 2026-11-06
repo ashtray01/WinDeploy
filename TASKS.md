@@ -71,6 +71,16 @@ Stage 5 «Package Manager» и Stage 6 «Network & Shares» реализован
   - [ ] Connect to a real SMB server with credentials (no isolated share/test VM available)
   - [ ] Execute shares components through the profile Task Engine (planned with Stage 9 execution integration)
 - [ ] Stage 7 — Drivers & Printers
+  - [x] Enumerate present PnP devices, unknown/problem devices, Hardware IDs and installed driver versions (SetupAPI/CM)
+  - [x] Scan local/network INF catalogs, parse Hardware IDs and DriverVer, match by exact hardware ID
+  - [x] INF signature/platform verification via SetupVerifyInfFile; fail-closed on unsigned packages
+  - [x] Silent INF install through pnputil with elevation, reboot codes and post-install device confirmation
+  - [x] Windows Update-compatible driver rescan through pnputil /scan-devices (Windows 10/11)
+  - [x] Enumerate printers, TCP/IP port queue installation from INF, shared queue name, default printer
+  - [x] Real test page through GDI with explicit confirmation
+  - [x] Configurable Kyocera 2460 model catalog with mandatory exact model selection
+  - [x] Modern pages «Драйверы» and «Принтеры» + read-only CLI devices/printers
+  - [ ] Real driver installation and test page in an isolated VM (no test device/printer available)
 - [ ] Stage 8 — Browser & Windows Settings
 - [ ] Stage 9 — Persistence & Reporting
 - [ ] Stage 10 — Legacy Windows 7

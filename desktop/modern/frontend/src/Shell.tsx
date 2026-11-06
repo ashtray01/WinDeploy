@@ -2,7 +2,7 @@ import { Activity, AppWindow, Boxes, Cable, CircleHelp, FolderOpen, Globe, HardD
 import type { ReactNode } from 'react';
 import { Badge, Progress } from './ui';
 
-export type Page = 'overview' | 'profiles' | 'packages' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'volumes' | 'system' | 'journal';
+export type Page = 'overview' | 'profiles' | 'packages' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'drivers' | 'printers' | 'volumes' | 'system' | 'journal';
 export type DataStatus = 'idle' | 'scanning' | 'complete' | 'partial' | 'cancelled' | 'error';
 const statusText: Record<DataStatus, string> = { idle: 'Нет данных', scanning: 'Сканирование', complete: 'Данные получены', partial: 'Частичные данные', cancelled: 'Отменено', error: 'Ошибка чтения' };
 const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
@@ -15,9 +15,11 @@ const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
   { id: 'system', label: 'Система', icon: Monitor, group: '' },
   { id: 'shares', label: 'Сетевые папки', icon: FolderOpen, group: 'СЕТЬ И ДОСТУП' },
   { id: 'networkdiag', label: 'Диагностика', icon: Activity, group: '' },
+  { id: 'drivers', label: 'Драйверы', icon: Boxes, group: 'ОБОРУДОВАНИЕ' },
+  { id: 'printers', label: 'Принтеры', icon: Printer, group: '' },
   { id: 'journal', label: 'Журнал', icon: ScrollText, group: 'ИНСТРУМЕНТЫ' },
 ];
-const future: [string, LucideIcon][] = [['Драйверы', Boxes], ['Принтеры', Printer], ['Браузеры', Globe], ['Настройка Windows', Wrench]];
+const future: [string, LucideIcon][] = [['Браузеры', Globe], ['Настройка Windows', Wrench]];
 
 export default function Shell({ page, navigate, children, status = 'idle', hostname, query = '', onQuery, updated }: { page: Page; navigate: (page: Page) => void; children: ReactNode; status?: DataStatus; hostname?: string; query?: string; onQuery?: (query: string) => void; updated?: string }) {
   return <div className="app-shell">

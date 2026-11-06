@@ -10,7 +10,7 @@ describe('desktop navigation', () => {
     expect(navigate).toHaveBeenCalledWith('profiles');
     fireEvent.click(screen.getByRole('button', { name: 'Установка ПО' }));
     expect(navigate).toHaveBeenCalledWith('packages');
-    expect(screen.getByRole('button', { name: /Драйверы/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Браузеры/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Обзор' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText(/проверка SHA-256 и подписи/)).toBeInTheDocument();
   });

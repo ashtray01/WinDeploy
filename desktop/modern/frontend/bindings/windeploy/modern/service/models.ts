@@ -14,6 +14,15 @@ export interface Catalog {
     "errors": string[] | null;
 }
 
+/**
+ * DriverInstallRequest is one explicit driver installation request.
+ */
+export interface DriverInstallRequest {
+    "inf_path": string;
+    "hardware_id": string;
+    "dry_run": boolean;
+}
+
 export interface Entry {
     "id": number;
     "time": string;

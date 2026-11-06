@@ -4,6 +4,9 @@ export type { Catalog, ProfileDetails, ProfilePreview, PlannedTask } from '../bi
 export type { PackageCatalogView, PackageView, PackageInstallView, PackageResultView, PackageEvent, PackageEnvironment } from '../bindings/windeploy/modern/service/models';
 export type { NetworkReportView, NetworkCheckView } from '../bindings/windeploy/modern/service/models';
 export type { ShareRequest, ShareResultView, ShareConnectionView } from '../bindings/windeploy/modern/service/models';
+export type { DriverInstallRequest } from '../bindings/windeploy/modern/service/models';
+export type { Device as DriverDevice, INFInfo as DriverInfo, Result as DriverResult } from '../bindings/windeploy/core/drivers/models';
+export type { Printer as PrinterInfo, AddRequest as PrinterAddRequest, Result as PrinterResult } from '../bindings/windeploy/core/printers/models';
 export type { Report, SystemInfo, CPUInfo, Volume, InterfaceInfo, InstalledApp, AdapterConfig } from '../bindings/windeploy/core/inventory/models';
 
 // This is the only production backend transport. No HTTP fallback or sample data.
@@ -22,4 +25,13 @@ export const api = {
   runNetworkDiagnostics: Service.RunNetworkDiagnostics,
   addShare: Service.AddShare,
   listShareConnections: Service.ListShareConnections,
+  getDevices: Service.GetDevices,
+  scanDriverCatalog: Service.ScanDriverCatalog,
+  installDriver: Service.InstallDriver,
+  scanDevicesForUpdates: Service.ScanDevicesForUpdates,
+  getPrinters: Service.GetPrinters,
+  addPrinter: Service.AddPrinter,
+  setDefaultPrinter: Service.SetDefaultPrinter,
+  printTestPage: Service.PrintTestPage,
+  getKyocera2460Models: Service.GetKyocera2460Models,
 };

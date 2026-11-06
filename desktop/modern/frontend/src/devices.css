@@ -1,0 +1,34 @@
+.devices-layout {display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;align-items:start}
+.devices-side {display:grid;gap:20px;min-width:0}
+.device-filters {display:flex;gap:6px}
+.device-filters button {border:1px solid #2b374b;background:#151f2c;color:#9aabc2;border-radius:6px;padding:5px 9px;font-size:10px}
+.device-filters button.active {background:#223a5c;border-color:#3e6099;color:#cfe2ff}
+.device-table-wrap {overflow-x:auto;max-height:620px;overflow-y:auto}
+.device-table {width:100%;border-collapse:collapse;font-size:12px}
+.device-table thead th {position:sticky;top:0;background:#17202d;text-align:left;padding:11px 14px;font-size:9px;letter-spacing:1.1px;text-transform:uppercase;color:#7889a4;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap;z-index:1}
+.device-table td {padding:10px 14px;border-bottom:1px solid #212b3c;vertical-align:top}
+.device-table tbody tr {cursor:pointer}
+.device-table tbody tr:hover td {background:#18212f88}
+.device-table tbody tr.selected td {background:#1d2f4a}
+.device-name strong {display:block;font-size:12px;font-weight:560;line-height:1.45}
+.device-name small {display:block;color:#8494ad;font-size:10px;margin-top:3px;word-break:break-all}
+.device-table .mono {font-size:10px;word-break:break-all;color:#a9b9cf}
+.printer-table tbody tr {cursor:default}
+.row-actions {display:flex;gap:6px;flex-wrap:wrap}
+.printer-status {display:flex;flex-direction:column;gap:4px}
+.driver-form {display:grid;gap:13px;padding:18px 20px 4px}
+.driver-form label {display:flex;flex-direction:column;gap:6px;font-size:10px;letter-spacing:.4px;color:#9aabc2;text-transform:uppercase}
+.driver-form input,.driver-form select {background:#0f1620;border:1px solid #2b374b;border-radius:7px;color:#e6eefb;padding:9px 11px;font-size:12px;text-transform:none;letter-spacing:0}
+.driver-form input:focus,.driver-form select:focus {border-color:#5b91f4;outline:2px solid #5b91f4}
+.driver-form .share-check {flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:11px;color:#b7c5d9}
+.driver-form .share-check input {accent-color:#5b91f4}
+.device-hint {display:flex;gap:7px;align-items:flex-start;padding:12px 20px 4px;color:var(--muted);font-size:10px;line-height:1.7}
+.device-hint svg {color:#7d9fd4;margin-top:1px}
+.driver-actions {display:flex;gap:9px;justify-content:flex-end;padding:15px 20px;border-top:1px solid var(--line);margin-top:14px}
+.driver-confirm {padding:0 20px 16px;color:#e4c07f;font-size:10px;line-height:1.7}
+.driver-matches {display:grid;padding:6px 10px 14px;gap:4px;max-height:240px;overflow:auto}
+.driver-matches button {display:flex;flex-direction:column;text-align:left;gap:4px;background:#151f2d;border:1px solid #263246;border-radius:7px;padding:9px 11px;color:#d8e4f4}
+.driver-matches button:hover {border-color:#3d5d8a;background:#1b293c}
+.driver-matches strong {font-size:11px;font-weight:560}
+.driver-matches small {font-size:9px;color:#8494ad;word-break:break-all}
+@media(max-width:1320px){.devices-layout {grid-template-columns:minmax(0,1fr)}}

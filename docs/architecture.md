@@ -2,7 +2,7 @@
 
 Корневой Go-модуль `windeploy` содержит общее ядро с директивой `go 1.20`. Прямые зависимости — go.yaml.in/yaml/v3 v3.0.4 для профилей и golang.org/x/sys v0.6.0 для Windows API/registry. Путь модуля локальный, до появления remote не привязан к GitHub.
 
-Реализованы `core` (граница общего слоя), `core/engine` (модели, DAG, исполнение и resume), `core/state` (JSON checkpoints), `core/profiles` (YAML/наследование/планы), `core/inventory` (read-only Windows providers/collector/applicability), `core/packages` (каталог/детекция/загрузка/установка), `core/network` (диагностика), `core/shares` (UNC, Credential Manager, ярлыки), `catalog` (встроенный каталог ПО) и CLI `cmd/windeploy-inspect`, `cmd/windeploy-packages`. Пустые каталоги будущих компонентов не создаются.
+Реализованы `core` (граница общего слоя), `core/engine` (модели, DAG, исполнение и resume), `core/state` (JSON checkpoints), `core/profiles` (YAML/наследование/планы), `core/inventory` (read-only Windows providers/collector/applicability), `core/packages` (каталог/детекция/загрузка/установка), `core/network` (диагностика), `core/shares` (UNC, Credential Manager, ярлыки), `core/drivers` (PnP/INF), `core/printers` (очереди/порты/тестовая печать), `catalog` (встроенный каталог ПО) и CLI `cmd/windeploy-inspect`, `cmd/windeploy-packages`. Пустые каталоги будущих компонентов не создаются.
 
 Будущие границы:
 
@@ -10,8 +10,8 @@
 | --- | --- |
 | `core/engine` | План DAG, выполнение, отмена, управление статусами |
 | `core/profiles`, `core/inventory` | Профили и факты о системе |
-| `core/packages`, `core/drivers` | Установка пакетов (реализовано) и драйверов (будущее) через адаптеры |
-| `core/network`, `core/shares`, `core/printers` | Диагностика, сетевые ресурсы (реализовано) и принтеры (будущее) |
+| `core/packages`, `core/drivers` | Установка пакетов и драйверов (реализовано) |
+| `core/network`, `core/shares`, `core/printers` | Диагностика, сетевые ресурсы и принтеры (реализовано) |
 | `core/browsers`, `core/security` | Настройки браузеров, credentials и повышение прав |
 | `core/state`, `core/reporting` | Возобновление, журнал, отчёты |
 | `desktop`, `frontend` | Modern UI; отдельный Go-модуль при несовместимых требованиях toolchain |

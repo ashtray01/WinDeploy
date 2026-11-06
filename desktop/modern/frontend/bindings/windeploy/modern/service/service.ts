@@ -13,7 +13,21 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as drivers$0 from "../../core/drivers/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as printers$0 from "../../core/printers/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AddPrinter installs a print queue from an INF and a TCP/IP address.
+ */
+export function AddPrinter(request: printers$0.AddRequest): $CancellablePromise<printers$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.AddPrinter", request);
+}
 
 /**
  * AddShare connects a UNC resource. Only an explicit user action calls it; a
@@ -34,8 +48,22 @@ export function CancelScan(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.CancelScan");
 }
 
+/**
+ * GetDevices enumerates present PnP devices read-only.
+ */
+export function GetDevices(): $CancellablePromise<drivers$0.Device[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.GetDevices");
+}
+
 export function GetJournal(): $CancellablePromise<$models.Entry[] | null> {
     return $Call.ByName("windeploy/modern/service.Service.GetJournal");
+}
+
+/**
+ * GetKyocera2460Models returns the explicit model list required for the 2460 family.
+ */
+export function GetKyocera2460Models(): $CancellablePromise<string[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.GetKyocera2460Models");
 }
 
 /**
@@ -52,12 +80,26 @@ export function GetPackages(): $CancellablePromise<$models.PackageCatalogView> {
     return $Call.ByName("windeploy/modern/service.Service.GetPackages");
 }
 
+/**
+ * GetPrinters enumerates installed print queues read-only.
+ */
+export function GetPrinters(): $CancellablePromise<printers$0.Printer[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.GetPrinters");
+}
+
 export function GetProfile(id: string): $CancellablePromise<$models.ProfileDetails> {
     return $Call.ByName("windeploy/modern/service.Service.GetProfile", id);
 }
 
 export function GetState(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.GetState");
+}
+
+/**
+ * InstallDriver verifies the INF signature and installs the driver with elevation.
+ */
+export function InstallDriver(request: $models.DriverInstallRequest): $CancellablePromise<drivers$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.InstallDriver", request);
 }
 
 export function ListProfiles(): $CancellablePromise<$models.Catalog> {
@@ -76,11 +118,40 @@ export function PreviewProfile(id: string, selected: string[] | null): $Cancella
 }
 
 /**
+ * PrintTestPage sends a real test page to an existing printer.
+ */
+export function PrintTestPage(name: string): $CancellablePromise<void> {
+    return $Call.ByName("windeploy/modern/service.Service.PrintTestPage", name);
+}
+
+/**
  * RunNetworkDiagnostics performs read-only checks. Targets use the form
  * "dns:name", "tcp:host:port", "icmp:host", "http:url" or "smb:host".
  */
 export function RunNetworkDiagnostics(targets: string[] | null): $CancellablePromise<$models.NetworkReportView> {
     return $Call.ByName("windeploy/modern/service.Service.RunNetworkDiagnostics", targets);
+}
+
+/**
+ * ScanDevicesForUpdates triggers a PnP driver rescan (Windows Update policy may
+ * supply matching drivers). The call requires administrator rights.
+ */
+export function ScanDevicesForUpdates(): $CancellablePromise<void> {
+    return $Call.ByName("windeploy/modern/service.Service.ScanDevicesForUpdates");
+}
+
+/**
+ * ScanDriverCatalog reads INF metadata from a local or network driver directory.
+ */
+export function ScanDriverCatalog(path: string): $CancellablePromise<drivers$0.INFInfo[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.ScanDriverCatalog", path);
+}
+
+/**
+ * SetDefaultPrinter selects the current user's default printer.
+ */
+export function SetDefaultPrinter(name: string): $CancellablePromise<void> {
+    return $Call.ByName("windeploy/modern/service.Service.SetDefaultPrinter", name);
 }
 
 /**

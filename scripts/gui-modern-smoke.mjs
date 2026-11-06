@@ -75,15 +75,21 @@ try {
   await page.getByRole('heading', { name: 'Сетевые папки', exact: true }).waitFor();
   await page.getByLabel('UNC-путь').waitFor();
   await page.getByRole('heading', { name: 'Текущие подключения', exact: true }).waitFor();
+  await nav.getByRole('button', { name: 'Драйверы', exact: true }).click();
+  await page.getByRole('heading', { name: 'Драйверы', exact: true }).waitFor();
+  assert(await page.getByRole('row').count() >= 1);
+  await nav.getByRole('button', { name: 'Принтеры', exact: true }).click();
+  await page.getByRole('heading', { name: 'Принтеры', exact: true }).waitFor();
+  await page.getByLabel('Имя принтера').waitFor();
   await nav.getByRole('button', { name: 'Журнал', exact: true }).click();
   await page.getByRole('button', { name: 'Обновить журнал', exact: true }).click();
   await page.getByRole('textbox', { name: 'Поиск в таблице' }).fill('Построен предварительный план');
   await page.getByText('Построен предварительный план. Системные изменения не выполнялись.', { exact: true }).first().waitFor();
-  assert.equal(await nav.locator('button.future:disabled').count(), 4);
+  assert.equal(await nav.locator('button.future:disabled').count(), 2);
   await page.setViewportSize({ width: 1024, height: 640 });
   assert(await page.locator('.app-shell').evaluate(e => e.scrollWidth <= e.clientWidth));
   assert.deepEqual(errors, []);
   await nav.getByRole('button', { name: 'Обзор', exact: true }).click();
   await page.setViewportSize({ width: 1366, height: 768 });
-  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, packageCatalog: true, packageSelection: true, networkDiagnostics: true, sharesPage: true, realJournal: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
+  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, packageCatalog: true, packageSelection: true, networkDiagnostics: true, sharesPage: true, driversPage: true, printersPage: true, realJournal: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
 } finally { await browser.close(); }

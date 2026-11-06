@@ -8,6 +8,7 @@ export {
 
 export type {
     Catalog,
+    DriverInstallRequest,
     Entry,
     NetworkCheckView,
     NetworkReportView,

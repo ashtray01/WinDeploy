@@ -15,15 +15,17 @@ import (
 	"strings"
 	"time"
 
+	"windeploy/core/drivers"
 	"windeploy/core/inventory"
 	"windeploy/core/network"
+	"windeploy/core/printers"
 	"windeploy/core/profiles"
 )
 
 var diagnosticDependencies = network.NativeDependencies()
 
 func usage(writer io.Writer) {
-	fmt.Fprintln(writer, "WinDeploy read-only inspection\n  inventory [--format text|json] [--output NEW-FILE] [--timeout 15s]\n  network [--dns name] [--tcp host:port] [--icmp host] [--http url] [--smb host] [--json] [--timeout 5s] [--output NEW-FILE]\n  preview --profile ID [--profiles profiles] [--select id,id] [--output NEW-FILE]\nExit codes: 0 complete, 1 input/output error, 2 partial inventory/failed diagnostics, 3 cancelled/deadline.\nInventory includes private workstation metadata; keep reports local.")
+	fmt.Fprintln(writer, "WinDeploy read-only inspection\n  inventory [--format text|json] [--output NEW-FILE] [--timeout 15s]\n  network [--dns name] [--tcp host:port] [--icmp host] [--http url] [--smb host] [--json] [--timeout 5s] [--output NEW-FILE]\n  devices [--problems] [--json] [--output NEW-FILE]\n  printers [--json] [--output NEW-FILE]\n  preview --profile ID [--profiles profiles] [--select id,id] [--output NEW-FILE]\nExit codes: 0 complete, 1 input/output error, 2 partial inventory/failed diagnostics, 3 cancelled/deadline.\nInventory, devices and printers include private workstation metadata; keep reports local.")
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer, provider inventory.Provider) int {
@@ -38,6 +40,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, provider 
 		return runPreview(ctx, args[1:], stdout, stderr)
 	case "network":
 		return runNetwork(ctx, args[1:], stdout, stderr)
+	case "devices":
+		return runDevices(ctx, args[1:], stdout, stderr)
+	case "printers":
+		return runPrinters(ctx, args[1:], stdout, stderr)
 	default:
 		fmt.Fprintln(stderr, "unknown command; use help")
 		return 1
@@ -268,6 +274,98 @@ func runNetwork(ctx context.Context, args []string, stdout, stderr io.Writer) in
 	}
 	if report.Failed > 0 || !report.Complete {
 		return 2
+	}
+	return 0
+}
+
+func runDevices(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("devices", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	problemsOnly := flags.Bool("problems", false, "only devices with a problem code")
+	asJSON := flags.Bool("json", false, "JSON output")
+	output := flags.String("output", "", "create a new local report file; never overwrite")
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if flags.NArg() != 0 {
+		fmt.Fprintln(stderr, "invalid devices options")
+		return 1
+	}
+	runCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	devices, err := (drivers.WindowsDevices{}).Devices(runCtx)
+	if err != nil {
+		fmt.Fprintln(stderr, "devices could not be enumerated")
+		return 1
+	}
+	filtered := make([]drivers.Device, 0, len(devices))
+	for _, device := range devices {
+		if *problemsOnly && device.Status != "problem" {
+			continue
+		}
+		filtered = append(filtered, device)
+	}
+	var data []byte
+	if *asJSON {
+		data, err = encodeJSON(filtered)
+	} else {
+		var text bytes.Buffer
+		fmt.Fprintf(&text, "WinDeploy devices (read-only)\nTotal: %d; shown: %d\n", len(devices), len(filtered))
+		for _, device := range filtered {
+			fmt.Fprintf(&text, "[%s] %s | %s | driver=%s %s | problem=%d\n", device.Status, device.Name, device.Class, device.DriverVersion, device.DriverProvider, device.ProblemCode)
+			for _, hwid := range device.HardwareIDs {
+				fmt.Fprintf(&text, "    %s\n", hwid)
+			}
+		}
+		data = text.Bytes()
+	}
+	if err != nil || writeOutput(*output, data, stdout) != nil {
+		fmt.Fprintln(stderr, "could not write devices report")
+		return 1
+	}
+	return 0
+}
+
+func runPrinters(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("printers", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	asJSON := flags.Bool("json", false, "JSON output")
+	output := flags.String("output", "", "create a new local report file; never overwrite")
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if flags.NArg() != 0 {
+		fmt.Fprintln(stderr, "invalid printers options")
+		return 1
+	}
+	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	items, err := (printers.WindowsPrinters{}).Printers(runCtx)
+	if err != nil {
+		fmt.Fprintln(stderr, "printers could not be enumerated")
+		return 1
+	}
+	defaultName, _ := (printers.WindowsDefaults{}).Default(runCtx)
+	var data []byte
+	if *asJSON {
+		data, err = encodeJSON(map[string]any{"printers": items, "default": defaultName})
+	} else {
+		var text bytes.Buffer
+		fmt.Fprintf(&text, "WinDeploy printers (read-only)\nTotal: %d; default: %s\n", len(items), defaultName)
+		for _, printer := range items {
+			fmt.Fprintf(&text, "[%s] %s | driver=%s | port=%s | shared=%t\n", printer.Status, printer.Name, printer.Driver, printer.Port, printer.Shared)
+		}
+		data = text.Bytes()
+	}
+	if err != nil || writeOutput(*output, data, stdout) != nil {
+		fmt.Fprintln(stderr, "could not write printers report")
+		return 1
 	}
 	return 0
 }
