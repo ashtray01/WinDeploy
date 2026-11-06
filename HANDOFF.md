@@ -4,7 +4,8 @@
 Текущий этап: 1 — Core Foundation (валидация плана).
 Текущая задача: DAG завершён, сессия заканчивается.
 Последний завершённый этап: 0 — Bootstrap; модели и валидация DAG этапа 1.
-Последний успешный коммит реализации: 47f2edc — `feat(core): add task models and validation tests`.
+Последний успешный коммит реализации: b516282 — `feat(engine): validate task dependency plans`.
+Модели: 47f2edc — `feat(core): add task models and validation tests`.
 Bootstrap: 7dd54cf — `chore: initialize WinDeploy repository`.
 Текущий документ фиксируется отдельным `docs: update agent handoff`; его хеш доступен в git log.
 Текущая ветка: master.
