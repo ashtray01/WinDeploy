@@ -1,12 +1,12 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 4 — GUI: Inventory и read-only CLI проверены на доступной Windows (amd64 и 386). Следующая задача — проверка совместимости Wails и отдельный Modern-модуль; Go 1.20/Win7 VM остаются открытыми.
+Stage 4 — первый Modern GUI с настоящими Inventory и Profiles работает на текущей Windows 11. Все 10 задач пакета выполнены; дальнейший GUI hardening и VM-матрица остаются открытыми. Package Manager не начат.
 
 ## Tasks
 - [x] Initialize Git repository
 - [x] Add basic project documentation
-- [x] Add Go 1.20 core skeleton (директива модуля; Go 1.20 toolchain ещё не проверен)
+- [x] Add Go 1.20 core skeleton (Go 1.20.14 test/vet/build amd64+386 verified)
 - [x] Implement Task, TaskStatus and TaskResult models
 - [x] Add first model unit tests and verify compilation
 - [x] Validate plan IDs, dependency references and DAG; deterministic topological order
@@ -43,7 +43,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [x] Modern 7 — Real dashboard and rescan (desktop DOM matches native CLI; 1366×768 smoke PASS)
   - [x] Modern 8 — Searchable/sortable Inventory detail tables (9 UI tests + TS/build PASS)
   - [x] Modern 9 — YAML profile selection, real preview/DAG/applicability (Go tests/vet + 12 UI tests + TS/build PASS)
-  - [ ] Modern 10 — Real journal, UI/backend tests, GUI smoke and core regression check
+  - [x] Modern 10 — Real journal, errors/recovery, 14 UI tests, Windows EXE + actual GUI smoke and Go 1.20 amd64/386 regression PASS
 - [ ] Stage 5 — Package Manager
 - [ ] Stage 6 — Network & Shares
 - [ ] Stage 7 — Drivers & Printers
@@ -54,8 +54,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
 
 ## Blocked
 GitHub CLI отсутствует; remote не настроен. Локальная разработка доступна.
-Проверка Go 1.20 и Windows 7 VM не выполнена; совместимость не подтверждена.
+Go 1.20.14 проверен на текущей Windows; Windows 7 SP1 VM и полная целевая VM-матрица пока не проверены.
 
-## Last verified commit
-1ff69d4 — `feat(cli): add read-only inventory and profile preview commands`.
-Go 1.26.2: windows/amd64 — go test/vet/build ./... PASS; windows/386 — go test/build ./... PASS; linux/amd64 cross-build PASS. Real x64/x86 CLI inventory + 8 profile previews PASS; go mod verify/gofmt/diff --check PASS. Go 1.20/Win7 VM/race detector не проверены. Подробности: docs/reports/autonomous-inventory.md.
+## Last verified session
+Modern 1–10: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go tests/vet/build + module cache verify PASS; 14 UI tests/typecheck/Vite PASS. Реальный Windows desktop smoke: native Inventory comparison, rescan, tables, Profiles/DAG/Legacy incompatibility, journal, 1366×768 и 1024×640 PASS; 0 page errors. Подробности: docs/modern.md, docs/reports/modern-gui.md и HANDOFF.md.

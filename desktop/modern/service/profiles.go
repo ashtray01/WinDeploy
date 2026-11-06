@@ -45,6 +45,9 @@ func NewWithProfiles(provider inventory.Provider, source fs.FS) *Service {
 }
 
 func (s *Service) ListProfiles() (Catalog, error) {
+	s.mu.Lock()
+	s.registry = nil // A failed reload must never leave an old catalog usable.
+	s.mu.Unlock()
 	source := s.profileSource
 	label := "Внешний каталог YAML"
 	if source == nil {

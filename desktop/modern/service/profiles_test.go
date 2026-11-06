@@ -59,3 +59,23 @@ func TestProfilesUnknownTargetAndInvalidYAML(t *testing.T) {
 		t.Fatalf("invalid catalog: %#v %v", catalog, err)
 	}
 }
+
+func TestFailedReloadDropsPreviousCatalog(t *testing.T) {
+	source := fstest.MapFS{}
+	s := NewWithProfiles(&fixtureProvider{}, source)
+	defer s.ServiceShutdown()
+	// Copy existing embedded YAML through its public filesystem contract.
+	embedded := New(&fixtureProvider{})
+	defer embedded.ServiceShutdown()
+	if _, err := embedded.ListProfiles(); err != nil {
+		t.Fatal(err)
+	}
+	s.registry = embedded.registry
+	source["bad.yaml"] = &fstest.MapFile{Data: []byte("invalid: true")}
+	if _, err := s.ListProfiles(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetProfile("base"); err == nil {
+		t.Fatal("old catalog survived reload")
+	}
+}

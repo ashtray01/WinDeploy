@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"flag"
 	"log"
 	"os"
@@ -40,6 +41,13 @@ func main() {
 		Windows:  options,
 		Assets:   application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
 		Services: []application.Service{application.NewService(backend)},
+		ErrorHandler: func(err error) {
+			service.RuntimeErrorHandler(backend)(err)
+			var fatal *application.FatalError
+			if errors.As(err, &fatal) {
+				showStartupError()
+			}
+		},
 	})
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "WinDeploy", Width: 1366, Height: 840, MinWidth: 1024, MinHeight: 640,
@@ -47,6 +55,7 @@ func main() {
 		BackgroundColour: application.NewRGB(14, 18, 26), URL: "/", DevToolsEnabled: *smokePort != 0,
 	})
 	if err := app.Run(); err != nil {
+		showStartupError()
 		log.Fatal(err)
 	}
 }

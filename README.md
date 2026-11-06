@@ -34,8 +34,10 @@ go build ./...
 
 `core/inventory` реально читает Windows system/CPU/RAM/volumes/network/installed apps. `cmd/windeploy-inspect` предоставляет read-only Inventory (text/JSON) и profile preview без системных изменений. Сборка: `go build -o bin/WinDeploy-Inspect-Windows-x64.exe ./cmd/windeploy-inspect`. Возможности, команды и ограничения — в [docs/inventory.md](docs/inventory.md).
 
-`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Реальных изменяющих систему адаптеров и GUI пока нет; примеры не являются подтверждением установки программ.
+`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Modern GUI показывает реальные Inventory и Profiles Preview; изменяющих систему адаптеров пока нет. Примеры не являются подтверждением установки программ.
 
 Если стандартный module cache недоступен, задайте `$env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'`. Подчёркивание исключает скачанные пакеты из `go test ./...`. YAML-зависимость зафиксирована в go.mod/go.sum.
 
 Не запускайте установщики и административные операции на рабочей машине. Системные адаптеры проверяются в изолированной VM.
+
+Modern desktop: [сборка, запуск и проверки](docs/modern.md). Готовый локальный EXE — `bin/WinDeploy-Windows-x64.exe`; Wails v3.1.0 находится только в отдельном `desktop/modern` модуле.
