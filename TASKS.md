@@ -117,10 +117,10 @@ Stages 1–11 реализованы: ядро, профили, inventory, Moder
   - [ ] Publish v0.1.0 pre-release (requires remote + unmet VM/GUI-smoke criteria)
 
 ## Blocked
-GitHub CLI отсутствует; remote не настроен. Локальная разработка доступна.
-Go 1.20.14 проверен на текущей Windows; Windows 7 SP1 VM и полная целевая VM-матрица пока не проверены.
-WebView2 в текущей сессии хоста не создаёт контроллер (0x8000FFFF) даже для минимального Wails-приложения; реальный GUI smoke этого пакета заблокирован внешней средой, не кодом WinDeploy.
-Установка программ и подключение SMB требуют изолированной VM/тестового сервера; на рабочем хосте не выполнялись.
+GitHub CLI отсутствует; remote не настроен; CI workflow не запускался. Локальная разработка и preview-артефакты доступны.
+Windows 7 SP1 VM отсутствует; Legacy проверен только на Windows 11 (реальное окно x64/x86), что не доказывает Win7 runtime.
+WebView2 в текущей сессии хоста не создаёт контроллер (0x8000FFFF) даже для минимального Wails-приложения; Modern GUI smoke заблокирован внешней средой, не кодом WinDeploy.
+Установка программ/драйверов/принтеров, SMB и политики/настройки требуют изолированной VM/тестового сервера; на рабочем хосте не выполнялись. Запись в HKCU\Software блокируется низким integrity тестового процесса.
 
 ## Last verified session
-Package Manager: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go tests/vet/build PASS; 23 UI tests/typecheck/Vite PASS. Real host: detection of installed apps, HTTPS downloads with pinned SHA-256 and cache reuse for 7-Zip, SumatraPDF and PrinterOne; network diagnostics (DNS, specific DNS server, TCP 445, HTTP, DHCP, gateway) executed on current Windows; Credential Manager round-trip, WNet enumeration and .lnk creation PASS in native Windows tests. Details: docs/packages.md, docs/network.md, HANDOFF.md.
+Финальная проверка Stages 1–11: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Wails build, 37 UI-тестов, strict TypeScript, Vite, service tests PASS; Legacy test/vet x64/x86, selftest и реальный GUI smoke (окно + auto-close) PASS на Windows 11; read-only deployment создал сессию и HTML/JSON отчёты. Portable x64/x86 и offline x64 ZIP + SHA256SUMS собраны. Реальные установки, Win7/10 VM, Modern WebView2 smoke и публикация не выполнялись. Детали: HANDOFF.md, docs/release.md, docs/legacy.md, docs/execution.md.
