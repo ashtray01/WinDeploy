@@ -26,14 +26,24 @@ func (r WindowsRunner) Run(ctx context.Context, command Command, onLine func(str
 		return Execution{}, fmt.Errorf("executable path is required")
 	}
 	path := command.Path
+	args := command.Args
 	if !strings.ContainsAny(path, `\/`) {
 		resolved, err := exec.LookPath(path)
 		if err != nil {
-			return Execution{}, fmt.Errorf("executable was not found")
+			// Windows App Execution Aliases (including winget.exe) can fail
+			// os.Stat/LookPath even though cmd.exe can resolve them. Only the
+			// fixed winget command gets this fallback; catalog arguments are
+			// validated to contain no cmd metacharacters.
+			if !strings.EqualFold(path, "winget") {
+				return Execution{}, fmt.Errorf("executable was not found")
+			}
+			path = "cmd.exe"
+			args = append([]string{"/d", "/s", "/c", "winget"}, command.Args...)
+		} else {
+			path = resolved
 		}
-		path = resolved
 	}
-	cmd := exec.CommandContext(ctx, path, command.Args...)
+	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Dir = command.Dir
 	cmd.SysProcAttr = hiddenProcessAttributes()
 	limit := r.MaxOutputBytes

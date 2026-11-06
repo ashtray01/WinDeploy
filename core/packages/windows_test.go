@@ -5,7 +5,6 @@ package packages
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -125,13 +124,17 @@ func TestWindowsElevationAndWingetProbe(t *testing.T) {
 	probe := &WindowsWinget{}
 	available, version := probe.Available(context.Background())
 	if !available {
-		if _, lookErr := exec.LookPath("winget.exe"); lookErr == nil {
-			t.Fatalf("winget is on PATH but the probe failed")
+		candidates := wingetCandidates()
+		if len(candidates) > 0 {
+			t.Fatalf("winget candidates exist but the probe failed: %v", candidates)
 		}
 		return
 	}
 	if version == "" || len(version) > 64 {
 		t.Fatalf("unexpected winget version: %q", version)
+	}
+	if probe.Path() == "" {
+		t.Fatal("a successful winget probe must retain the executable path")
 	}
 	// A second probe must be served from the cache.
 	again, againVersion := probe.Available(context.Background())

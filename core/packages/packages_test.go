@@ -592,6 +592,56 @@ func TestInstallCancelledBeforeStart(t *testing.T) {
 	}
 }
 
+func TestDownloadPreparesAndReusesVerifiedArtifact(t *testing.T) {
+	content := []byte("downloadable-artifact")
+	pkg := testPackage()
+	pkg.Sources = []Source{{
+		ID: "http-source", Kind: "http", URL: "https://example.test/setup.exe", Type: "exe",
+		Version: "2.0", SHA256: HashBytes(content), Priority: 0,
+	}}
+	facts := &fakeFacts{}
+	manager, _, _ := testManager(pkg, facts)
+	manager.Winget = fakeWinget{}
+	cachedFetcher := &fakeFetcher{data: content}
+	manager.Fetcher = cachedFetcher
+	manager.CacheDir = t.TempDir()
+	run, err := manager.Download(context.Background(), nil, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(run.Results) != 1 || run.Results[0].Status != StatusSuccess {
+		t.Fatalf("unexpected download result: %+v", run.Results)
+	}
+	if run.Results[0].SHA256 != HashBytes(content) || run.Results[0].Size != int64(len(content)) {
+		t.Fatalf("unexpected artifact metadata: %+v", run.Results[0])
+	}
+	if _, err := os.Stat(run.Results[0].Path); err != nil {
+		t.Fatalf("artifact not stored: %v", err)
+	}
+	second, err := manager.Download(context.Background(), nil, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Results[0].Cached {
+		t.Fatal("second download must reuse the verified cache entry")
+	}
+	if fetcherCount := cachedFetcher.count; fetcherCount != 1 {
+		t.Fatalf("expected one network transfer, got %d", fetcherCount)
+	}
+}
+
+func TestDownloadSkipsWingetPackages(t *testing.T) {
+	facts := &fakeFacts{}
+	manager, _, _ := testManager(testPackage(), facts)
+	run, err := manager.Download(context.Background(), nil, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.Results[0].Status != StatusSkipped || run.Results[0].ErrorCode != "winget-managed" {
+		t.Fatalf("unexpected winget download result: %+v", run.Results[0])
+	}
+}
+
 func TestInstallerCommandDefaults(t *testing.T) {
 	msi := installerCommand(Source{Type: "msi"}, `C:\cache\setup.msi`)
 	if msi.Path != "msiexec.exe" || strings.Join(msi.Args, " ") != `/i C:\cache\setup.msi /qn /norestart` {

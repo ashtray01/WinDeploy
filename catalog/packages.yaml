@@ -436,6 +436,7 @@ packages:
         version: '3.6.1'
         arch: amd64
         sha256: 1eee71cccd2ea6e94d5bcea54ee2f759844da3e1a0ee2f6045035b1d17b94381
+        signer: Krzysztof Kowalczyk
         silent_args: ['-s']
         size_bytes: 6200000
         priority: 5
@@ -447,6 +448,7 @@ packages:
         version: '3.6.1'
         arch: amd64
         sha256: 1eee71cccd2ea6e94d5bcea54ee2f759844da3e1a0ee2f6045035b1d17b94381
+        signer: Krzysztof Kowalczyk
         silent_args: ['-s']
         size_bytes: 6200000
         priority: 10

@@ -356,7 +356,7 @@ func (m *Manager) installWinget(ctx context.Context, item PlanItem, source Sourc
 	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	execution, err := m.Runner.Run(runCtx, Command{Path: "winget", Args: args}, nil)
+	execution, err := m.Runner.Run(runCtx, Command{Path: wingetExecutable(m.Winget), Args: args}, nil)
 	if err != nil {
 		if ctx.Err() != nil {
 			result.ErrorCode = CodeCancelled
@@ -400,12 +400,10 @@ func (m *Manager) resolveArtifact(ctx context.Context, item PlanItem, source Sou
 		return "", fmt.Errorf("download cache directory is required")
 	}
 	hash := normalizeHash(source.SHA256)
-	name := artifactName(pkg.ID, source)
-	destination := ""
-	if hash != "" {
-		destination = filepath.Join(m.CacheDir, "sha256", hash+filepath.Ext(name))
-	} else {
-		destination = filepath.Join(m.CacheDir, "artifacts", pkg.ID, name)
+	destination := artifactDestination(m.CacheDir, pkg.ID, source)
+	if destination == "" {
+		result.ErrorCode = CodeDownloadFailed
+		return "", fmt.Errorf("download cache directory is required")
 	}
 	if hash != "" {
 		if info, err := os.Stat(destination); err == nil && info.Mode().IsRegular() {
@@ -670,6 +668,17 @@ func installerCommand(source Source, artifact string) Command {
 	return Command{Path: artifact, Args: append([]string{}, source.SilentArgs...)}
 }
 
+// wingetExecutable returns the resolved App Installer path when the probe
+// provides one, otherwise the PATH-resolved name.
+func wingetExecutable(probe WingetProbe) string {
+	if locator, ok := probe.(interface{ Path() string }); ok {
+		if path := locator.Path(); path != "" {
+			return path
+		}
+	}
+	return "winget"
+}
+
 func findSource(pkg Package, id string) (Source, bool) {
 	for _, source := range pkg.Sources {
 		if source.ID == id {
@@ -684,6 +693,19 @@ func (m *Manager) expandPath(path string) string {
 		return path
 	}
 	return m.Facts.ExpandPath(path)
+}
+
+// artifactDestination returns the deterministic cache path for a downloaded
+// installer, or an empty string when the source is not an HTTP download.
+func artifactDestination(cacheDir, packageID string, source Source) string {
+	if cacheDir == "" || source.Kind != "http" {
+		return ""
+	}
+	name := artifactName(packageID, source)
+	if hash := normalizeHash(source.SHA256); hash != "" {
+		return filepath.Join(cacheDir, "sha256", hash+filepath.Ext(name))
+	}
+	return filepath.Join(cacheDir, "artifacts", packageID, name)
 }
 
 func artifactName(packageID string, source Source) string {

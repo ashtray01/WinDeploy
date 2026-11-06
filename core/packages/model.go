@@ -115,6 +115,7 @@ type Catalog struct {
 }
 
 var packageID = regexp.MustCompile(`^[a-z][a-z0-9._-]{0,63}$`)
+var wingetID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
 var sha256Hex = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 func validHexHash(value string) bool {
@@ -270,7 +271,7 @@ func (s Source) validate() error {
 		return fmt.Errorf("negative source size")
 	}
 	for _, arg := range s.SilentArgs {
-		if strings.ContainsAny(arg, "\x00\r\n") {
+		if strings.ContainsAny(arg, "\x00\r\n&|<>^") {
 			return fmt.Errorf("invalid silent argument")
 		}
 	}
@@ -278,6 +279,9 @@ func (s Source) validate() error {
 	case "winget":
 		if strings.TrimSpace(s.WingetID) == "" || s.URL != "" || s.Path != "" || s.SHA256 != "" {
 			return fmt.Errorf("winget source requires only winget_id")
+		}
+		if !wingetID.MatchString(s.WingetID) {
+			return fmt.Errorf("invalid winget package ID")
 		}
 		sType := s.Type
 		if sType == "" {

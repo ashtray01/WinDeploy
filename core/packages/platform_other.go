@@ -51,3 +51,11 @@ type UnsupportedWinget struct{}
 func (UnsupportedWinget) Available(context.Context) (bool, string) {
 	return false, ""
 }
+
+// The Windows-prefixed names keep shared callers (CLI, legacy front-ends) buildable
+// on other platforms; every operation fails closed at runtime.
+type WindowsFacts = UnsupportedFacts
+type WindowsRunner = UnsupportedRunner
+type WindowsSigner = UnsupportedSigner
+type WindowsElevation = UnsupportedElevation
+type WindowsWinget = UnsupportedWinget
