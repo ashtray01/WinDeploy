@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 1 — Core Foundation: модели и валидация DAG завершены; следующая часть — последовательный исполнитель.
+Stage 1 — Core Foundation: последовательный исполнитель завершён; следующая часть — dry-run.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -10,8 +10,9 @@ Stage 1 — Core Foundation: модели и валидация DAG заверш
 - [x] Implement Task, TaskStatus and TaskResult models
 - [x] Add first model unit tests and verify compilation
 - [x] Validate plan IDs, dependency references and DAG; deterministic topological order
-- [ ] Implement execution engine and context cancellation
-- [ ] Implement retries, dry-run and concurrency control
+- [x] Implement sequential execution engine, context cancellation and task timeout
+- [ ] Add dry-run plan preview without Adapter calls (следующая сессия)
+- [ ] Implement retries and concurrency control
 - [ ] Implement persistent state and resume
 - [ ] Stage 2 — Profiles
 - [ ] Stage 3 — Inventory
