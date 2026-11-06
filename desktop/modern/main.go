@@ -18,6 +18,7 @@ var assets embed.FS
 
 func main() {
 	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
+	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
 	flag.Parse()
 	if *smokePort != 0 && (*smokePort < 1024 || *smokePort > 65535) {
 		log.Fatal("invalid smoke port")
@@ -30,11 +31,15 @@ func main() {
 	if *smokePort != 0 {
 		options.AdditionalBrowserArgs = []string{"--remote-debugging-address=127.0.0.1", "--remote-debugging-port=" + strconv.Itoa(*smokePort)}
 	}
+	backend := service.New(inventory.Native{})
+	if *profileDir != "" {
+		backend = service.NewWithProfiles(inventory.Native{}, os.DirFS(*profileDir))
+	}
 	app := application.New(application.Options{
 		Name: "WinDeploy", Description: "Подготовка рабочих станций Windows",
 		Windows:  options,
 		Assets:   application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
-		Services: []application.Service{application.NewService(service.New(inventory.Native{}))},
+		Services: []application.Service{application.NewService(backend)},
 	})
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "WinDeploy", Width: 1366, Height: 840, MinWidth: 1024, MinHeight: 640,

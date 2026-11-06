@@ -7,6 +7,11 @@ export {
 };
 
 export type {
+    Catalog,
     Entry,
+    PlannedTask,
+    ProfileDetails,
+    ProfilePreview,
+    ProfileSummary,
     State
 } from "./models.js";

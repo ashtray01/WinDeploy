@@ -23,8 +23,20 @@ export function GetJournal(): $CancellablePromise<$models.Entry[] | null> {
     return $Call.ByName("windeploy/modern/service.Service.GetJournal");
 }
 
+export function GetProfile(id: string): $CancellablePromise<$models.ProfileDetails> {
+    return $Call.ByName("windeploy/modern/service.Service.GetProfile", id);
+}
+
 export function GetState(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.GetState");
+}
+
+export function ListProfiles(): $CancellablePromise<$models.Catalog> {
+    return $Call.ByName("windeploy/modern/service.Service.ListProfiles");
+}
+
+export function PreviewProfile(id: string, selected: string[] | null): $CancellablePromise<$models.ProfilePreview> {
+    return $Call.ByName("windeploy/modern/service.Service.PreviewProfile", id, selected);
 }
 
 export function StartScan(): $CancellablePromise<$models.State> {

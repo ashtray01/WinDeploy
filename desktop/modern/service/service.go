@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"sync"
 	"time"
 
 	"windeploy/core/inventory"
+	"windeploy/core/profiles"
 )
 
 type Entry struct {
@@ -32,15 +34,17 @@ type State struct {
 // Reports are immutable once published. Native calls run outside the UI thread;
 // cancellation is cooperative and a second scan cannot overlap an unfinished one.
 type Service struct {
-	mu        sync.Mutex
-	wg        sync.WaitGroup
-	provider  inventory.Provider
-	ctx       context.Context
-	stop      context.CancelFunc
-	cancel    context.CancelFunc
-	closed    bool
-	state     State
-	nextEntry uint64
+	profileSource fs.FS
+	registry      map[string]profiles.Profile
+	mu            sync.Mutex
+	wg            sync.WaitGroup
+	provider      inventory.Provider
+	ctx           context.Context
+	stop          context.CancelFunc
+	cancel        context.CancelFunc
+	closed        bool
+	state         State
+	nextEntry     uint64
 }
 
 func New(provider inventory.Provider) *Service {

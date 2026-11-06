@@ -3,7 +3,16 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as engine$0 from "../../core/engine/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as inventory$0 from "../../core/inventory/models.js";
+
+export interface Catalog {
+    "source": string;
+    "profiles": ProfileSummary[] | null;
+    "errors": string[] | null;
+}
 
 export interface Entry {
     "id": number;
@@ -11,6 +20,29 @@ export interface Entry {
     "level": string;
     "source": string;
     "message": string;
+}
+
+export interface PlannedTask {
+    "task": engine$0.PreviewTask;
+    "compatibility": string;
+    "reason": string;
+}
+
+export interface ProfileDetails {
+    "id": string;
+    "name": string;
+    "components": engine$0.PreviewTask[] | null;
+}
+
+export interface ProfilePreview {
+    "scope": string;
+    "tasks": PlannedTask[] | null;
+}
+
+export interface ProfileSummary {
+    "id": string;
+    "name": string;
+    "parent": string;
 }
 
 export interface State {
