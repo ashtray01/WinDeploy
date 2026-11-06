@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 5 «Package Manager» и Stage 6 «Network & Shares» реализованы в ядре и Modern GUI: каталог из 12 программ, реальная детекция/план/загрузка с SHA-256, установка через WinGet/EXE/MSI с проверкой подписи, страница установки с прогрессом, диагностика сети и подключение UNC с Windows Credential Manager. Следующий этап — драйверы и принтеры. Реальная установка программ и SMB-подключение в изолированной VM ещё не выполнялись.
+Stages 1–9 реализованы: ядро, профили, inventory, Modern GUI, Package Manager, Network & Shares, Drivers & Printers, Browsers & Windows Settings, Execution & Reporting. Следующие этапы — Legacy Windows 7 GUI и CI/CD/Release. Реальные изменяющие операции (установка ПО/драйверов/принтеров, SMB, политики, настройки, переименование) и полная VM-матрица ещё не проверены; WebView2 на текущем хосте не создаёт контроллер.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -93,6 +93,14 @@ Stage 5 «Package Manager» и Stage 6 «Network & Shares» реализован
   - [x] Modern pages «Браузеры» и «Windows» with confirmations and dry-run
   - [ ] Real browser policy application and Windows setting changes in an isolated VM
 - [ ] Stage 9 — Persistence & Reporting
+  - [x] Deploy adapter for packages/shares/drivers/printers/browsers/windows/diagnostics components
+  - [x] Resumable session store with original plan, snapshot and atomic 0600 JSON
+  - [x] Start/resume/cancel integration with engine, explicit retry-failed consent
+  - [x] HTML and JSON reports with escaped values, safe summaries and exclusive files
+  - [x] Headless `windeploy-run` CLI (plan/run/resume/sessions/report)
+  - [x] Modern «Выполнение» page with live progress, cancel, sessions and report paths
+  - [x] Real read-only diagnostics deployment through CLI and service tests (session + reports)
+  - [ ] Execute modifying components end-to-end in an isolated VM, including reboot continuation
 - [ ] Stage 10 — Legacy Windows 7
 - [ ] Stage 11 — CI/CD & Release
 

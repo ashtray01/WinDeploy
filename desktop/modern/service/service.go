@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -46,6 +48,7 @@ type Service struct {
 	state         State
 	nextEntry     uint64
 	packages      *packageState
+	deployment    *deploymentState
 }
 
 func New(provider inventory.Provider) *Service {
@@ -55,7 +58,15 @@ func New(provider inventory.Provider) *Service {
 	ctx, stop := context.WithCancel(context.Background())
 	s := &Service{provider: provider, ctx: ctx, stop: stop, state: State{Status: "idle", Journal: []Entry{}}}
 	s.packages = newPackageState(ctx, defaultPackageDeps(), s.currentSystem)
-	s.appendLocked("info", "application", "WinDeploy запущен. Доступны просмотр сведений и установка программ из каталога.")
+	base := os.Getenv("WINDEPLOY_STATE_DIR")
+	if base == "" {
+		base = filepath.Join(os.TempDir(), "WinDeploy")
+		if cache, err := os.UserCacheDir(); err == nil {
+			base = filepath.Join(cache, "WinDeploy")
+		}
+	}
+	s.deployment = newDeploymentState(ctx, base)
+	s.appendLocked("info", "application", "WinDeploy запущен. Доступны просмотр сведений, установка программ и выполнение профилей.")
 	return s
 }
 
@@ -168,6 +179,9 @@ func (s *Service) ServiceShutdown() error {
 	s.mu.Unlock()
 	if s.packages != nil {
 		s.packages.shutdown()
+	}
+	if s.deployment != nil {
+		s.deployment.shutdown()
 	}
 	s.wg.Wait()
 	return nil

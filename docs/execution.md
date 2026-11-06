@@ -26,4 +26,30 @@ results, err := engine.Resume(ctx, tasks, adapter, snapshot, engine.ResumeOption
 
 Resume не запускает повторно Success/AlreadyInstalled/NotApplicable и явно пропущенные задачи. Failed сохраняется, если администратор явно не задал RetryFailed. Running/Cancelled и пропуски из-за зависимостей возвращаются в план через Precheck. Успешные сохранённые результаты не перепроверяются по live inventory; это доверенный отчёт предыдущего выполнения, не факт текущего состояния системы.
 
-RebootRequired пока поддерживается как флаг после проверенного успеха; обязательный reboot barrier, boot-ID validation и автоматический запуск после перезагрузки не реализованы. Resume отклоняет status RebootRequired, чтобы не выдать непроверенную операцию за завершённую. Реальные установки и Windows 7 проверяются отдельно в VM.
+RebootRequired поддерживается как флаг проверенного успеха. Если адаптер вернул reboot, Verify задачи считается отложенной до перезагрузки (задача не помечается Failed); после перезагрузки администратор продолжает сохранённую сессию. `Resume` по-прежнему отклоняет сохранённый status RebootRequired, поэтому адаптер не выставляет его как статус результата. Boot-ID validation и автоматический запуск при входе не реализованы.
+
+## Интеграция профилей: `core/deploy`
+
+`deploy.Adapter` реализует `engine.Adapter` и маршрутизирует компоненты профиля по `Category`:
+
+| Category | Precheck | Execute | Verify |
+| --- | --- | --- | --- |
+| packages | план каталога: up-to-date → AlreadyInstalled, incompatible → NotApplicable | `packages.Manager.Install` по `package_ref` | повторная детекция |
+| shares | перечисление WNet: UNC уже подключён → AlreadyInstalled | `shares.Manager.Add` (пароль только из Credential Manager) | подключение подтверждено |
+| drivers | устройство с Hardware ID уже ok → AlreadyInstalled | `drivers.Manager.Install` | устройство ok |
+| printers | очередь с именем существует → AlreadyInstalled | `printers.Manager.Add` | очередь существует |
+| browsers | Pending | политики Chromium/Firefox | Execute уже валидирует запись |
+| windows | Pending | computer-name/timezone/explorer/power-plan | Execute |
+| diagnostics | Pending | DNS/DHCP/gateway/TCP/ICMP/HTTP/SMB | Execute |
+
+Пароли никогда не читаются из параметров профиля; для shares используется Windows Credential Manager. Параметры компонентов в отчёт не попадают.
+
+## Сессии и отчёты
+
+`deploy.Store` хранит `sessions/<id>.json` (0600, атомарная запись) с исходным Pending-планом, snapshot и итогом. `deploy.Runner.Start` создаёт сессию до первой операции и пишет полную сессию на каждый checkpoint engine. `Resume` загружает план и snapshot, сохраняет успешные результаты и повторяет только разрешённые задачи; `retryFailed` требуется явно. Сессия не содержит паролей, но содержит параметры компонентов, поэтому каталог должен быть приватным.
+
+После завершения/прерывания `reporting.Build` создаёт JSON и автономный HTML (`reports/windeploy-<session>-<time>.html`): профиль, система, итог по статусам, таблица задач с временем/попытками/ошибками, флаг перезагрузки. HTML экранирует все значения; параметры компонентов не включаются. Повторная запись в тот же файл запрещена.
+
+CLI `windeploy-run`: `plan`, `run --yes`, `resume --session ID [--retry-failed] --yes`, `sessions`, `report`. Modern GUI: страница «Выполнение» — выбор профиля и компонентов, подтверждение запуска, живой прогресс через опрос сессии, отмена, список сессий, просмотр и продолжение, пути отчётов.
+
+Проверено на текущей Windows: реальная сессия `selftest` с diagnostics-компонентом выполнена через CLI и через service-тест; созданы session JSON, HTML/JSON отчёты; повторный запуск после отмены продолжает задачи; завершённая сессия без `retryFailed` не перезапускается. Изменяющие компоненты (packages/drivers/printers/shares/browsers/windows) в этой сессии не выполнялись — нужна VM с правами администратора.

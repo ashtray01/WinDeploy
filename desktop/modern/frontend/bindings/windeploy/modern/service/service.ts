@@ -80,6 +80,13 @@ export function ApplyTimezone(timezoneID: string, dryRun: boolean): $Cancellable
 }
 
 /**
+ * CancelDeployment requests cooperative cancellation.
+ */
+export function CancelDeployment(): $CancellablePromise<$models.DeploymentView> {
+    return $Call.ByName("windeploy/modern/service.Service.CancelDeployment");
+}
+
+/**
  * CancelPackageInstall requests cooperative cancellation of the active run.
  */
 export function CancelPackageInstall(): $CancellablePromise<$models.PackageInstallView> {
@@ -95,6 +102,20 @@ export function CancelScan(): $CancellablePromise<$models.State> {
  */
 export function GetBrowserEnvironment(): $CancellablePromise<$models.BrowserEnvironmentView> {
     return $Call.ByName("windeploy/modern/service.Service.GetBrowserEnvironment");
+}
+
+/**
+ * GetDeployment returns the live view, refreshing progress from the session file.
+ */
+export function GetDeployment(): $CancellablePromise<$models.DeploymentView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetDeployment");
+}
+
+/**
+ * GetDeploymentSession returns a saved session's task details for review.
+ */
+export function GetDeploymentSession(sessionID: string): $CancellablePromise<$models.DeploymentView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetDeploymentSession", sessionID);
 }
 
 /**
@@ -172,6 +193,13 @@ export function InstallDriver(request: $models.DriverInstallRequest): $Cancellab
     return $Call.ByName("windeploy/modern/service.Service.InstallDriver", request);
 }
 
+/**
+ * ListDeploymentSessions lists saved sessions newest first.
+ */
+export function ListDeploymentSessions(): $CancellablePromise<$models.DeploySessionView[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.ListDeploymentSessions");
+}
+
 export function ListProfiles(): $CancellablePromise<$models.Catalog> {
     return $Call.ByName("windeploy/modern/service.Service.ListProfiles");
 }
@@ -192,6 +220,13 @@ export function PreviewProfile(id: string, selected: string[] | null): $Cancella
  */
 export function PrintTestPage(name: string): $CancellablePromise<void> {
     return $Call.ByName("windeploy/modern/service.Service.PrintTestPage", name);
+}
+
+/**
+ * ResumeDeployment continues a saved session after a reboot or interruption.
+ */
+export function ResumeDeployment(sessionID: string, retryFailed: boolean): $CancellablePromise<$models.DeploymentView> {
+    return $Call.ByName("windeploy/modern/service.Service.ResumeDeployment", sessionID, retryFailed);
 }
 
 /**
@@ -222,6 +257,13 @@ export function ScanDriverCatalog(path: string): $CancellablePromise<drivers$0.I
  */
 export function SetDefaultPrinter(name: string): $CancellablePromise<void> {
     return $Call.ByName("windeploy/modern/service.Service.SetDefaultPrinter", name);
+}
+
+/**
+ * StartDeployment executes the selected profile components in the background.
+ */
+export function StartDeployment(profileID: string, selected: string[] | null): $CancellablePromise<$models.DeploymentView> {
+    return $Call.ByName("windeploy/modern/service.Service.StartDeployment", profileID, selected);
 }
 
 /**

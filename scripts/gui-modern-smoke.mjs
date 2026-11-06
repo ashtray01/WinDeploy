@@ -38,6 +38,9 @@ try {
     await page.getByRole('heading', { name: heading, exact: true }).waitFor();
     assert(await page.getByRole('row').count() > 1);
   }
+  await nav.getByRole('button', { name: 'Выполнение', exact: true }).click();
+  await page.getByRole('heading', { name: 'Выполнение профиля', exact: true }).waitFor();
+  await page.getByLabel('Профиль для выполнения').waitFor();
   await nav.getByRole('button', { name: 'Профили', exact: true }).click();
   await page.getByRole('button', { name: /^Администратор/ }).click();
   await page.getByRole('heading', { name: 'Администратор', exact: true }).waitFor();
@@ -96,5 +99,5 @@ try {
   assert.deepEqual(errors, []);
   await nav.getByRole('button', { name: 'Обзор', exact: true }).click();
   await page.setViewportSize({ width: 1366, height: 768 });
-  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, packageCatalog: true, packageSelection: true, networkDiagnostics: true, sharesPage: true, driversPage: true, printersPage: true, browserPolicies: true, windowsSettings: true, realJournal: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
+  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, packageCatalog: true, packageSelection: true, networkDiagnostics: true, sharesPage: true, driversPage: true, printersPage: true, browserPolicies: true, windowsSettings: true, deploymentPage: true, realJournal: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
 } finally { await browser.close(); }

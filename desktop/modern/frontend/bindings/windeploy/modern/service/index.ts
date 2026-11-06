@@ -9,6 +9,10 @@ export {
 export type {
     BrowserEnvironmentView,
     Catalog,
+    DeployEvent,
+    DeploySessionView,
+    DeployTaskView,
+    DeploymentView,
     DriverInstallRequest,
     Entry,
     NetworkCheckView,

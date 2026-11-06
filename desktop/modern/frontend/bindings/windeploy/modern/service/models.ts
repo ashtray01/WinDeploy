@@ -29,6 +29,70 @@ export interface Catalog {
 }
 
 /**
+ * DeployEvent is a translated progress record.
+ */
+export interface DeployEvent {
+    "time": string;
+    "level": string;
+    "message": string;
+}
+
+/**
+ * DeploySessionView is one saved session summary.
+ */
+export interface DeploySessionView {
+    "id": string;
+    "profile_id": string;
+    "profile_name": string;
+    "updated_at": string;
+    "total": number;
+    "succeeded": number;
+    "failed": number;
+    "remaining": number;
+    "completed": boolean;
+    "cancelled": boolean;
+    "reboot_required": boolean;
+}
+
+/**
+ * DeployTaskView is one task in the deployment plan.
+ */
+export interface DeployTaskView {
+    "id": string;
+    "name": string;
+    "category": string;
+    "status": string;
+    "status_label": string;
+    "attempts": number;
+    "reboot_required": boolean;
+    "error"?: string;
+    "started_at"?: string;
+    "finished_at"?: string;
+}
+
+/**
+ * DeploymentView is the live execution state.
+ */
+export interface DeploymentView {
+    "running": boolean;
+    "cancel_requested": boolean;
+    "generation": number;
+    "session_id": string;
+    "profile_id": string;
+    "profile_name": string;
+    "started_at": string;
+    "finished_at": string;
+    "tasks": DeployTaskView[] | null;
+    "events": DeployEvent[] | null;
+    "message": string;
+    "reboot_required": boolean;
+    "cancelled": boolean;
+    "completed": boolean;
+    "report_json"?: string;
+    "report_html"?: string;
+}
+
+/**
  * DriverInstallRequest is one explicit driver installation request.
  */
 export interface DriverInstallRequest {

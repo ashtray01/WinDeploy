@@ -1,14 +1,15 @@
-import { Activity, AppWindow, Boxes, Cable, CircleHelp, FolderOpen, Globe, HardDrive, LayoutDashboard, Layers3, Monitor, PackagePlus, Printer, Search, Settings2, ShieldCheck, ScrollText, Wrench, type LucideIcon } from 'lucide-react';
+import { Activity, AppWindow, Boxes, Cable, CircleHelp, FolderOpen, Globe, HardDrive, LayoutDashboard, Layers3, Monitor, PackagePlus, Play, Printer, Search, Settings2, ShieldCheck, ScrollText, Wrench, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge, Progress } from './ui';
 
-export type Page = 'overview' | 'profiles' | 'packages' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'drivers' | 'printers' | 'browsers' | 'winsettings' | 'volumes' | 'system' | 'journal';
+export type Page = 'overview' | 'profiles' | 'packages' | 'deploy' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'drivers' | 'printers' | 'browsers' | 'winsettings' | 'volumes' | 'system' | 'journal';
 export type DataStatus = 'idle' | 'scanning' | 'complete' | 'partial' | 'cancelled' | 'error';
 const statusText: Record<DataStatus, string> = { idle: 'Нет данных', scanning: 'Сканирование', complete: 'Данные получены', partial: 'Частичные данные', cancelled: 'Отменено', error: 'Ошибка чтения' };
 const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
   { id: 'overview', label: 'Обзор', icon: LayoutDashboard, group: 'РАБОЧЕЕ ПРОСТРАНСТВО' },
   { id: 'profiles', label: 'Профили', icon: Layers3, group: '' },
   { id: 'packages', label: 'Установка ПО', icon: PackagePlus, group: '' },
+  { id: 'deploy', label: 'Выполнение', icon: Play, group: '' },
   { id: 'apps', label: 'Программы', icon: AppWindow, group: 'ИНВЕНТАРИЗАЦИЯ' },
   { id: 'network', label: 'Сеть', icon: Cable, group: '' },
   { id: 'volumes', label: 'Накопители', icon: HardDrive, group: '' },
