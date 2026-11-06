@@ -1,7 +1,7 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Этап 2 — Profiles. MULTI-TASK: шесть задач ядра завершены; далее четыре части профилей (до общего лимита 10 задач).
+Этап 2 — Profiles. MULTI-TASK: восемь задач завершены (шесть ядра + модель профилей + YAML); далее inheritance и планы/примеры до лимита 10 задач.
 Ветка: master. Коммиты: dfdadde preview, 0626c5e retries, de54b7a concurrency; snapshot storage — последний feat в git log.
 Пользователь явно разрешил 5–10 последовательных задач и переход между этапами; это выше прежнего ограничения одной задачи. Работа выполняется одним агентом.
 
@@ -16,18 +16,20 @@
 - state.FileStore: ограниченный JSON (4 MiB), запрет неизвестных полей/trailing data, проверка формата, temp+Sync+Close+Rename без обнуления старого файла. Каталог создаёт вызывающий код.
 - Resume/ValidateForPlan: проверка точного плана и результатов до операций. Успешные результаты сохраняются, interrupted проходят Precheck, Failed требует RetryFailed. Attempts и reboot flag накапливаются. Обязательный reboot barrier пока отклоняется.
 - RunOptions.Store: initial snapshot, Running до запуска и результаты после завершения. Save failure => ErrCheckpoint, отмена и ожидание активных операций. Save использует отдельный context с timeout 5s для сохранения при отмене. Тест реального FileStore restart с fake-установкой подтверждает отсутствие дублирования.
+- profiles.Profile/Component schema v1, проверка категорий/ID/timeout/OS, tombstones Disabled. Запрещены распространённые secret keys и URL credentials; credential_ref ссылается на внешние credentials. Произвольные секреты в свободных значениях автоматически не распознаются.
+- profiles.Load/Marshal: single-document YAML, 1 MiB, KnownFields, дубли/anchors/aliases/merge keys отклоняются, глубина/число узлов ограничены. Ошибки парсера не раскрывают входные значения. Зависимость go.yaml.in/yaml/v3 v3.0.4, upstream go 1.16; GOMODCACHE=cache/go-mod. go.mod остаётся go 1.20; tidy выполнен.
 
 ## Что проверено
-Go 1.26.2 windows/amd64: go test ./core/engine/... ./core/state/... и go vet ./... — PASS. Тесты каждой задачи запускались до её коммита; file replacement реально проверен на доступной Windows. C-компилятор не найден, race detector не запускался.
+Go 1.26.2 windows/amd64: go test ./core/engine/... ./core/state/... и go vet ./... — PASS; после задач профилей go test/vet ./core/profiles/... — PASS. Тесты каждой задачи запускались до её коммита; file replacement реально проверен на доступной Windows. C-компилятор не найден, race detector не запускался.
 GOCACHE: `$env:GOCACHE = Join-Path $PWD 'cache\go-build'` (игнорируется Git). Стандартный cache ранее был недоступен.
 
 ## Что сейчас не работает
-Нет реальных системных адаптеров/UI и профилей (начинается этап 2). Checkpoints/resume подключены, но live inventory завершённых задач не перепроверяется. Автозапуск после reboot/проверка смены boot ID не реализованы.
+Нет реальных системных адаптеров/UI; inheritance и plans/examples профилей ещё не реализованы. Checkpoints/resume подключены, но live inventory завершённых задач не перепроверяется. Автозапуск после reboot/проверка смены boot ID не реализованы.
 Go 1.20 и Windows VM-матрица, включая Windows 7 SP1 x86/x64, не проверены. GitHub CLI отсутствовал, remote/CI/releases не создавались.
 Отмена требует кооперации адаптера; Run ждёт возврата и не прерывает его принудительно. Диагностика содержит только этап, исходные ошибки адаптера отбрасываются для защиты credentials.
 
 ## Незавершённая работа
-Следом в текущей сессии: модель профиля, strict YAML, наследование, планы/примеры. Не выдавать их за реализованные.
+Следом в текущей сессии: наследование, планы/примеры. Не выдавать их за реализованные.
 
 ## Архитектурные решения
 - Task декларативен; методы в Adapter, не в сериализуемой модели. Adapter не меняет вложенные maps/slices.
@@ -39,7 +41,7 @@ Go 1.20 и Windows VM-матрица, включая Windows 7 SP1 x86/x64, не
 - Snapshot не аутентифицирован и предназначен для доверенного локального каталога. Path принадлежит одному процессу; mutex FileStore защищает только экземпляр. Windows ACL задаёт администратор, 0600 не заменяет ACL. Не заявлять гарантии atomicity/durability при сбое питания: Rename зависит от файловой системы. Хеш связывает точный план, но не является защитой от подмены.
 
 ## Следующая задача
-Реализовать четыре небольшие части этапа 2 из TASKS (модель, YAML, inheritance, планы/примеры).
+Реализовать single-parent inheritance, затем выбранные компоненты/планы/clone/examples; остановиться после десятой задачи.
 
 ## Инструкция следующему агенту
 Прочитать AGENTS/TASKS, core/engine/task.go, plan.go, executor.go и тесты. Проверить status/log.
