@@ -54,7 +54,13 @@ type Task struct {
 	Dependencies []string          `json:"dependencies,omitempty"`
 	Timeout      time.Duration     `json:"timeout"`
 	Status       TaskStatus        `json:"status"`
+	// ResourceKey serializes tasks using the same nonempty resource, across
+	// precheck, attempts, retry waits and verification. MSI adapters must set
+	// WindowsInstallerResource for every Windows Installer operation.
+	ResourceKey string `json:"resource_key,omitempty"`
 }
+
+const WindowsInstallerResource = "windows-installer"
 
 // Validate checks a single task's structure. OrderTasks checks dependency
 // references and cycles. Neither checks OS compatibility or status transitions.
@@ -70,6 +76,9 @@ func (t Task) Validate() error {
 	}
 	if t.Timeout < 0 {
 		return fmt.Errorf("task timeout must not be negative")
+	}
+	if t.ResourceKey != "" && strings.TrimSpace(t.ResourceKey) == "" {
+		return fmt.Errorf("resource key must not be whitespace")
 	}
 	if !t.Status.Valid() {
 		return fmt.Errorf("task status is invalid")

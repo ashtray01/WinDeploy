@@ -40,6 +40,10 @@ func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, erro
 type RunOptions struct {
 	MaxAttempts int
 	RetryDelay  time.Duration
+	// MaxParallel defaults to one. For values above one Adapter must be safe
+	// for concurrent calls on different tasks. Equal ResourceKey values exclude
+	// each other even when retries are waiting.
+	MaxParallel int
 }
 
 // RetryableError is an explicit promise by an adapter that retrying is safe.
@@ -53,8 +57,8 @@ type RetryableError interface {
 // RunWithOptions adds opt-in retries to Run. A task timeout covers every attempt
 // and retry delay. Adapters must not mark unsafe operations as retryable.
 func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions) ([]TaskResult, error) {
-	if options.MaxAttempts < 0 || options.RetryDelay < 0 {
-		return nil, fmt.Errorf("retry options must not be negative")
+	if options.MaxAttempts < 0 || options.RetryDelay < 0 || options.MaxParallel < 0 {
+		return nil, fmt.Errorf("execution options must not be negative")
 	}
 	ordered, err := pendingPlan(tasks)
 	if err != nil {
@@ -64,31 +68,67 @@ func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options 
 		return nil, fmt.Errorf("task adapter is required")
 	}
 
-	results := make([]TaskResult, 0, len(ordered))
+	results := make([]TaskResult, len(ordered))
 	statuses := make(map[string]TaskStatus, len(ordered))
-	for _, task := range ordered {
-		result := TaskResult{TaskID: task.ID}
-		if ctx.Err() != nil {
-			result.Status = Cancelled
-			result.Error = "plan cancelled"
-		} else {
-			blocked := false
+	started := make([]bool, len(ordered))
+	resources := make(map[string]bool)
+	type completion struct {
+		index  int
+		result TaskResult
+	}
+	finished := make(chan completion, len(ordered))
+	limit := options.MaxParallel
+	if limit == 0 {
+		limit = 1
+	}
+	active, completed := 0, 0
+	record := func(i int, result TaskResult) {
+		result.FinishedAt = time.Now().UTC()
+		results[i] = result
+		statuses[ordered[i].ID] = result.Status
+		started[i] = true
+		completed++
+	}
+	for completed < len(ordered) {
+		for i, task := range ordered {
+			if started[i] {
+				continue
+			}
+			if ctx.Err() != nil {
+				record(i, TaskResult{TaskID: task.ID, Status: Cancelled, Error: "plan cancelled"})
+				continue
+			}
+			blocked, waiting := false, false
 			for _, id := range task.Dependencies {
-				if statuses[id] != Success && statuses[id] != AlreadyInstalled {
+				switch statuses[id] {
+				case "", Pending, Running:
+					waiting = true
+				case Success, AlreadyInstalled:
+				default:
 					blocked = true
-					break
 				}
 			}
 			if blocked {
-				result.Status = Skipped
-				result.Error = "dependency did not succeed"
-			} else {
-				result = runTask(ctx, task, adapter, options)
+				record(i, TaskResult{TaskID: task.ID, Status: Skipped, Error: "dependency did not succeed"})
+				continue
 			}
+			if waiting || active >= limit || (task.ResourceKey != "" && resources[task.ResourceKey]) {
+				continue
+			}
+			started[i] = true
+			statuses[task.ID] = Running
+			if task.ResourceKey != "" {
+				resources[task.ResourceKey] = true
+			}
+			active++
+			go func(index int, task Task) { finished <- completion{index, runTask(ctx, task, adapter, options)} }(i, task)
 		}
-		result.FinishedAt = time.Now().UTC()
-		results = append(results, result)
-		statuses[task.ID] = result.Status
+		if active > 0 {
+			done := <-finished // Always drain running operations, including after cancellation.
+			active--
+			delete(resources, ordered[done.index].ResourceKey)
+			record(done.index, done.result)
+		}
 	}
 	return results, ctx.Err()
 }

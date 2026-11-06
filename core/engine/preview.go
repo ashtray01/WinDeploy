@@ -20,6 +20,7 @@ type PreviewTask struct {
 	Dependencies []string       `json:"dependencies,omitempty"`
 	Requirements OSRequirements `json:"requirements"`
 	Timeout      time.Duration  `json:"timeout"`
+	ResourceKey  string         `json:"resource_key,omitempty"`
 }
 
 func pendingPlan(tasks []Task) ([]Task, error) {
@@ -44,7 +45,7 @@ func PreviewPlan(tasks []Task) (PlanPreview, error) {
 	preview := PlanPreview{Scope: "structure-and-dag-only", Tasks: make([]PreviewTask, 0, len(ordered))}
 	for _, task := range ordered {
 		preview.Tasks = append(preview.Tasks, PreviewTask{
-			ID: task.ID, Name: task.Name, Category: task.Category, Timeout: task.Timeout,
+			ID: task.ID, Name: task.Name, Category: task.Category, Timeout: task.Timeout, ResourceKey: task.ResourceKey,
 			Dependencies: append([]string(nil), task.Dependencies...),
 			Requirements: OSRequirements{
 				Versions:      append([]string(nil), task.Requirements.Versions...),
