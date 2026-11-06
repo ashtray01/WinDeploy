@@ -1,0 +1,10 @@
+version: 1
+id: service
+name: Сервис
+extends: base
+components:
+  - id: print-check
+    name: Проверить службу печати
+    category: diagnostics
+    parameters:
+      check_ref: print-spooler

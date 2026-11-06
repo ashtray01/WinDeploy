@@ -1,0 +1,10 @@
+version: 1
+id: base
+name: Базовый
+components:
+  - id: network-check
+    name: Проверить сеть
+    category: diagnostics
+    timeout: 30s
+    parameters:
+      check_ref: network-basic

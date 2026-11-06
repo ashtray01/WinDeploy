@@ -1,0 +1,11 @@
+version: 1
+id: warehouse
+name: Склад
+extends: office
+components:
+  - id: warehouse-share
+    name: Создать ярлык складской папки
+    category: shares
+    parameters:
+      share_ref: warehouse
+      credential_ref: warehouse-user

@@ -1,0 +1,11 @@
+version: 1
+id: office
+name: Офис
+extends: base
+components:
+  - id: sevenzip
+    name: Установить 7-Zip
+    category: packages
+    timeout: 5m
+    parameters:
+      package_ref: sevenzip

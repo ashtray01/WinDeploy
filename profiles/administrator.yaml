@@ -1,0 +1,11 @@
+version: 1
+id: administrator
+name: Администратор
+extends: office
+components:
+  - id: extended-network
+    name: Расширенная диагностика сети
+    category: diagnostics
+    dependencies: [network-check]
+    parameters:
+      check_ref: network-extended

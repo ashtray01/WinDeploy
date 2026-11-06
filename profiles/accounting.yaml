@@ -1,0 +1,10 @@
+version: 1
+id: accounting
+name: Бухгалтерия
+extends: office
+components:
+  - id: accounting-sites
+    name: Настроить рабочие сайты
+    category: browsers
+    parameters:
+      config_ref: accounting-sites

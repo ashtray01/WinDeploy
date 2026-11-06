@@ -1,0 +1,10 @@
+version: 1
+id: reception
+name: Приёмка
+extends: office
+components:
+  - id: reception-sites
+    name: Настроить сайты приёмки
+    category: browsers
+    parameters:
+      config_ref: reception-sites

@@ -1,0 +1,14 @@
+version: 1
+id: legacy
+name: Legacy
+extends: base
+components:
+  - id: network-check
+    name: Проверить сеть Windows 7
+    category: diagnostics
+    timeout: 30s
+    requirements:
+      versions: [windows-7-sp1]
+      architectures: [386, amd64]
+    parameters:
+      check_ref: network-basic
