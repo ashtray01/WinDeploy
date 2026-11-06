@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    BrowserEnvironmentView,
     Catalog,
     DriverInstallRequest,
     Entry,
@@ -19,11 +20,13 @@ export type {
     PackageResultView,
     PackageView,
     PlannedTask,
+    PowerPlanOption,
     ProfileDetails,
     ProfilePreview,
     ProfileSummary,
     ShareConnectionView,
     ShareRequest,
     ShareResultView,
-    State
+    State,
+    WindowsSettingsView
 } from "./models.js";

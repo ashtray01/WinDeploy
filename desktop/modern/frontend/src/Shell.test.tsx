@@ -10,7 +10,10 @@ describe('desktop navigation', () => {
     expect(navigate).toHaveBeenCalledWith('profiles');
     fireEvent.click(screen.getByRole('button', { name: 'Установка ПО' }));
     expect(navigate).toHaveBeenCalledWith('packages');
-    expect(screen.getByRole('button', { name: /Браузеры/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Браузеры' }));
+    expect(navigate).toHaveBeenCalledWith('browsers');
+    fireEvent.click(screen.getByRole('button', { name: 'Windows' }));
+    expect(navigate).toHaveBeenCalledWith('winsettings');
     expect(screen.getByRole('button', { name: 'Обзор' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText(/проверка SHA-256 и подписи/)).toBeInTheDocument();
   });

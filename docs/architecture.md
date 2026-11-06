@@ -12,7 +12,7 @@
 | `core/profiles`, `core/inventory` | Профили и факты о системе |
 | `core/packages`, `core/drivers` | Установка пакетов и драйверов (реализовано) |
 | `core/network`, `core/shares`, `core/printers` | Диагностика, сетевые ресурсы и принтеры (реализовано) |
-| `core/browsers`, `core/security` | Настройки браузеров, credentials и повышение прав |
+| `core/browsers`, `core/security` | Настройки браузеров (реализовано), credentials и повышение прав |
 | `core/state`, `core/reporting` | Возобновление, журнал, отчёты |
 | `desktop`, `frontend` | Modern UI; отдельный Go-модуль при несовместимых требованиях toolchain |
 | `legacy` | Нативный UI, Go 1.20, Windows 7 SP1 x86/x64 |

@@ -13,10 +13,16 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as browsers$0 from "../../core/browsers/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as drivers$0 from "../../core/drivers/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as printers$0 from "../../core/printers/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as settings$0 from "../../core/settings/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -38,6 +44,42 @@ export function AddShare(request: $models.ShareRequest): $CancellablePromise<$mo
 }
 
 /**
+ * ApplyBrowserPolicy writes supported enterprise policies and optional shortcuts.
+ * It never edits existing browser profile databases.
+ */
+export function ApplyBrowserPolicy(policy: browsers$0.Policy, dryRun: boolean): $CancellablePromise<browsers$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.ApplyBrowserPolicy", policy, dryRun);
+}
+
+/**
+ * ApplyComputerName previews or renames the computer.
+ */
+export function ApplyComputerName(name: string, dryRun: boolean): $CancellablePromise<settings$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.ApplyComputerName", name, dryRun);
+}
+
+/**
+ * ApplyExplorer previews or writes Explorer options.
+ */
+export function ApplyExplorer(options: settings$0.ExplorerOptions, dryRun: boolean): $CancellablePromise<settings$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.ApplyExplorer", options, dryRun);
+}
+
+/**
+ * ApplyPowerPlan previews or activates a Windows power scheme.
+ */
+export function ApplyPowerPlan(guid: string, dryRun: boolean): $CancellablePromise<settings$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.ApplyPowerPlan", guid, dryRun);
+}
+
+/**
+ * ApplyTimezone previews or changes the time zone.
+ */
+export function ApplyTimezone(timezoneID: string, dryRun: boolean): $CancellablePromise<settings$0.Result> {
+    return $Call.ByName("windeploy/modern/service.Service.ApplyTimezone", timezoneID, dryRun);
+}
+
+/**
  * CancelPackageInstall requests cooperative cancellation of the active run.
  */
 export function CancelPackageInstall(): $CancellablePromise<$models.PackageInstallView> {
@@ -46,6 +88,13 @@ export function CancelPackageInstall(): $CancellablePromise<$models.PackageInsta
 
 export function CancelScan(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.CancelScan");
+}
+
+/**
+ * GetBrowserEnvironment is read-only: it locates browsers without running them.
+ */
+export function GetBrowserEnvironment(): $CancellablePromise<$models.BrowserEnvironmentView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetBrowserEnvironment");
 }
 
 /**
@@ -81,6 +130,13 @@ export function GetPackages(): $CancellablePromise<$models.PackageCatalogView> {
 }
 
 /**
+ * GetPowerPlanOptions returns the standard Windows power schemes.
+ */
+export function GetPowerPlanOptions(): $CancellablePromise<$models.PowerPlanOption[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.GetPowerPlanOptions");
+}
+
+/**
  * GetPrinters enumerates installed print queues read-only.
  */
 export function GetPrinters(): $CancellablePromise<printers$0.Printer[] | null> {
@@ -93,6 +149,20 @@ export function GetProfile(id: string): $CancellablePromise<$models.ProfileDetai
 
 export function GetState(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.GetState");
+}
+
+/**
+ * GetWindowsSettings reads selected settings without changing anything.
+ */
+export function GetWindowsSettings(): $CancellablePromise<$models.WindowsSettingsView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetWindowsSettings");
+}
+
+/**
+ * GetWindowsUpdateDiagnostics runs read-only update diagnostics.
+ */
+export function GetWindowsUpdateDiagnostics(): $CancellablePromise<settings$0.UpdateReport> {
+    return $Call.ByName("windeploy/modern/service.Service.GetWindowsUpdateDiagnostics");
 }
 
 /**

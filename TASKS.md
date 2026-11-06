@@ -82,6 +82,16 @@ Stage 5 «Package Manager» и Stage 6 «Network & Shares» реализован
   - [x] Modern pages «Драйверы» and «Принтеры» + read-only CLI devices/printers
   - [ ] Real driver installation and test page in an isolated VM (no test device/printer available)
 - [ ] Stage 8 — Browser & Windows Settings
+  - [x] Chromium/Firefox enterprise policies: homepage, startup URLs, managed bookmarks
+  - [x] Web application desktop shortcuts for Chrome/Edge with --app argument
+  - [x] User/machine scope with dry-run, URL validation and explicit elevation
+  - [x] Computer name preview/rename via SetComputerNameExW with reboot requirement
+  - [x] Time zone validation and tzutil apply; Explorer options with old-value preview
+  - [x] Power plan selection via powercfg with GUID validation
+  - [x] Read-only Windows Update diagnostics (service, pending reboot markers, policies)
+  - [x] Read-only Windows licensing status; no bypass or Massgrave
+  - [x] Modern pages «Браузеры» и «Windows» with confirmations and dry-run
+  - [ ] Real browser policy application and Windows setting changes in an isolated VM
 - [ ] Stage 9 — Persistence & Reporting
 - [ ] Stage 10 — Legacy Windows 7
 - [ ] Stage 11 — CI/CD & Release

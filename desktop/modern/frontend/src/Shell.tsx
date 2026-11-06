@@ -2,7 +2,7 @@ import { Activity, AppWindow, Boxes, Cable, CircleHelp, FolderOpen, Globe, HardD
 import type { ReactNode } from 'react';
 import { Badge, Progress } from './ui';
 
-export type Page = 'overview' | 'profiles' | 'packages' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'drivers' | 'printers' | 'volumes' | 'system' | 'journal';
+export type Page = 'overview' | 'profiles' | 'packages' | 'apps' | 'network' | 'networkdiag' | 'shares' | 'drivers' | 'printers' | 'browsers' | 'winsettings' | 'volumes' | 'system' | 'journal';
 export type DataStatus = 'idle' | 'scanning' | 'complete' | 'partial' | 'cancelled' | 'error';
 const statusText: Record<DataStatus, string> = { idle: 'Нет данных', scanning: 'Сканирование', complete: 'Данные получены', partial: 'Частичные данные', cancelled: 'Отменено', error: 'Ошибка чтения' };
 const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
@@ -17,16 +17,17 @@ const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
   { id: 'networkdiag', label: 'Диагностика', icon: Activity, group: '' },
   { id: 'drivers', label: 'Драйверы', icon: Boxes, group: 'ОБОРУДОВАНИЕ' },
   { id: 'printers', label: 'Принтеры', icon: Printer, group: '' },
+  { id: 'browsers', label: 'Браузеры', icon: Globe, group: 'НАСТРОЙКА' },
+  { id: 'winsettings', label: 'Windows', icon: Wrench, group: '' },
   { id: 'journal', label: 'Журнал', icon: ScrollText, group: 'ИНСТРУМЕНТЫ' },
 ];
-const future: [string, LucideIcon][] = [['Браузеры', Globe], ['Настройка Windows', Wrench]];
 
 export default function Shell({ page, navigate, children, status = 'idle', hostname, query = '', onQuery, updated }: { page: Page; navigate: (page: Page) => void; children: ReactNode; status?: DataStatus; hostname?: string; query?: string; onQuery?: (query: string) => void; updated?: string }) {
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></div><div><strong>WinDeploy<span>®</span></strong><small>WORKSTATION MANAGER</small></div></div>
       <nav aria-label="Основная навигация">{items.map(({ id, label, icon: Icon, group }) => <div key={id}>{group && <p className="nav-group">{group}</p>}<button className={`nav-item ${page === id ? 'active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={17} /><span>{label}</span>{page === id && <i className="nav-dot" />}</button></div>)}
-        <p className="nav-group">СЛЕДУЮЩИЕ ЭТАПЫ</p>{future.map(([label, Icon]) => <button key={label} className="nav-item future" disabled title="Этот модуль ещё не реализован"><Icon size={16} /><span>{label}</span><small>Скоро</small></button>)}
+
       </nav>
       <div className="sidebar-bottom"><div className="local-device"><span className="device-icon"><Monitor size={17} /></span><div><small>ЛОКАЛЬНЫЙ КОМПЬЮТЕР</small><strong title={hostname}>{hostname || 'Ожидание данных'}</strong></div></div><div className="sidebar-help"><span><ShieldCheck size={13} /> Установка ПО</span><CircleHelp size={15} /></div></div>
     </aside>

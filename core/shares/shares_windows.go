@@ -323,6 +323,11 @@ func (WindowsShortcut) Create(ctx context.Context, spec ShortcutSpec) error {
 	if failedHR(comCall(link, 20, uintptr(unsafe.Pointer(targetPtr)))) {
 		return fmt.Errorf("shortcut target could not be set")
 	}
+	if spec.Arguments != "" {
+		if argsPtr, argsErr := windows.UTF16PtrFromString(spec.Arguments); argsErr == nil {
+			_ = comCall(link, 11, uintptr(unsafe.Pointer(argsPtr)))
+		}
+	}
 	if description := spec.Description; description != "" {
 		if descPtr, descErr := windows.UTF16PtrFromString(description); descErr == nil {
 			_ = comCall(link, 7, uintptr(unsafe.Pointer(descPtr)))

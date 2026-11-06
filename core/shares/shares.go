@@ -100,6 +100,7 @@ type Connector interface {
 type ShortcutSpec struct {
 	Path        string
 	Target      string
+	Arguments   string
 	Description string
 }
 

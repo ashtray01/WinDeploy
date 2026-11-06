@@ -5,8 +5,12 @@ export type { PackageCatalogView, PackageView, PackageInstallView, PackageResult
 export type { NetworkReportView, NetworkCheckView } from '../bindings/windeploy/modern/service/models';
 export type { ShareRequest, ShareResultView, ShareConnectionView } from '../bindings/windeploy/modern/service/models';
 export type { DriverInstallRequest } from '../bindings/windeploy/modern/service/models';
+export type { BrowserEnvironmentView, PowerPlanOption, WindowsSettingsView } from '../bindings/windeploy/modern/service/models';
 export type { Device as DriverDevice, INFInfo as DriverInfo, Result as DriverResult } from '../bindings/windeploy/core/drivers/models';
 export type { Printer as PrinterInfo, AddRequest as PrinterAddRequest, Result as PrinterResult } from '../bindings/windeploy/core/printers/models';
+export type { Policy as BrowserPolicy, Bookmark as BrowserBookmark, WebApp as BrowserWebApp, Result as BrowserResult } from '../bindings/windeploy/core/browsers/models';
+export { Browser as BrowserKind, Scope as BrowserScope } from '../bindings/windeploy/core/browsers/models';
+export type { Result as SettingsResult, ExplorerOptions, UpdateReport, Activation } from '../bindings/windeploy/core/settings/models';
 export type { Report, SystemInfo, CPUInfo, Volume, InterfaceInfo, InstalledApp, AdapterConfig } from '../bindings/windeploy/core/inventory/models';
 
 // This is the only production backend transport. No HTTP fallback or sample data.
@@ -34,4 +38,13 @@ export const api = {
   setDefaultPrinter: Service.SetDefaultPrinter,
   printTestPage: Service.PrintTestPage,
   getKyocera2460Models: Service.GetKyocera2460Models,
+  getBrowserEnvironment: Service.GetBrowserEnvironment,
+  applyBrowserPolicy: Service.ApplyBrowserPolicy,
+  getWindowsSettings: Service.GetWindowsSettings,
+  applyComputerName: Service.ApplyComputerName,
+  applyTimezone: Service.ApplyTimezone,
+  applyExplorer: Service.ApplyExplorer,
+  applyPowerPlan: Service.ApplyPowerPlan,
+  getWindowsUpdateDiagnostics: Service.GetWindowsUpdateDiagnostics,
+  getPowerPlanOptions: Service.GetPowerPlanOptions,
 };

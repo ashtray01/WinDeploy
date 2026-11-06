@@ -7,6 +7,20 @@ import * as engine$0 from "../../core/engine/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as inventory$0 from "../../core/inventory/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as settings$0 from "../../core/settings/models.js";
+
+/**
+ * BrowserEnvironmentView lists detected browser executables and the desktop dir.
+ */
+export interface BrowserEnvironmentView {
+    "chrome"?: string;
+    "edge"?: string;
+    "firefox"?: string;
+    "desktop"?: string;
+    "elevated": boolean;
+}
 
 export interface Catalog {
     "source": string;
@@ -157,6 +171,14 @@ export interface PlannedTask {
     "reason": string;
 }
 
+/**
+ * PowerPlanOption is one standard Windows power scheme.
+ */
+export interface PowerPlanOption {
+    "guid": string;
+    "name": string;
+}
+
 export interface ProfileDetails {
     "id": string;
     "name": string;
@@ -221,4 +243,17 @@ export interface State {
     "report": inventory$0.Report | null;
     "error": string;
     "journal": Entry[] | null;
+}
+
+/**
+ * WindowsSettingsView is the read-only settings snapshot.
+ */
+export interface WindowsSettingsView {
+    "hostname": string;
+    "timezone": string;
+    "power_plan": string;
+    "explorer": { [_ in string]?: string } | null;
+    "activation": settings$0.Activation;
+    "elevated": boolean;
+    "windows": string;
 }
