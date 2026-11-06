@@ -15,7 +15,7 @@ Stage 1 — Core Foundation: последовательный исполните
 - [x] Add explicit retryable-error handling with bounded attempts and cancellable delay
 - [x] Add bounded concurrency and exclusive resource keys
 - [x] Add validated file-backed session snapshots
-- [ ] Resume completed tasks safely without duplicate execution
+- [x] Resume completed tasks safely without duplicate execution
 - [ ] Persist checkpoints during execution and fail closed on storage errors
 - [ ] Stage 2 — Profiles
 - [ ] Stage 3 — Inventory

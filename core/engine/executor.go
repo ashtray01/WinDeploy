@@ -57,6 +57,10 @@ type RetryableError interface {
 // RunWithOptions adds opt-in retries to Run. A task timeout covers every attempt
 // and retry delay. Adapters must not mark unsafe operations as retryable.
 func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions) ([]TaskResult, error) {
+	return runPlan(ctx, tasks, adapter, options, nil, false)
+}
+
+func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions, previous map[string]TaskResult, retryFailed bool) ([]TaskResult, error) {
 	if options.MaxAttempts < 0 || options.RetryDelay < 0 || options.MaxParallel < 0 {
 		return nil, fmt.Errorf("execution options must not be negative")
 	}
@@ -88,6 +92,12 @@ func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options 
 		statuses[ordered[i].ID] = result.Status
 		started[i] = true
 		completed++
+	}
+	for i, task := range ordered {
+		if prior, ok := previous[task.ID]; ok && retainResult(prior, retryFailed) {
+			results[i], statuses[task.ID], started[i] = prior, prior.Status, true
+			completed++
+		}
 	}
 	for completed < len(ordered) {
 		for i, task := range ordered {
@@ -121,7 +131,14 @@ func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options 
 				resources[task.ResourceKey] = true
 			}
 			active++
-			go func(index int, task Task) { finished <- completion{index, runTask(ctx, task, adapter, options)} }(i, task)
+			go func(index int, task Task) {
+				result := runTask(ctx, task, adapter, options)
+				if prior, ok := previous[task.ID]; ok {
+					result.Attempts += prior.Attempts
+					result.RebootRequired = result.RebootRequired || prior.RebootRequired
+				}
+				finished <- completion{index, result}
+			}(i, task)
 		}
 		if active > 0 {
 			done := <-finished // Always drain running operations, including after cancellation.
