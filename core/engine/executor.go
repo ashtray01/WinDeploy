@@ -44,7 +44,18 @@ type RunOptions struct {
 	// for concurrent calls on different tasks. Equal ResourceKey values exclude
 	// each other even when retries are waiting.
 	MaxParallel int
+	// Store receives a checkpoint before any operation and after each outcome.
+	// Save failure stops new tasks, cancels active operations and returns
+	// ErrCheckpoint. The store must honor context and have one session writer.
+	Store SnapshotStore
 }
+
+type SnapshotStore interface {
+	Save(context.Context, Snapshot) error
+}
+
+// ErrCheckpoint deliberately excludes raw storage diagnostics.
+var ErrCheckpoint = errors.New("could not save deployment checkpoint")
 
 // RetryableError is an explicit promise by an adapter that retrying is safe.
 // Each retry starts with Precheck to detect effects of the previous attempt.
@@ -71,8 +82,38 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 	if len(ordered) > 0 && adapter == nil {
 		return nil, fmt.Errorf("task adapter is required")
 	}
+	runCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	var checkpointErr error
+	var template Snapshot
+	if options.Store != nil {
+		template, err = NewSnapshot(ordered, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	results := make([]TaskResult, len(ordered))
+	save := func() {
+		if options.Store == nil || checkpointErr != nil {
+			return
+		}
+		snapshot := template
+		snapshot.Results = make([]TaskResult, 0, len(results))
+		for _, result := range results {
+			if result.TaskID != "" {
+				snapshot.Results = append(snapshot.Results, result)
+			}
+		}
+		// Cancellation must still persist outcomes. Use Go 1.20-compatible
+		// detached, bounded context rather than the cancelled operation context.
+		saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := options.Store.Save(saveCtx, snapshot); err != nil {
+			checkpointErr = ErrCheckpoint
+			stop()
+		}
+	}
 	statuses := make(map[string]TaskStatus, len(ordered))
 	started := make([]bool, len(ordered))
 	resources := make(map[string]bool)
@@ -87,24 +128,35 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 	}
 	active, completed := 0, 0
 	record := func(i int, result TaskResult) {
+		if result.StartedAt.IsZero() {
+			result.Attempts = previous[ordered[i].ID].Attempts
+			result.RebootRequired = previous[ordered[i].ID].RebootRequired
+		}
 		result.FinishedAt = time.Now().UTC()
 		results[i] = result
 		statuses[ordered[i].ID] = result.Status
 		started[i] = true
 		completed++
+		save()
 	}
 	for i, task := range ordered {
-		if prior, ok := previous[task.ID]; ok && retainResult(prior, retryFailed) {
-			results[i], statuses[task.ID], started[i] = prior, prior.Status, true
-			completed++
+		if prior, ok := previous[task.ID]; ok {
+			// Keep interrupted evidence in the initial checkpoint too. A crash
+			// between Save and the next attempt must not erase prior reboot flags.
+			results[i] = prior
+			if retainResult(prior, retryFailed) {
+				statuses[task.ID], started[i] = prior.Status, true
+				completed++
+			}
 		}
 	}
+	save()
 	for completed < len(ordered) {
 		for i, task := range ordered {
 			if started[i] {
 				continue
 			}
-			if ctx.Err() != nil {
+			if runCtx.Err() != nil {
 				record(i, TaskResult{TaskID: task.ID, Status: Cancelled, Error: "plan cancelled"})
 				continue
 			}
@@ -127,12 +179,18 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 			}
 			started[i] = true
 			statuses[task.ID] = Running
+			results[i] = TaskResult{TaskID: task.ID, Status: Running, StartedAt: time.Now().UTC(), Attempts: previous[task.ID].Attempts, RebootRequired: previous[task.ID].RebootRequired}
+			save()
+			if checkpointErr != nil {
+				record(i, TaskResult{TaskID: task.ID, Status: Cancelled, Error: "plan cancelled"})
+				continue
+			}
 			if task.ResourceKey != "" {
 				resources[task.ResourceKey] = true
 			}
 			active++
 			go func(index int, task Task) {
-				result := runTask(ctx, task, adapter, options)
+				result := runTask(runCtx, task, adapter, options)
 				if prior, ok := previous[task.ID]; ok {
 					result.Attempts += prior.Attempts
 					result.RebootRequired = result.RebootRequired || prior.RebootRequired
@@ -146,6 +204,9 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 			delete(resources, ordered[done.index].ResourceKey)
 			record(done.index, done.result)
 		}
+	}
+	if checkpointErr != nil {
+		return results, checkpointErr
 	}
 	return results, ctx.Err()
 }
