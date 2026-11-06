@@ -20,7 +20,7 @@ Stage 2 — Profiles: Core Foundation расширен dry-run, retries, concurr
 - [ ] Stage 2 — Profiles
   - [x] Add versioned profile/component model and structural validation
   - [x] Add strict bounded YAML import/export
-  - [ ] Resolve single-parent inheritance with cycle detection
+  - [x] Resolve single-parent inheritance with cycle detection
   - [ ] Build selected-component plans, clone profiles and add examples
 - [ ] Stage 3 — Inventory
 - [ ] Stage 4 — GUI
