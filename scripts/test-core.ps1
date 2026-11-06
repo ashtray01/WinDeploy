@@ -1,4 +1,4 @@
-param([string]$Go = 'go')
+param([string]$Go = 'go', [string]$BuildCache = 'go-build')
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskOldArch = $env:GOARCH
@@ -7,7 +7,7 @@ $taskOldCache = $env:GOCACHE
 $taskOldModCache = $env:GOMODCACHE
 Push-Location $taskRoot
 try {
-    $env:GOCACHE = Join-Path $taskRoot 'cache\go-build'
+    $env:GOCACHE = Join-Path $taskRoot ('cache\' + $BuildCache)
     $env:GOMODCACHE = Join-Path $taskRoot 'cache\_go-mod'
     $env:GOOS = 'windows'
     & $Go version
