@@ -1,3 +1,6 @@
+## Modern checkpoint: задачи 7–9
+Dashboard проверен в настоящем EXE через WebView2/CDP: hostname и число программ совпали с независимой native CLI, повторное сканирование и 1366×768 PASS. Inventory detail tables: поиск/сортировка/пагинация. Профили: встроены существующие 8 YAML, --profiles позволяет внешний каталог; core Resolve/Preview/Applicable, DAG и честные incompatible/unknown. Go tests/vet и 12 UI tests/TS/build PASS. Последняя задача пакета: реальный журнал, итоговый EXE/GUI smoke, полный regression Go 1.20 amd64/386 и свежая итоговая документация. Финальные разделы ниже ещё требуют замены.
+
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
