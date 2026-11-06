@@ -40,7 +40,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [x] Modern 4 — Add responsive dark design system (primitives UI tests + TS/build PASS)
   - [x] Modern 5 — Add navigation shell and honest unavailable sections (UI tests/TS/build PASS)
   - [x] Modern 6 — Generated typed Wails bridge, real async Collector, cancellation/partial errors (Go/UI tests + TS/build PASS)
-  - [ ] Modern 7 — Real dashboard and rescan
+  - [x] Modern 7 — Real dashboard and rescan (desktop DOM matches native CLI; 1366×768 smoke PASS)
   - [ ] Modern 8 — Searchable/sortable Inventory detail tables
   - [ ] Modern 9 — YAML profile selection, real preview/DAG/applicability
   - [ ] Modern 10 — Real journal, UI/backend tests, GUI smoke and core regression check

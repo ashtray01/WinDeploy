@@ -14,6 +14,7 @@ export interface Entry {
 }
 
 export interface State {
+    "system_name"?: string;
     "scanning": boolean;
     "cancel_requested": boolean;
     "generation": number;

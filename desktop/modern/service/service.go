@@ -19,6 +19,7 @@ type Entry struct {
 	Message string    `json:"message"`
 }
 type State struct {
+	SystemName      string            `json:"system_name,omitempty"`
 	Scanning        bool              `json:"scanning"`
 	CancelRequested bool              `json:"cancel_requested"`
 	Generation      uint64            `json:"generation"`
@@ -61,6 +62,13 @@ func (s *Service) appendLocked(level, source, message string) {
 }
 func (s *Service) snapshotLocked() State {
 	state := s.state
+	if state.Report != nil && state.Report.System != nil {
+		version := state.Report.System.Windows
+		state.SystemName = map[string]string{"windows-11": "Windows 11", "windows-10": "Windows 10", "windows-7-sp1": "Windows 7 SP1"}[version.Token()]
+		if state.SystemName == "" {
+			state.SystemName = version.Label()
+		}
+	}
 	state.Journal = append([]Entry{}, state.Journal...)
 	return state
 }

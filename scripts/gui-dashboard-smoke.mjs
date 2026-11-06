@@ -1,0 +1,23 @@
+import { chromium } from '../desktop/modern/frontend/node_modules/playwright-core/index.mjs';
+import { execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) delete process.env[key];
+let browser;
+for (let i = 0; i < 20; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { timeout: 2000 }); break; } catch { await new Promise(resolve => setTimeout(resolve, 200)); } }
+if (!browser) throw new Error('Desktop WebView2 unavailable');
+const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url() !== 'about:blank');
+assert(page);
+await page.setViewportSize({ width: 1366, height: 768 });
+await page.getByRole('heading', { name: 'Обзор компьютера' }).waitFor();
+await page.waitForFunction(() => { const e = document.querySelector('[data-testid="app-count"]'); return e && e.textContent !== '—'; });
+const native = JSON.parse(execFileSync('bin/WinDeploy-Inspect-Windows-x64.exe', ['inventory', '--format', 'json'], { encoding: 'utf8', windowsHide: true }));
+assert.equal((await page.getByTestId('machine-name').textContent()).toLowerCase(), native.system.hostname.toLowerCase());
+assert.equal(Number(await page.getByTestId('app-count').textContent()), native.apps.length);
+const oldGeneration = Number((await page.getByTestId('scan-generation').textContent()).replace('#', ''));
+await page.getByRole('button', { name: 'Обновить данные' }).click();
+await page.waitForFunction(old => Number(document.querySelector('[data-testid="scan-generation"]').textContent.replace('#', '')) > old, oldGeneration);
+await page.getByRole('button', { name: 'Обновить данные' }).waitFor();
+assert(await page.locator('.app-shell').evaluate(element => element.scrollWidth <= element.clientWidth));
+await page.screenshot({ path: 'local/modern-dashboard.png' });
+console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, viewport: '1366x768' }));
+await browser.close();
