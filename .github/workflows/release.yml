@@ -1,0 +1,79 @@
+name: Release preview
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Bundle version (for example 0.1.0-preview.1)'
+        required: true
+        default: '0.1.0-preview.1'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build bundles and publish pre-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Go 1.20 for core and legacy
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20.14'
+          cache: false
+
+      - name: Core and legacy binaries
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.event_name }}' -eq 'workflow_dispatch') { '${{ inputs.version }}' } else { '${{ github.ref_name }}'.TrimStart('v') }
+          ./scripts/package-release.ps1 -Version $version -Go (Get-Command go).Source -SkipModern
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Go 1.26 for Modern
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'
+          cache: false
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Modern Wails build
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          New-Item -ItemType Directory -Force -Path cache/tools/wails-3.1 | Out-Null
+          Copy-Item -LiteralPath (Join-Path (go env GOPATH) 'bin/wails3.exe') -Destination cache/tools/wails-3.1/wails3.exe
+          ./scripts/build-modern.ps1 -Wails cache/tools/wails-3.1/wails3.exe -InstallDependencies
+
+      - name: Repackage with Modern
+        shell: pwsh
+        run: |
+          ./scripts/package-release.ps1 -Version $env:RELEASE_VERSION -SkipBuilds
+          Copy-Item local/release-stage/RELEASE-NOTES.md dist/RELEASE-NOTES.md -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windeploy-release
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+            dist/RELEASE-NOTES.md
+
+      - name: Publish GitHub pre-release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: false
+          body_path: dist/RELEASE-NOTES.md
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt

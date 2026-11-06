@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stages 1–9 реализованы: ядро, профили, inventory, Modern GUI, Package Manager, Network & Shares, Drivers & Printers, Browsers & Windows Settings, Execution & Reporting. Следующие этапы — Legacy Windows 7 GUI и CI/CD/Release. Реальные изменяющие операции (установка ПО/драйверов/принтеров, SMB, политики, настройки, переименование) и полная VM-матрица ещё не проверены; WebView2 на текущем хосте не создаёт контроллер.
+Stages 1–11 реализованы: ядро, профили, inventory, Modern GUI, Package Manager, Network & Shares, Drivers & Printers, Browsers & Windows Settings, Execution & Reporting, Legacy Windows 7 GUI, CI/CD & Release. Статус — preview: реальные изменяющие операции, Modern GUI smoke (WebView2 на хосте), Windows 7 SP1 VM и публикация релиза не проверены/недоступны. Portable/offline ZIP собраны локально.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -109,6 +109,12 @@ Stages 1–9 реализованы: ядро, профили, inventory, Modern
   - [x] `scripts/build-legacy.ps1` builds both architectures and hashes outputs
   - [ ] Windows 7 SP1 VM runtime and real install/SMB tests
 - [ ] Stage 11 — CI/CD & Release
+  - [x] GitHub Actions CI for core/legacy/modern + full Wails EXE build
+  - [x] Release workflow for tag/manual with pre-release publishing
+  - [x] Portable x64/x86 and offline bundle packaging with SHA256SUMS
+  - [x] Verified offline artifacts: 7-Zip, SumatraPDF, PrinterOne
+  - [ ] CI executed on GitHub-hosted runners (no remote in this workspace)
+  - [ ] Publish v0.1.0 pre-release (requires remote + unmet VM/GUI-smoke criteria)
 
 ## Blocked
 GitHub CLI отсутствует; remote не настроен. Локальная разработка доступна.

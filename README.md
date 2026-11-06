@@ -1,43 +1,49 @@
 # WinDeploy
 
-Инструмент подготовки рабочих станций после чистой установки Windows. Проект находится на раннем этапе разработки; готового приложения пока нет.
+Инструмент подготовки рабочих станций после чистой установки Windows: установка программ, сеть и SMB-папки, драйверы и принтеры, политики браузеров, настройки Windows, выполнение профилей с отчётами.
 
-## Целевые редакции
+## Состояние
 
-- Modern: Windows 10/11 x64, отдельный современный desktop UI.
-- Legacy: Windows 7 SP1 x86/x64, нативный Win32 UI без WebView2.
-- Общее ядро: Go 1.20, минимум зависимостей, без бизнес-логики в UI.
+Реализованы Stages 1–11. Проект находится в статусе **preview**: ядро, Modern GUI, Legacy GUI, CLI и release-скрипты готовы, но реальные изменяющие операции и VM-матрица (особенно Windows 7 SP1) не проверены. Это не production-релиз.
 
-Совместимость с целевыми ОС требует проверок в VM. Наличие сборки или mock-тестов не подтверждает работу на Windows 7.
+| Компонент | Статус |
+| --- | --- |
+| `core/` (Go 1.20, Win7-совместимые API) | Inventory, профили, Task Engine, пакеты, сеть, SMB, драйверы, принтеры, браузеры, настройки, выполнение, отчёты |
+| Modern (Wails v3 + React, Windows 10/11 x64) | Все страницы, 37 UI-тестов; Wails EXE собирается, GUI smoke на текущем хосте заблокирован WebView2 |
+| Legacy (Go 1.20, нативный Walk, Windows 7 SP1 x86/x64) | Установка ПО, сеть/SMB, диагностика; реальное окно проверено на Windows 11 x64/x86, Win7 VM — нет |
+| CLI | `windeploy-inspect`, `windeploy-packages`, `windeploy-run` |
 
-## Структура
-
-- `core/` — общее функциональное ядро и интерфейсы адаптеров.
-- `docs/architecture.md` — границы модулей и требования совместимости.
-- `TASKS.md` — текущая задача и roadmap.
-- `HANDOFF.md` — состояние и инструкция следующей сессии.
-- `AGENTS.md` — правила работы с репозиторием.
-
-## Разработка
-
-Используйте Go 1.20 или новее. Совместимость языка и стандартной библиотеки ядра необходимо сохранять с Go 1.20; современные версии Go сами по себе не поддерживают запуск на Windows 7.
+## Сборка
 
 ```powershell
-go test ./...
-go vet ./...
-go build ./...
+# Core Go 1.20 amd64+386 test/vet/build
+scripts/test-core.ps1 -Go local/_toolchains/go1.20.14/go/bin/go.exe
+
+# Modern EXE
+scripts/build-modern.ps1
+
+# Legacy x64/x86 + GUI smoke
+scripts/build-legacy.ps1 -GuiSmoke
+
+# Portable/offline ZIP + SHA256SUMS
+scripts/package-release.ps1 -Version 0.1.0-preview.1
 ```
 
-Если стандартный Go-кэш недоступен в sandbox, перед проверками задайте `$env:GOCACHE = Join-Path $PWD 'cache\go-build'`. Этот каталог исключён из Git.
+Артефакты — `bin/` и `dist/`; release-процесс и ограничения — [docs/release.md](docs/release.md).
 
-Доступны модели задач, DAG, dry-run preview и `engine.Run`/`RunWithOptions` с Adapter (precheck/execute/verify), отменой, timeout, opt-in retries, ограниченной параллельностью и взаимным исключением ресурсов. `core/state.FileStore` сохраняет checkpoints; `engine.Resume` продолжает точный исходный план без повторения завершённых задач.
+## Документация
 
-`core/inventory` реально читает Windows system/CPU/RAM/volumes/network/installed apps. `cmd/windeploy-inspect` предоставляет read-only Inventory (text/JSON) и profile preview без системных изменений. Сборка: `go build -o bin/WinDeploy-Inspect-Windows-x64.exe ./cmd/windeploy-inspect`. Возможности, команды и ограничения — в [docs/inventory.md](docs/inventory.md).
+- [Архитектура](docs/architecture.md)
+- [Modern GUI](docs/modern.md)
+- [Legacy Windows 7](docs/legacy.md)
+- [Пакеты](docs/packages.md)
+- [Сеть](docs/network.md)
+- [Драйверы и принтеры](docs/drivers-printers.md)
+- [Браузеры и настройки](docs/browsers-settings.md)
+- [Выполнение и отчёты](docs/execution.md)
+- [Inventory](docs/inventory.md), [профили](docs/profiles.md)
+- [TASKS](TASKS.md), [HANDOFF](HANDOFF.md)
 
-`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Modern GUI показывает реальные Inventory и Profiles Preview; изменяющих систему адаптеров пока нет. Примеры не являются подтверждением установки программ.
+## Безопасность
 
-Если стандартный module cache недоступен, задайте `$env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'`. Подчёркивание исключает скачанные пакеты из `go test ./...`. YAML-зависимость зафиксирована в go.mod/go.sum.
-
-Не запускайте установщики и административные операции на рабочей машине. Системные адаптеры проверяются в изолированной VM.
-
-Modern desktop: [сборка, запуск и проверки](docs/modern.md). Готовый локальный EXE — `bin/WinDeploy-Windows-x64.exe`; Wails v3.1.0 находится только в отдельном `desktop/modern` модуле.
+Изменяющие операции требуют подтверждения и обычно прав администратора. Не запускайте установки, драйверы, принтеры, SMB и настройки на рабочей машине: используйте изолированную VM. WinDeploy не обходит лицензирование Windows и не отключает защиту.
