@@ -32,7 +32,9 @@ go build ./...
 
 Доступны модели задач, DAG, dry-run preview и `engine.Run`/`RunWithOptions` с Adapter (precheck/execute/verify), отменой, timeout, opt-in retries, ограниченной параллельностью и взаимным исключением ресурсов. `core/state.FileStore` сохраняет checkpoints; `engine.Resume` продолжает точный исходный план без повторения завершённых задач.
 
-`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Реальных системных адаптеров и GUI пока нет; примеры не являются подтверждением установки программ.
+`core/inventory` реально читает Windows system/CPU/RAM/volumes/network/installed apps. `cmd/windeploy-inspect` предоставляет read-only Inventory (text/JSON) и profile preview без системных изменений. Сборка: `go build -o bin/WinDeploy-Inspect-Windows-x64.exe ./cmd/windeploy-inspect`. Возможности, команды и ограничения — в [docs/inventory.md](docs/inventory.md).
+
+`core/profiles` поддерживает строгий YAML schema v1, наследование, клонирование, выбор компонентов и преобразование в план. Примеры и ограничения — в [docs/profiles.md](docs/profiles.md). Реальных изменяющих систему адаптеров и GUI пока нет; примеры не являются подтверждением установки программ.
 
 Если стандартный module cache недоступен, задайте `$env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'`. Подчёркивание исключает скачанные пакеты из `go test ./...`. YAML-зависимость зафиксирована в go.mod/go.sum.
 

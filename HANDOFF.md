@@ -1,96 +1,87 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Текущий этап: 3 — Inventory (AUTONOMOUS DEVELOPMENT).
-Текущая задача: завершены 9/10 задач: system identity, CPU, RAM, volumes, interfaces, IP config, apps, collector, applicability; далее CLI и full-project verification.
-Последний завершённый этап: базовые критерии этапа 2 — Profiles (YAML/наследование/примеры формируют валидный план); ядро этапа 1 расширено retries/concurrency/state/resume.
-Текущая ветка: master. Последний коммит реализации: adef541 — `feat(profiles): build selected plans and add workstation examples`.
-Пользователь разрешил MULTI-TASK по 5–10 задач, отдельные коммиты и переходы этапов. Это выше прежнего ограничения одной задачи; не запускать несколько агентов без отдельного указания. AGENTS обновлён.
+Текущий этап: 4 — GUI, не начат.
+Текущая задача: AUTONOMOUS пакет из 10 задач завершён, выполняется только итоговая фиксация документов.
+Последний завершённый этап: 3 — Inventory (реальные данные текущей Windows + tests; целевые VM-проверки отдельно).
+Последний коммит реализации: 1ff69d4 — feat(cli): add read-only inventory and profile preview commands.
+Текущая ветка: master. Предыдущая база: 1bc74b6.
+Пользователь разрешает пакеты 10–15 задач, отдельные коммиты/тесты и автоматические переходы этапов. После 2–3 задач обновлять HANDOFF; после 10–15 проверять проект целиком. AGENTS обновлён. Делегация не запрошена.
 
-Десять функциональных коммитов сессии:
-1. dfdadde — dry-run preview.
-2. 0626c5e — opt-in retries.
-3. de54b7a — bounded concurrency/resource keys.
-4. c3085b0 — file snapshots.
-5. 4e7fb24 — resume.
-6. f1a7ec8 — checkpoints/fail-closed storage.
-7. b0ca645 — profile model/validation.
-8. f4ea631 — strict YAML.
-9. 0863f13 — inheritance.
-10. adef541 — selected plans/clone/examples.
-Промежуточные docs checkpoint-коммиты: 5151f06, 5d3bd45, 3bebe07, 14db356. Итоговый docs-коммит — HEAD после завершения (см. git log).
+Итоговый отчёт с 10 коммитами, проверками и ограничениями: [docs/reports/autonomous-inventory.md](docs/reports/autonomous-inventory.md).
 
 ## Что уже реализовано
-- Inventory Native.System/CPU/Memory — read-only Windows API/registry, build tags; чистые модели и unit/native tests. System использует RtlGetVersion, native architecture (WOW64-aware); CPU model/vendor и GetActiveProcessorCount across groups; GlobalMemoryStatusEx для RAM. x/sys v0.6.0 (upstream go 1.17) закреплён для Go 1.20-совместимых Windows wrappers. Реальная Win7 VM пока не проверялась.
-- Native.Volumes: roots/drive type + GetDiskFreeSpaceEx (64-bit, quota-aware) для fixed/ramdisk; remote/removable/optical только metadata, capacity явно unknown. Partial failures сохраняют доступные тома. Native.Interfaces: IPv4/IPv6 prefixes/flags/MAC/MTU, без вывода о reachability. Native.NetworkConfig: GetAdaptersAddresses, gateways/DNS/DHCPv4/IPv4 enabled/link speeds/operational state, IPv6 scopes сохранены; bounded native buffers и record length checks.
-- Native.Apps: видимые HKLM/effective-user HKCU Uninstall entries в native 32/64 views; dedup shared views, без UninstallString/InstallLocation/Win32_Product. AppX/MSIX/portable apps не покрыты. Apps scope означает пользователя процесса, не автоматически интерактивного пользователя при elevation.
-- inventory.Collect/Report: семь секций, explicit ok/partial/failed/cancelled/not-collected; independent failures продолжают сбор, cancellation останавливает. ErrIncomplete и Complete=false не дают выдать частичный отчёт за полный; raw errors не сериализуются.
-- inventory.Applicable/GuardAdapter: fail-closed unknown OS/arch, canonical profile tokens, native OS arch вместо process arch; все три фазы guarded, несовместимый Precheck => NotApplicable, dependents => Skipped. Empty requirements разрешают только поддерживаемую workstation matrix, catalog должен сузить для конкретного пакета.
-- engine: Task/TaskResult/статусы, Validate, OrderTasks, Run с Adapter Precheck/Execute/Verify, отмена/timeout, пропуск заблокированных зависимостей.
-- PreviewPlan: независимые метаданные без Parameters/фиктивных успешных результатов, scope structure-and-dag-only.
-- RunWithOptions: MaxAttempts/RetryDelay (только RetryableError=true, новый Precheck), MaxParallel (default 1), ResourceKey для взаимного исключения всех фаз/ожиданий. WindowsInstallerResource обязателен для будущих MSI-адаптеров.
-- Snapshot/NewSnapshot/Validate/ValidateForPlan: версия, SHA-256 точного Pending-плана, результаты без Parameters и сырого текста ошибок. Проверка ID/зависимостей до resume.
-- core/state.FileStore: JSON до 4 MiB, строгая загрузка, temp+Sync+Close+Rename. Не обнуляет старый checkpoint до успешной записи.
-- Resume: сохраняет Success/AlreadyInstalled/NotApplicable/намеренные Skipped; Failed требует RetryFailed; Running/Cancelled/зависимые Skipped проходят Precheck. RebootRequired flag и записанные Attempts накапливаются.
-- RunOptions.Store: initial snapshot, Running до запуска, финальный результат после операции; ошибка сохранения => ErrCheckpoint, отмена активных и запрет новых задач. Сохранение при отмене через отдельный 5s context.
-- profiles schema v1: модель/валидация; Load/Marshal strict YAML до 1 MiB; Single-parent Resolve с циклами/лимитом 64; Clone; BuildPlan с ручным выбором и closure зависимостей; Preview.
-- Восемь YAML-примеров: base, office, accounting, reception, warehouse, service, administrator, legacy. Все проверены до engine.PreviewPlan, реальных установщиков/серверов/credentials нет.
-- docs/architecture.md, docs/execution.md, docs/profiles.md описывают публичные API и ограничения.
+- core/engine: Task/Result/status, DAG/OrderTasks, Pending-only Run, Adapter lifecycle, cancellation/timeout, PreviewPlan, opt-in RetryableError/attempts, MaxParallel и ResourceKey.
+- core/state + engine snapshots/resume: JSON checkpoints, точный plan hash, fail-closed storage errors, interrupted => Precheck, Failed только через RetryFailed. Восстановление не дублирует сохранённые Success/AlreadyInstalled.
+- core/profiles: strict bounded YAML schema v1, single-parent inheritance/cycles, Clone, selected dependency closure, Pending plans, safe preview; 8 YAML примеров.
+- core/inventory/System: hostname, RtlGetVersion build/SP/product type, canonical OS tokens, GetNativeSystemInfo native architecture отдельно от runtime.GOARCH.
+- CPU: model/vendor из read-only registry, GetActiveProcessorCount across groups; RAM: GlobalMemoryStatusEx 64-bit usable physical counters.
+- Volumes: logical roots/type, fixed/ramdisk capacity/available bytes; остальные типы capacity_known=false. Interfaces: IPv4/IPv6 prefixes/flags/MTU/MAC. AdapterConfig: gateways/DNS/DHCPv4/link speeds/operational state/IPv6 scope через GetAdaptersAddresses.
+- Apps: видимые Uninstall entries HKLM/effective-user HKCU в 32/64 views, dedup shared entries. Никаких Win32_Product/UninstallString/исполнения команд.
+- Collect/Report: 7 секций с ok/partial/failed/cancelled/not-collected; raw provider errors не экспортируются. Complete=false + ErrIncomplete для частичного сбора. Независимые ошибки не останавливают остальные секции, cancellation останавливает.
+- Applicable/GuardAdapter: сравнение требований с native OS/arch, fail-closed unknown, NotApplicable для mismatch; все три фазы guarded. Проверено совместно с engine.Run.
+- cmd/windeploy-inspect: read-only inventory text/JSON и profile preview. Exit 0 complete, 1 input/output/error, 2 partial, 3 cancelled/deadline. Output создаётся только новым файлом; previews не вызывают Adapter и не показывают Parameters.
+- README и docs/inventory.md описывают источники и границы; docs/architecture/execution/profiles — контракты предыдущих модулей.
 
 ## Что проверено
-- Текущий пакет: go test ./core/inventory/... и go vet ./core/inventory/... PASS после каждой из 9 задач; дополнительно go test ./core/engine/... для guard integration. Реально прочитаны все семь секций на текущей Windows, aggregate Complete=true. Приватные значения не выведены в журнал. Native layouts/short records/IPv6 scopes/partial errors/cancellation и engine guard проверены.
-Go 1.26.2, доступная Windows:
-- windows/amd64: `go test ./...`, `go vet ./...`, `go build ./...` — PASS.
-- windows/386: `go test ./...`, `go build ./...` — PASS; это не проверка Windows 7.
-- `go mod verify` — all modules verified; go mod tidy выполнен.
-- gofmt и git diff --check — PASS.
-- Тесты после каждой функциональной задачи. Concurrency проверяет реальное перекрытие/лимиты/ресурсы/ожидание отмены через каналы. Checkpoints: ошибки initial/running/completion Save, очистка активного адаптера, сохранение при отмене. FileStore restart + fake installation проверяет отсутствие повторной установки.
-- Profiles: malformed/unknown/duplicate YAML, aliases/merge keys, размеры, secret errors, inheritance/cycles/isolation, selection/disabled/missing deps, cloning и восемь примеров.
-- Race detector не запускался: gcc/clang не найдены.
+Go 1.26.2 на доступной Windows:
+- После каждой задачи — относящиеся unit/native tests и vet; реальные read-only Windows API/registry разрешены текущим объёмом и отдельно отмечены в AGENTS.
+- windows/amd64: go test ./..., go vet ./..., go build ./... — PASS.
+- windows/386: go test ./..., go build ./... — PASS; тесты реально выполнены на текущей x64 Windows.
+- linux/amd64 cross-build go build ./... — PASS (без runtime-проверки).
+- go mod verify — all modules verified; gofmt и git diff --check — PASS.
+- Реальные EXE в bin/: x64 и x86 inventory Complete=true/7 sections, 3 volumes/7 interfaces/167 visible app entries. Build совпал с реестром, hostname — с Environment.MachineName. x86 EXE верно показал native=amd64/process=386 и те же 167 apps.
+- CLI preview всех 8 профилей через реальный EXE — PASS.
+- Private full JSON smoke-report только в local/ (игнорируется Git), без вывода hostname/IP/MAC/названий программ в общий отчёт.
+- Race detector не запускался: gcc/clang не найдены в PATH.
 
-Команды окружения (не меняют глобальные настройки):
+Локальные кэши и базовые команды:
 ```powershell
 $env:GOCACHE = Join-Path $PWD 'cache\go-build'
 $env:GOMODCACHE = Join-Path $PWD 'cache\_go-mod'
 go test ./...
 go vet ./...
 go build ./...
+go mod verify
 ```
-Для проверки x86 добавить `$env:GOARCH = '386'`; после неё убрать переменную в той же оболочке, если продолжаете amd64-проверки.
-Старый cache/go-mod был перенесён в cache/_go-mod: без подчёркивания `go test ./...` захватывал исходники скачанной test-зависимости без go.mod. Кэш исключён Git, исходники проекта не затронуты.
+GOARCH=386 использовать только для отдельной проверки, затем убрать в той же оболочке. Для cross-build Linux выставить GOOS=linux/GOARCH=amd64 только в отдельном процессе.
+Не переносить module cache в обычный cache/go-mod: исходники скачанных пакетов без собственного go.mod захватываются `./...`; подчёркивание в _go-mod исключает их.
 
 ## Что сейчас не работает
-- Нет Inventory, GUI, реальных системных адаптеров/каталога пакетов. Примеры профилей описывают намерения, не готовые установочные действия.
-- Go 1.20 toolchain и VM-матрица Windows 10/11/7 SP1 x86/x64 не проверены. x86-тесты на текущей ОС не подтверждают Win7 runtime.
-- Отмена кооперативная: Adapter и Store должны соблюдать context, иначе Run ждёт. Не оставляет фоновые операции после возврата.
-- Snapshot хранится в доверенном каталоге, не аутентифицирован; SHA-256 — привязка плана, не защита от подмены. Завершённые результаты не перепроверяются по live inventory.
-- FileStore: один процесс-владелец пути, mutex защищает только экземпляр. Каталог создаёт вызывающий код и защищает Windows ACL; mode 0600 не заменяет ACL. Power-loss atomicity/durability зависит от filesystem и не гарантирована.
-- Checkpoint не делается между фазами и retry attempts, поэтому после внезапного завершения счётчик попыток может быть неполным; interrupted всегда проходит Precheck.
-- Обязательный reboot barrier/boot-ID/автозапуск после перезагрузки не реализованы. Resume отклоняет status RebootRequired; флаг после проверенного Success поддерживается.
-- Полное маскирование произвольных секретов и detailed diagnostic logging отсутствуют. Engine пишет только известные этапы ошибок. Profiles блокирует распространённые secret keys/URL userinfo, но не распознаёт секрет в произвольном значении.
+- Нет Modern/Legacy GUI и реальных изменяющих систему adapters/catalog/installers. CLI — диагностика и preview, не полноценный WinDeploy installer/release.
+- Go 1.20 toolchain и целевая VM-матрица Windows 10/11/7 SP1 x86/x64 не проверены. Текущие EXE собраны Go 1.26.2 и не являются Win7 Legacy-сборками.
+- Inventory: CPU — первая brand/vendor + logical count, не полный socket/hybrid topology. RAM usable, не DIMM labels. Volumes logical/quota-aware, без physical model/SMART. Remote/removable/optical capacity намеренно не запрашивается.
+- Apps только видимые Uninstall entries: нет AppX/MSIX/portable apps и проверки файловой исправности. HKCU — пользователь процесса; при elevation не impersonate интерактивного пользователя.
+- Network не выполняет reachability/DNS-resolution/SMB/TCP/ICMP и не читает leases DHCPv6/route table. Up/Operational не доказывает доступность сервера. ARM emulation у GetNativeSystemInfo имеет ограничения; arm64 выполнение не поддерживается.
+- RtlGetVersion игнорирует обычный manifest version lie, но application compatibility layer может влиять на ответ; текущий build перепроверен по реестру только в smoke-test.
+- Синхронные native API не прерываются принудительно; context проверяется вокруг вызовов/между элементами. Adapter/Store также обязаны соблюдать context.
+- GuardAdapter должен подключать вызывающий код перед реальными task operations; прямой engine.Run не читает ОС автоматически. Empty requirements не заменяют проверку конкретного пакета/драйвера.
+- State snapshots доверенные локальные, не аутентифицированы и не перепроверяют live inventory старых Success. Одна session path принадлежит одному процессу; FileStore mutex только на экземпляре; Windows ACL задаёт администратор. Power-loss atomicity/durability не гарантированы. Attempts могут быть неполными при crash между фазами/retries.
+- Обязательный reboot barrier/boot-ID/автозапуск после reboot отсутствуют; status RebootRequired при Resume отклоняется, verified Success+reboot flag поддержан.
+- Engine diagnostics только безопасный этап. Полного маскирования произвольных секретов нет; profiles запрещает частые secret keys/URL userinfo, но не распознаёт секрет в произвольном значении.
 - GitHub CLI отсутствовал; remote/CI/releases не создавались.
 
 ## Незавершённая работа
-Незавершённых исходников нет. Следующая работа — read-only Inventory. GUI редактора/импорта/экспорта профиля появится на этапе 4; backend API уже работает. Не считать этапы Inventory/GUI выполненными.
+Незавершённых исходников нет. Следующая работа — первый ограниченный шаг Modern GUI. Не считать его выполненным по наличию CLI. Не расширять эту завершённую сессию новыми задачами; сначала зафиксировать итоговую документацию.
 
 ## Архитектурные решения
-- Общее ядро: go 1.20, без UI/Windows-команд. Единственная прямая зависимость — go.yaml.in/yaml/v3 v3.0.4 (upstream go 1.16; https://github.com/yaml/go-yaml/blob/v3.0.4/go.mod). go.mod/go.sum зафиксированы.
-- Task декларативен; Adapter не меняет вложенные maps/slices и должен быть thread-safe при MaxParallel>1. Только Success/AlreadyInstalled удовлетворяют зависимости. Success + RebootRequired означает подтверждённую Verify готовность.
-- Run принимает только Pending. Ошибки задач читать из results, error — invalid input/ctx/ErrCheckpoint. Resume требует точный исходный Pending-план. RetryFailed и RetryableError — разные разрешения: первое для сохранённого Failed, второе для повторов внутри запуска.
-- OrderTasks O(V²+E), tie-break по исходному индексу. Concurrent completion недетерминирован, results упорядочены. Общий windows-installer ResourceKey задаёт вызывающий код, движок не угадывает тип установщика.
-- Profiles: полный override компонента по ID на позиции родителя; новые добавляются, disabled — tombstone только с ID. YAML anchors/aliases/merge keys запрещены. Resolve не читает filesystem/network. BuildPlan(nil selection) — все enabled; пустой ненулевой selection — ни одного; зависимости включаются автоматически.
-- OS tokens профилей: windows-7-sp1/windows-10/windows-11; arch 386/amd64. Inventory должен использовать согласованное представление и не подменять реальные сведения предположениями.
+- Root module windeploy, go 1.20. Закреплены go.yaml.in/yaml/v3 v3.0.4 (upstream go 1.16) и golang.org/x/sys v0.6.0 (upstream go 1.17). Это не доказательство runtime Win7.
+- Windows API/registry изолированы build tags, общие модели/Provider/Collector переносимы; unsupported OS-provider возвращает ErrUnsupported, не фиктивные данные.
+- inventory импортирует engine для GuardAdapter; engine не импортирует inventory и не зависит от Windows. UI должен вызывать сервис, без бизнес-логики внутри React.
+- Сохранять root Go 1.20 при добавлении современного Wails/toolchain. Modern UI — отдельный Go-модуль; не обновлять root go.mod ради UI. Отдельно проверять сборки вложенного модуля, поскольку root ./... его не включает.
+- Task декларативен, Adapter не меняет вложенные maps/slices и thread-safe при MaxParallel>1. Общий WindowsInstallerResource назначает adapter/catalog. RetryableError разрешает безопасные повторы внутри запуска; RetryFailed — повтор сохранённого Failed. Только Success/AlreadyInstalled удовлетворяют зависимости.
+- Profile override по ID целиком, disabled tombstone только ID/disabled; nil selection — все enabled, пустой ненулевой — ни одного. Canonical OS tokens windows-7-sp1/windows-10/windows-11; arch 386/amd64. Resolve не делает скрытого IO.
 
 ## Следующая задача
-Добавить cmd/windeploy-inspect: read-only inventory (text/JSON) и preview profiles; exclusive output creation, exit codes для partial/cancelled/errors. Затем go test/vet/build ./... на amd64, test/build на 386, реальный CLI smoke, dependency verify и HANDOFF. После 10 задач не расширять пакет до GUI без общей проверки.
+Stage 4.1: проверить актуальный статус Wails v3, toolchain/Windows10/WebView2 требования и создать отдельный Modern-модуль с реальным Inventory service; не создавать весь GUI одним коммитом.
 
 ## Инструкция следующему агенту
-1. Проверить status/log, прочитать AGENTS/TASKS и этот HANDOFF. Затем docs/architecture.md и только относящиеся engine/profile требования ОС.
-2. Создать core/inventory с моделью SystemInfo (hostname, version/build, architecture) и маленьким интерфейсом read-only provider для тестов. Windows-specific чтение изолировать build tags, сохранить компиляцию общего ядра на Go 1.20. Проверить API по первичным документам, включая Win7 SP1; не полагаться на GetVersionEx без учёта manifest/version lie.
-3. os.Hostname и проверенный способ чтения версии должны возвращать реальные данные; неизвестную версию показывать ошибкой/unknown, не угадывать. Не запускать PowerShell с административными изменениями.
-4. Unit-тесты данных/ошибок/fake provider; реальная read-only проверка на доступной Windows. Не называть это доказательством Win7. Выполнить go test ./core/inventory/... и go vet/build ./... с локальными кэшами.
-5. Коммит `feat(inventory): detect Windows version and hostname`; обновить TASKS/HANDOFF. В MULTI-TASK далее брать CPU/RAM/disks/network/apps небольшими задачами, не начинать весь GUI преждевременно.
+1. status/log, AGENTS/HANDOFF/TASKS; затем docs/architecture.md и docs/inventory.md. Не исследовать всё ядро заново.
+2. Проверить официальные Wails docs/releases и установленный Node/npm/Go; v3 использовать только если фактический статус/совместимость позволяет. Выбор версии/ограничения записать коротко, без переархитектуры ядра. Node/npm найдены в PATH, версии не проверялись.
+3. Создать изолированный Modern Go-модуль (например desktop/modern), локальный replace на root core. Подключить Inventory Collect и Profiles Preview через небольшой сервис; не переносить Windows APIs или выполнение tasks в UI. Ошибки/partial/unknown отражать честно.
+4. Затем React/TypeScript dark dashboard на русском, реальные данные/выбор профиля/план. Не показывать фиктивный Success. Проверить WebView2 dependency и корректный запуск на доступной Windows, сборку UI и DPI/1366x768 насколько позволяет среда.
+5. Каждая законченная часть — tests/build, отдельный commit, TASKS; HANDOFF после 2–3 задач. После 10–15 обязательны whole-project + nested Modern checks/smoke. Core go test/vet/build и x86 не ломать.
 
 ## Чего нельзя делать
-Не устанавливать Wails/драйверы/программы и не изменять сеть/защиту на хосте. Не выдавать fake/integration-тест за реальную установку или Win7-совместимость.
-Для записи .git требовался escalated exec с `git -c safe.directory=C:/Users/ashtr/OneDrive/Desktop/git/WinDeploy ...` из-за владельцев sandbox/user. Не менять глобальную Git-конфигурацию/identity и не коммитить cache/binaries/runtime state/credentials.
+Не менять сеть/защиту, не устанавливать сторонние программы/драйверы на хосте. Реальные изменяющие систему API/установки — только VM. Не заявлять Win7 или всю VM-матрицу по текущим read-only tests.
+Для записи .git требовался escalated exec с `git -c safe.directory=C:/Users/ashtr/OneDrive/Desktop/git/WinDeploy ...` из-за sandbox/user владельцев. Не менять глобальную Git-конфигурацию/identity, не коммитить binaries/cache/private reports/state/credentials.

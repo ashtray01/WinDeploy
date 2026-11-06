@@ -49,5 +49,5 @@ GitHub CLI отсутствует; remote не настроен. Локальн�
 Проверка Go 1.20 и Windows 7 VM не выполнена; совместимость не подтверждена.
 
 ## Last verified commit
-adef541 — `feat(profiles): build selected plans and add workstation examples`.
-Go 1.26.2: windows/amd64 — go test/vet/build ./... PASS; windows/386 — go test/build ./... PASS; go mod verify, gofmt и diff --check PASS. Go 1.20/Win7 VM/race detector не проверены.
+1ff69d4 — `feat(cli): add read-only inventory and profile preview commands`.
+Go 1.26.2: windows/amd64 — go test/vet/build ./... PASS; windows/386 — go test/build ./... PASS; linux/amd64 cross-build PASS. Real x64/x86 CLI inventory + 8 profile previews PASS; go mod verify/gofmt/diff --check PASS. Go 1.20/Win7 VM/race detector не проверены. Подробности: docs/reports/autonomous-inventory.md.
