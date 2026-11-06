@@ -2,7 +2,7 @@
 
 ## Состояние проекта
 Текущий этап: 4 — Modern GUI, текущая сессия в работе.
-Текущая задача: Modern 1 — isolated Go 1.20 archive resume pending; Modern 2/3 завершены. Далее design system, shell, typed service/Inventory/Profile UI и финальный smoke.
+Текущая задача: Modern 1–6 завершены. Далее real dashboard, detail tables, Profiles/DAG/applicability, journal и финальный desktop smoke.
 Последний завершённый этап: 3 — Inventory (реальные данные текущей Windows + tests; целевые VM-проверки отдельно).
 Последний коммит реализации: 1ff69d4 — feat(cli): add read-only inventory and profile preview commands.
 Текущая ветка: master. Предыдущая база: 1bc74b6.
@@ -14,6 +14,9 @@
 - desktop/modern — изолированный Go 1.26 модуль с Wails v3.1.0 stable и local replace на root; root go.mod остаётся go 1.20. React 19.3.1/TS 7.0.2/Vite 8.3.6/runtime 3.1.0 pinned, UI tests happy-dom (совместим с Node 24.13; jsdom latest требовал более новый Node).
 - Настоящий EXE bin/WinDeploy-Windows-x64.exe запущен через Wails/WebView2 156; проверены HWND/Responding и DOM через CDP, screenshot local/modern-bootstrap.png. GUI пока только стартовая страница, не dashboard. scripts/gui-bootstrap-smoke.mjs. Для background GUI держать PowerShell WaitForExit, иначе tool host закрывает child после завершения exec. Smoke CDP localhost :9223 opt-in, proxy env отключать только в процессе smoke.
 - scripts/test-core.ps1 проверяет root test/vet/build amd64+386 отдельным Go executable. Официальный Go 1.20.14 download оборвался, checksum не прошёл; непроверенный архив не запущен. Resume curl в фоне; нельзя заявлять Go 1.20 PASS до actual test. docs/core-go120.md и docs/modern-compatibility.md.
+- Go 1.20.14 после curl resume/SHA-256 получен и проверен: test/vet/build root PASS на amd64 и 386. Toolchain перенесён в local/_toolchains (исключает его test/src из root ./...), отдельный cache/go-build-go120. Это не Win7 VM proof. Root go.mod не повышался.
+- UI design system, shell/navigation, disabled future modules, доступные controls/unknown progress/empty states; UI/TS/build PASS.
+- Modern service: actual inventory.Native provider, async Collect, один scan одновременно, CancelScan, partial/errors, ring journal реальных операций и ServiceShutdown. Wails CLI v3.1.0 generated TS interfaces/bindings; useInventory polling только во время сканирования, без fixture fallback. Go service tests + frontend tests/typecheck/build PASS. Dashboard/detail/profile views ещё не реализованы.
 - core/engine: Task/Result/status, DAG/OrderTasks, Pending-only Run, Adapter lifecycle, cancellation/timeout, PreviewPlan, opt-in RetryableError/attempts, MaxParallel и ResourceKey.
 - core/state + engine snapshots/resume: JSON checkpoints, точный plan hash, fail-closed storage errors, interrupted => Precheck, Failed только через RetryFailed. Восстановление не дублирует сохранённые Success/AlreadyInstalled.
 - core/profiles: strict bounded YAML schema v1, single-parent inheritance/cycles, Clone, selected dependency closure, Pending plans, safe preview; 8 YAML примеров.

@@ -1,0 +1,11 @@
+import * as Service from '../bindings/windeploy/modern/service/service';
+export type { State, Entry } from '../bindings/windeploy/modern/service/models';
+export type { Report, SystemInfo, CPUInfo, Volume, InterfaceInfo, InstalledApp, AdapterConfig } from '../bindings/windeploy/core/inventory/models';
+
+// This is the only production backend transport. No HTTP fallback or sample data.
+export const api = {
+  state: Service.GetState,
+  startScan: Service.StartScan,
+  cancelScan: Service.CancelScan,
+  journal: Service.GetJournal,
+};

@@ -9,6 +9,8 @@ import (
 	"strconv"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"windeploy/core/inventory"
+	"windeploy/modern/service"
 )
 
 //go:embed all:frontend/dist
@@ -30,8 +32,9 @@ func main() {
 	}
 	app := application.New(application.Options{
 		Name: "WinDeploy", Description: "Подготовка рабочих станций Windows",
-		Windows: options,
-		Assets:  application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Windows:  options,
+		Assets:   application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Services: []application.Service{application.NewService(service.New(inventory.Native{}))},
 	})
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "WinDeploy", Width: 1366, Height: 840, MinWidth: 1024, MinHeight: 640,

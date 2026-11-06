@@ -39,7 +39,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [x] Modern 3 — Build and launch Windows Wails/React/TypeScript EXE (real HWND + rendered WebView2 bootstrap smoke PASS)
   - [x] Modern 4 — Add responsive dark design system (primitives UI tests + TS/build PASS)
   - [x] Modern 5 — Add navigation shell and honest unavailable sections (UI tests/TS/build PASS)
-  - [ ] Modern 6 — Typed Go bridge with real Inventory, cancellation and partial errors
+  - [x] Modern 6 — Generated typed Wails bridge, real async Collector, cancellation/partial errors (Go/UI tests + TS/build PASS)
   - [ ] Modern 7 — Real dashboard and rescan
   - [ ] Modern 8 — Searchable/sortable Inventory detail tables
   - [ ] Modern 9 — YAML profile selection, real preview/DAG/applicability
