@@ -1,0 +1,32 @@
+import { AppWindow, Boxes, Cable, CircleHelp, FolderOpen, Globe, HardDrive, LayoutDashboard, Layers3, Monitor, Printer, Search, Settings2, ShieldCheck, ScrollText, Wrench, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Badge, Progress } from './ui';
+
+export type Page = 'overview' | 'profiles' | 'apps' | 'network' | 'volumes' | 'system' | 'journal';
+export type DataStatus = 'idle' | 'scanning' | 'complete' | 'partial' | 'cancelled' | 'error';
+const statusText: Record<DataStatus, string> = { idle: 'Нет данных', scanning: 'Сканирование', complete: 'Данные получены', partial: 'Частичные данные', cancelled: 'Отменено', error: 'Ошибка чтения' };
+const items: { id: Page; label: string; icon: LucideIcon; group: string }[] = [
+  { id: 'overview', label: 'Обзор', icon: LayoutDashboard, group: 'РАБОЧЕЕ ПРОСТРАНСТВО' },
+  { id: 'profiles', label: 'Профили', icon: Layers3, group: '' },
+  { id: 'apps', label: 'Программы', icon: AppWindow, group: 'ИНВЕНТАРИЗАЦИЯ' },
+  { id: 'network', label: 'Сеть', icon: Cable, group: '' },
+  { id: 'volumes', label: 'Накопители', icon: HardDrive, group: '' },
+  { id: 'system', label: 'Система', icon: Monitor, group: '' },
+  { id: 'journal', label: 'Журнал', icon: ScrollText, group: 'ИНСТРУМЕНТЫ' },
+];
+const future: [string, LucideIcon][] = [['Драйверы', Boxes], ['Сетевые папки', FolderOpen], ['Принтеры', Printer], ['Браузеры', Globe], ['Настройка Windows', Wrench]];
+
+export default function Shell({ page, navigate, children, status = 'idle', hostname, query = '', onQuery, updated }: { page: Page; navigate: (page: Page) => void; children: ReactNode; status?: DataStatus; hostname?: string; query?: string; onQuery?: (query: string) => void; updated?: string }) {
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <div className="brand"><div className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></div><div><strong>WinDeploy<span>®</span></strong><small>WORKSTATION MANAGER</small></div></div>
+      <nav aria-label="Основная навигация">{items.map(({ id, label, icon: Icon, group }) => <div key={id}>{group && <p className="nav-group">{group}</p>}<button className={`nav-item ${page === id ? 'active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={17} /><span>{label}</span>{page === id && <i className="nav-dot" />}</button></div>)}
+        <p className="nav-group">СЛЕДУЮЩИЕ ЭТАПЫ</p>{future.map(([label, Icon]) => <button key={label} className="nav-item future" disabled title="Этот модуль ещё не реализован"><Icon size={16} /><span>{label}</span><small>Скоро</small></button>)}
+      </nav>
+      <div className="sidebar-bottom"><div className="local-device"><span className="device-icon"><Monitor size={17} /></span><div><small>ЛОКАЛЬНЫЙ КОМПЬЮТЕР</small><strong title={hostname}>{hostname || 'Ожидание данных'}</strong></div></div><div className="sidebar-help"><span><ShieldCheck size={13} /> Только чтение</span><CircleHelp size={15} /></div></div>
+    </aside>
+    <header className="topbar"><div className="breadcrumb">Рабочая станция<span>/</span><strong>{items.find(item => item.id === page)?.label}</strong></div><div className="topbar-right"><label className="global-search"><Search size={15} /><input aria-label="Поиск в разделе" placeholder="Поиск в разделе…" value={query} onChange={event => onQuery?.(event.target.value)} disabled={!onQuery} /><kbd>⌕</kbd></label><Badge tone={status === 'complete' ? 'green' : status === 'scanning' ? 'blue' : status === 'idle' ? 'muted' : 'amber'}>{statusText[status]}</Badge><button className="topbar-settings" disabled aria-label="Настройки пока недоступны" title="Настройки будут доступны позже"><Settings2 size={18} /></button></div></header>
+    <main className="app-main">{children}</main>
+    <footer className="statusbar"><div><span className={`connection-dot ${status === 'scanning' ? 'working' : ''}`} /><span>Локальное приложение</span><i /><span>Режим просмотра · изменения системы недоступны</span></div><div>{status === 'scanning' ? <><span>Чтение Inventory</span><div className="footer-progress"><Progress value={null} label="Сканирование компьютера" /></div></> : <span>{updated ? `Обновлено ${new Date(updated).toLocaleTimeString('ru-RU')}` : 'Сканирование не выполнено'}</span>}<i /><span>MODERN 0.1.0</span></div></footer>
+  </div>;
+}
