@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 4 — первый Modern GUI с настоящими Inventory и Profiles работает на текущей Windows 11. Все 10 задач пакета выполнены; дальнейший GUI hardening и VM-матрица остаются открытыми. Package Manager не начат.
+Stage 5 «Package Manager» и Stage 6 «Network & Shares» реализованы в ядре и Modern GUI: каталог из 12 программ, реальная детекция/план/загрузка с SHA-256, установка через WinGet/EXE/MSI с проверкой подписи, страница установки с прогрессом, диагностика сети и подключение UNC с Windows Credential Manager. Следующий этап — драйверы и принтеры. Реальная установка программ и SMB-подключение в изолированной VM ещё не выполнялись.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -33,7 +33,7 @@ Stage 4 — первый Modern GUI с настоящими Inventory и Profile
   - [x] Collect inventory with explicit partial errors and cancellation
   - [x] Enforce inventory-based OS/architecture applicability before task execution
   - [x] Add read-only inventory/plan-preview CLI and whole-project smoke check
-- [ ] Stage 4 — GUI
+- [x] Stage 4 — GUI (Modern 1–16)
   - [x] Modern 1 — Verify core with isolated Go 1.20.14: test/vet/build amd64+386 PASS (not Win7 VM proof)
   - [x] Modern 2 — Isolate and pin stable Wails v3.1.0 module; root go.mod unchanged
   - [x] Modern 3 — Build and launch Windows Wails/React/TypeScript EXE (real HWND + rendered WebView2 bootstrap smoke PASS)
@@ -44,8 +44,32 @@ Stage 4 — первый Modern GUI с настоящими Inventory и Profile
   - [x] Modern 8 — Searchable/sortable Inventory detail tables (9 UI tests + TS/build PASS)
   - [x] Modern 9 — YAML profile selection, real preview/DAG/applicability (Go tests/vet + 12 UI tests + TS/build PASS)
   - [x] Modern 10 — Real journal, errors/recovery, 14 UI tests, Windows EXE + actual GUI smoke and Go 1.20 amd64/386 regression PASS
+  - [x] Modern 11 — Package catalog + detection + verified download/install engine (Go 1.20 tests amd64+386 PASS)
+  - [x] Modern 12 — Package Manager GUI page with selection, progress, cancellation and elevation gating (UI tests PASS)
+  - [x] Modern 13 — Headless package CLI and offline/HTTPS source verification (real 7-Zip/SumatraPDF/PrinterOne downloads PASS)
+  - [x] Modern 14 — WebView2/splash startup diagnostics and bounded startup log (built; GUI smoke blocked by host WebView2 failure this session)
+  - [x] Modern 15 — Network diagnostics core + GUI page (real DNS/TCP/HTTP/DNS-server checks PASS on current Windows)
+  - [x] Modern 16 — UNC shares: WNet connect, Credential Manager, Error 1219 handling, desktop .lnk (native Windows tests PASS)
 - [ ] Stage 5 — Package Manager
+  - [x] Strict catalog schema and embedded 12-package catalog with WinGet IDs, vendor HTTPS URLs and pinned SHA-256
+  - [x] Detection of installed packages (uninstall registry, MSI product code, file/portable) and version comparison
+  - [x] Source selection: WinGet, HTTPS, local/USB/SMB file sources with priority, fallback and offline mode
+  - [x] Streaming download with pinned SHA-256, verified content cache and Authenticode publisher checks
+  - [x] Silent EXE/MSI execution, exit-code classes, retry for busy installers, RebootRequired and post-install verification
+  - [x] Synchronous administrator pre-check and reinstall prevention
+  - [x] Modern GUI catalog page with checkboxes, source/version/action details, live progress, cancellation and results
+  - [x] Headless `windeploy-packages` CLI: list/plan/download/install (explicit --yes), JSON output
+  - [ ] Install real third-party packages in an isolated Windows VM and record per-package exit codes/reboot behavior
+  - [ ] Verify WinGet path in a normal interactive session (this host's sandbox and scheduled-task runs deny App Installer identity)
 - [ ] Stage 6 — Network & Shares
+  - [x] DNS (system + specific server), DHCP summary, gateway, TCP, ICMP, HTTP and SMB-445 diagnostics
+  - [x] Bounded per-check timeouts, honest timeout/unsupported statuses and cancellation
+  - [x] UNC connect via WNet with per-server Credential Manager storage (generic DPAPI credential)
+  - [x] Windows Error 1219 detection and explicit conflict resolution (disconnect stale sessions and reconnect)
+  - [x] Desktop .lnk creation through native IShellLink COM interface
+  - [x] Modern GUI diagnostics and shares pages with confirmation, dry-run and existing-connection list
+  - [ ] Connect to a real SMB server with credentials (no isolated share/test VM available)
+  - [ ] Execute shares components through the profile Task Engine (planned with Stage 9 execution integration)
 - [ ] Stage 7 — Drivers & Printers
 - [ ] Stage 8 — Browser & Windows Settings
 - [ ] Stage 9 — Persistence & Reporting
@@ -55,6 +79,8 @@ Stage 4 — первый Modern GUI с настоящими Inventory и Profile
 ## Blocked
 GitHub CLI отсутствует; remote не настроен. Локальная разработка доступна.
 Go 1.20.14 проверен на текущей Windows; Windows 7 SP1 VM и полная целевая VM-матрица пока не проверены.
+WebView2 в текущей сессии хоста не создаёт контроллер (0x8000FFFF) даже для минимального Wails-приложения; реальный GUI smoke этого пакета заблокирован внешней средой, не кодом WinDeploy.
+Установка программ и подключение SMB требуют изолированной VM/тестового сервера; на рабочем хосте не выполнялись.
 
 ## Last verified session
-Modern 1–10: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go tests/vet/build + module cache verify PASS; 14 UI tests/typecheck/Vite PASS. Реальный Windows desktop smoke: native Inventory comparison, rescan, tables, Profiles/DAG/Legacy incompatibility, journal, 1366×768 и 1024×640 PASS; 0 page errors. Подробности: docs/modern.md, docs/reports/modern-gui.md и HANDOFF.md.
+Package Manager: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go tests/vet/build PASS; 23 UI tests/typecheck/Vite PASS. Real host: detection of installed apps, HTTPS downloads with pinned SHA-256 and cache reuse for 7-Zip, SumatraPDF and PrinterOne; network diagnostics (DNS, specific DNS server, TCP 445, HTTP, DHCP, gateway) executed on current Windows; Credential Manager round-trip, WNet enumeration and .lnk creation PASS in native Windows tests. Details: docs/packages.md, docs/network.md, HANDOFF.md.

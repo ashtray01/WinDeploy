@@ -9,6 +9,8 @@ export {
 export type {
     Catalog,
     Entry,
+    NetworkCheckView,
+    NetworkReportView,
     PackageCatalogView,
     PackageEnvironment,
     PackageEvent,
@@ -19,5 +21,8 @@ export type {
     ProfileDetails,
     ProfilePreview,
     ProfileSummary,
+    ShareConnectionView,
+    ShareRequest,
+    ShareResultView,
     State
 } from "./models.js";

@@ -23,6 +23,30 @@ export interface Entry {
 }
 
 /**
+ * NetworkCheckView is one translated diagnostic outcome.
+ */
+export interface NetworkCheckView {
+    "id": string;
+    "name": string;
+    "kind": string;
+    "status": string;
+    "detail"?: string;
+    "error_code"?: string;
+    "latency_ms": number;
+    "required": boolean;
+}
+
+/**
+ * NetworkReportView is the package page state for network diagnostics.
+ */
+export interface NetworkReportView {
+    "checks": NetworkCheckView[] | null;
+    "failed": number;
+    "complete": boolean;
+    "message": string;
+}
+
+/**
  * PackageCatalogView is the complete package page state.
  */
 export interface PackageCatalogView {
@@ -139,6 +163,44 @@ export interface ProfileSummary {
     "id": string;
     "name": string;
     "parent": string;
+}
+
+/**
+ * ShareConnectionView is one existing Windows connection.
+ */
+export interface ShareConnectionView {
+    "remote_name": string;
+    "local_name"?: string;
+}
+
+/**
+ * ShareRequest is the explicit, user-initiated connection request. Password is
+ * used only for this call and is never stored in the service state.
+ */
+export interface ShareRequest {
+    "id": string;
+    "unc": string;
+    "name": string;
+    "username": string;
+    "password": string;
+    "persistent": boolean;
+    "shortcut": boolean;
+    "dry_run": boolean;
+    "resolve_conflict": boolean;
+}
+
+/**
+ * ShareResultView is the safe outcome shown in the UI.
+ */
+export interface ShareResultView {
+    "share": string;
+    "unc": string;
+    "connected": boolean;
+    "credential_saved": boolean;
+    "shortcut_path"?: string;
+    "conflict": boolean;
+    "message": string;
+    "warnings": string[] | null;
 }
 
 export interface State {

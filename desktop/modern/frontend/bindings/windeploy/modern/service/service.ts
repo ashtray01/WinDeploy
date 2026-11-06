@@ -16,6 +16,14 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 /**
+ * AddShare connects a UNC resource. Only an explicit user action calls it; a
+ * credential conflict is reported for a second, confirmed attempt.
+ */
+export function AddShare(request: $models.ShareRequest): $CancellablePromise<$models.ShareResultView> {
+    return $Call.ByName("windeploy/modern/service.Service.AddShare", request);
+}
+
+/**
  * CancelPackageInstall requests cooperative cancellation of the active run.
  */
 export function CancelPackageInstall(): $CancellablePromise<$models.PackageInstallView> {
@@ -56,8 +64,23 @@ export function ListProfiles(): $CancellablePromise<$models.Catalog> {
     return $Call.ByName("windeploy/modern/service.Service.ListProfiles");
 }
 
+/**
+ * ListShareConnections enumerates existing mapped/UNC connections read-only.
+ */
+export function ListShareConnections(): $CancellablePromise<$models.ShareConnectionView[] | null> {
+    return $Call.ByName("windeploy/modern/service.Service.ListShareConnections");
+}
+
 export function PreviewProfile(id: string, selected: string[] | null): $CancellablePromise<$models.ProfilePreview> {
     return $Call.ByName("windeploy/modern/service.Service.PreviewProfile", id, selected);
+}
+
+/**
+ * RunNetworkDiagnostics performs read-only checks. Targets use the form
+ * "dns:name", "tcp:host:port", "icmp:host", "http:url" or "smb:host".
+ */
+export function RunNetworkDiagnostics(targets: string[] | null): $CancellablePromise<$models.NetworkReportView> {
+    return $Call.ByName("windeploy/modern/service.Service.RunNetworkDiagnostics", targets);
 }
 
 /**

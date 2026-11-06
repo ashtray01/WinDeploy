@@ -7,6 +7,8 @@ import Dashboard from './Dashboard';
 import InventoryPages from './InventoryPages';
 import JournalPage from './JournalPage';
 import PackagesPage from './PackagesPage';
+import NetworkPage from './NetworkPage';
+import SharesPage from './SharesPage';
 export default function App() {
   const [page, setPage] = useState<Page>('overview');
   const [query, setQuery] = useState('');
@@ -16,6 +18,6 @@ export default function App() {
   const inventory = page === 'apps' || page === 'network' || page === 'volumes' || page === 'system';
   return <Shell page={page} navigate={navigate} status={(state?.status ?? 'idle') as DataStatus} hostname={state?.report?.system?.hostname} updated={state?.report?.finished_at} query={query} onQuery={page === 'overview' ? undefined : setQuery}>
     {(connectionError || state?.error) && <div role="alert" className="callout">{connectionError || state?.error}</div>}
-    {page === 'overview' ? <Dashboard state={state} navigate={navigate} scan={scan} cancel={cancel} /> : inventory ? <InventoryPages key={page} page={page} state={state} query={query} onQuery={setQuery} scan={scan} cancel={cancel} /> : page === 'profiles' ? <ProfilesPage query={query} onActivity={refresh} /> : page === 'packages' ? <PackagesPage query={query} /> : <JournalPage state={state} query={query} onQuery={setQuery} refresh={refresh} />}
+    {page === 'overview' ? <Dashboard state={state} navigate={navigate} scan={scan} cancel={cancel} /> : inventory ? <InventoryPages key={page} page={page} state={state} query={query} onQuery={setQuery} scan={scan} cancel={cancel} /> : page === 'profiles' ? <ProfilesPage query={query} onActivity={refresh} /> : page === 'packages' ? <PackagesPage query={query} /> : page === 'networkdiag' ? <NetworkPage /> : page === 'shares' ? <SharesPage /> : <JournalPage state={state} query={query} onQuery={setQuery} refresh={refresh} />}
   </Shell>;
 }

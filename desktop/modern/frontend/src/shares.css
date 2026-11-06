@@ -1,0 +1,19 @@
+.shares-layout {display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;align-items:start}
+.share-form {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:18px 20px 6px}
+.share-form label {display:flex;flex-direction:column;gap:6px;font-size:10px;letter-spacing:.4px;color:#9aabc2;text-transform:uppercase}
+.share-form input {background:#0f1620;border:1px solid #2b374b;border-radius:7px;color:#e6eefb;padding:9px 11px;font-size:12px;text-transform:none;letter-spacing:0}
+.share-form input:focus {border-color:#5b91f4;outline:2px solid #5b91f4}
+.share-form .share-check {flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:11px;color:#b7c5d9}
+.share-form .share-check input {accent-color:#5b91f4}
+.share-note {display:flex;gap:8px;align-items:flex-start;padding:0 20px 6px;color:var(--muted);font-size:10px;line-height:1.7}
+.share-note svg {color:#7d9fd4;margin-top:1px}
+.share-actions {display:flex;gap:10px;justify-content:flex-end;padding:16px 20px;border-top:1px solid var(--line);margin-top:14px}
+.share-confirm {padding:0 20px 18px}
+.share-confirm p {font-size:11px;line-height:1.7;color:#c5d3e6}
+.share-confirm strong {color:#e9f1fd;font-weight:560}
+.share-conflict {justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.share-conflict strong {display:block;margin-bottom:5px}
+.share-conflict p {font-size:11px;line-height:1.65}
+.share-path {font-family:'Cascadia Code',Consolas,monospace;font-size:10px;color:#9fb6d6;margin-top:7px;word-break:break-all}
+.callout ul {margin:8px 0 0;padding-left:18px}
+@media(max-width:1320px){.shares-layout {grid-template-columns:minmax(0,1fr)}}
