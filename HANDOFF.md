@@ -1,8 +1,8 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Текущий этап: 3 — Inventory (не начат).
-Текущая задача: MULTI-TASK завершён, выполнено 10 задач, новых функций в этой сессии не добавлять.
+Текущий этап: 3 — Inventory (AUTONOMOUS DEVELOPMENT).
+Текущая задача: завершены 3/10 задач текущего пакета: Windows system identity, CPU, RAM; далее volumes, interfaces, IP config, apps, collector, applicability, CLI.
 Последний завершённый этап: базовые критерии этапа 2 — Profiles (YAML/наследование/примеры формируют валидный план); ядро этапа 1 расширено retries/concurrency/state/resume.
 Текущая ветка: master. Последний коммит реализации: adef541 — `feat(profiles): build selected plans and add workstation examples`.
 Пользователь разрешил MULTI-TASK по 5–10 задач, отдельные коммиты и переходы этапов. Это выше прежнего ограничения одной задачи; не запускать несколько агентов без отдельного указания. AGENTS обновлён.
@@ -21,6 +21,7 @@
 Промежуточные docs checkpoint-коммиты: 5151f06, 5d3bd45, 3bebe07, 14db356. Итоговый docs-коммит — HEAD после завершения (см. git log).
 
 ## Что уже реализовано
+- Inventory Native.System/CPU/Memory — read-only Windows API/registry, build tags; чистые модели и unit/native tests. System использует RtlGetVersion, native architecture (WOW64-aware); CPU model/vendor и GetActiveProcessorCount across groups; GlobalMemoryStatusEx для RAM. x/sys v0.6.0 (upstream go 1.17) закреплён для Go 1.20-совместимых Windows wrappers. Реальная Win7 VM пока не проверялась.
 - engine: Task/TaskResult/статусы, Validate, OrderTasks, Run с Adapter Precheck/Execute/Verify, отмена/timeout, пропуск заблокированных зависимостей.
 - PreviewPlan: независимые метаданные без Parameters/фиктивных успешных результатов, scope structure-and-dag-only.
 - RunWithOptions: MaxAttempts/RetryDelay (только RetryableError=true, новый Precheck), MaxParallel (default 1), ResourceKey для взаимного исключения всех фаз/ожиданий. WindowsInstallerResource обязателен для будущих MSI-адаптеров.
@@ -33,6 +34,7 @@
 - docs/architecture.md, docs/execution.md, docs/profiles.md описывают публичные API и ограничения.
 
 ## Что проверено
+- Текущий пакет: go test ./core/inventory/... и go vet ./core/inventory/... PASS после каждой из 3 задач. Реально прочитаны system/CPU/RAM на текущей Windows; приватные значения не выведены в журнал. Native layouts проверяются в тестах.
 Go 1.26.2, доступная Windows:
 - windows/amd64: `go test ./...`, `go vet ./...`, `go build ./...` — PASS.
 - windows/386: `go test ./...`, `go build ./...` — PASS; это не проверка Windows 7.
@@ -76,7 +78,7 @@ go build ./...
 - OS tokens профилей: windows-7-sp1/windows-10/windows-11; arch 386/amd64. Inventory должен использовать согласованное представление и не подменять реальные сведения предположениями.
 
 ## Следующая задача
-Этап 3: определить Windows version/build и hostname через read-only адаптер, без остальных датчиков/UI.
+Продолжить текущий пакет с локальных volumes/free space. Затем interfaces, IP/DNS/DHCP, installed apps, collector, applicability, read-only CLI. Точный список — TASKS.
 
 ## Инструкция следующему агенту
 1. Проверить status/log, прочитать AGENTS/TASKS и этот HANDOFF. Затем docs/architecture.md и только относящиеся engine/profile требования ОС.
