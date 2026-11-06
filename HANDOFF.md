@@ -2,7 +2,7 @@
 
 ## Состояние проекта
 Текущий этап: 3 — Inventory (AUTONOMOUS DEVELOPMENT).
-Текущая задача: завершены 6/10 задач: system identity, CPU, RAM, volumes, interfaces, IP config; далее apps, collector, applicability, CLI.
+Текущая задача: завершены 9/10 задач: system identity, CPU, RAM, volumes, interfaces, IP config, apps, collector, applicability; далее CLI и full-project verification.
 Последний завершённый этап: базовые критерии этапа 2 — Profiles (YAML/наследование/примеры формируют валидный план); ядро этапа 1 расширено retries/concurrency/state/resume.
 Текущая ветка: master. Последний коммит реализации: adef541 — `feat(profiles): build selected plans and add workstation examples`.
 Пользователь разрешил MULTI-TASK по 5–10 задач, отдельные коммиты и переходы этапов. Это выше прежнего ограничения одной задачи; не запускать несколько агентов без отдельного указания. AGENTS обновлён.
@@ -23,6 +23,9 @@
 ## Что уже реализовано
 - Inventory Native.System/CPU/Memory — read-only Windows API/registry, build tags; чистые модели и unit/native tests. System использует RtlGetVersion, native architecture (WOW64-aware); CPU model/vendor и GetActiveProcessorCount across groups; GlobalMemoryStatusEx для RAM. x/sys v0.6.0 (upstream go 1.17) закреплён для Go 1.20-совместимых Windows wrappers. Реальная Win7 VM пока не проверялась.
 - Native.Volumes: roots/drive type + GetDiskFreeSpaceEx (64-bit, quota-aware) для fixed/ramdisk; remote/removable/optical только metadata, capacity явно unknown. Partial failures сохраняют доступные тома. Native.Interfaces: IPv4/IPv6 prefixes/flags/MAC/MTU, без вывода о reachability. Native.NetworkConfig: GetAdaptersAddresses, gateways/DNS/DHCPv4/IPv4 enabled/link speeds/operational state, IPv6 scopes сохранены; bounded native buffers и record length checks.
+- Native.Apps: видимые HKLM/effective-user HKCU Uninstall entries в native 32/64 views; dedup shared views, без UninstallString/InstallLocation/Win32_Product. AppX/MSIX/portable apps не покрыты. Apps scope означает пользователя процесса, не автоматически интерактивного пользователя при elevation.
+- inventory.Collect/Report: семь секций, explicit ok/partial/failed/cancelled/not-collected; independent failures продолжают сбор, cancellation останавливает. ErrIncomplete и Complete=false не дают выдать частичный отчёт за полный; raw errors не сериализуются.
+- inventory.Applicable/GuardAdapter: fail-closed unknown OS/arch, canonical profile tokens, native OS arch вместо process arch; все три фазы guarded, несовместимый Precheck => NotApplicable, dependents => Skipped. Empty requirements разрешают только поддерживаемую workstation matrix, catalog должен сузить для конкретного пакета.
 - engine: Task/TaskResult/статусы, Validate, OrderTasks, Run с Adapter Precheck/Execute/Verify, отмена/timeout, пропуск заблокированных зависимостей.
 - PreviewPlan: независимые метаданные без Parameters/фиктивных успешных результатов, scope structure-and-dag-only.
 - RunWithOptions: MaxAttempts/RetryDelay (только RetryableError=true, новый Precheck), MaxParallel (default 1), ResourceKey для взаимного исключения всех фаз/ожиданий. WindowsInstallerResource обязателен для будущих MSI-адаптеров.
@@ -35,7 +38,7 @@
 - docs/architecture.md, docs/execution.md, docs/profiles.md описывают публичные API и ограничения.
 
 ## Что проверено
-- Текущий пакет: go test ./core/inventory/... и go vet ./core/inventory/... PASS после каждой из 6 задач. Реально прочитаны system/CPU/RAM/volumes/interfaces/IP config на текущей Windows; приватные значения не выведены в журнал. Native layouts/short records/IPv6 scopes/partial errors проверяются в тестах.
+- Текущий пакет: go test ./core/inventory/... и go vet ./core/inventory/... PASS после каждой из 9 задач; дополнительно go test ./core/engine/... для guard integration. Реально прочитаны все семь секций на текущей Windows, aggregate Complete=true. Приватные значения не выведены в журнал. Native layouts/short records/IPv6 scopes/partial errors/cancellation и engine guard проверены.
 Go 1.26.2, доступная Windows:
 - windows/amd64: `go test ./...`, `go vet ./...`, `go build ./...` — PASS.
 - windows/386: `go test ./...`, `go build ./...` — PASS; это не проверка Windows 7.
@@ -79,7 +82,7 @@ go build ./...
 - OS tokens профилей: windows-7-sp1/windows-10/windows-11; arch 386/amd64. Inventory должен использовать согласованное представление и не подменять реальные сведения предположениями.
 
 ## Следующая задача
-Продолжить с installed apps: HKLM/HKCU Uninstall в 32/64 registry views, только metadata, без UninstallString и Win32_Product. Затем collector, OS applicability, read-only CLI и full-project checks. Точный список — TASKS.
+Добавить cmd/windeploy-inspect: read-only inventory (text/JSON) и preview profiles; exclusive output creation, exit codes для partial/cancelled/errors. Затем go test/vet/build ./... на amd64, test/build на 386, реальный CLI smoke, dependency verify и HANDOFF. После 10 задач не расширять пакет до GUI без общей проверки.
 
 ## Инструкция следующему агенту
 1. Проверить status/log, прочитать AGENTS/TASKS и этот HANDOFF. Затем docs/architecture.md и только относящиеся engine/profile требования ОС.
