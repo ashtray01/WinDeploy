@@ -11,9 +11,12 @@ Stage 1 — Core Foundation: последовательный исполните
 - [x] Add first model unit tests and verify compilation
 - [x] Validate plan IDs, dependency references and DAG; deterministic topological order
 - [x] Implement sequential execution engine, context cancellation and task timeout
-- [ ] Add dry-run plan preview without Adapter calls (следующая сессия)
-- [ ] Implement retries and concurrency control
-- [ ] Implement persistent state and resume
+- [x] Add dry-run plan preview without Adapter calls (engine tests/vet PASS)
+- [ ] Add explicit retryable-error handling with bounded attempts and cancellable delay
+- [ ] Add bounded concurrency and exclusive resource keys
+- [ ] Add validated file-backed session snapshots
+- [ ] Resume completed tasks safely without duplicate execution
+- [ ] Persist checkpoints during execution and fail closed on storage errors
 - [ ] Stage 2 — Profiles
 - [ ] Stage 3 — Inventory
 - [ ] Stage 4 — GUI

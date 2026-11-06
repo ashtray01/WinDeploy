@@ -32,14 +32,9 @@ type Adapter interface {
 // which may include credentials. Detailed sanitized diagnostics are future work.
 // Input tasks are not updated; resume/retry of non-Pending tasks is not supported.
 func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, error) {
-	ordered, err := OrderTasks(tasks)
+	ordered, err := pendingPlan(tasks)
 	if err != nil {
 		return nil, err
-	}
-	for _, task := range ordered {
-		if task.Status != Pending {
-			return nil, fmt.Errorf("task %q must be Pending; resume is not supported", task.ID)
-		}
 	}
 	if len(ordered) > 0 && adapter == nil {
 		return nil, fmt.Errorf("task adapter is required")
