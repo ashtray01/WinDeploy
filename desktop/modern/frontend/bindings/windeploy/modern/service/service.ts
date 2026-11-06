@@ -15,12 +15,33 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * CancelPackageInstall requests cooperative cancellation of the active run.
+ */
+export function CancelPackageInstall(): $CancellablePromise<$models.PackageInstallView> {
+    return $Call.ByName("windeploy/modern/service.Service.CancelPackageInstall");
+}
+
 export function CancelScan(): $CancellablePromise<$models.State> {
     return $Call.ByName("windeploy/modern/service.Service.CancelScan");
 }
 
 export function GetJournal(): $CancellablePromise<$models.Entry[] | null> {
     return $Call.ByName("windeploy/modern/service.Service.GetJournal");
+}
+
+/**
+ * GetPackageInstall returns a copy of the live install progress.
+ */
+export function GetPackageInstall(): $CancellablePromise<$models.PackageInstallView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetPackageInstall");
+}
+
+/**
+ * GetPackages returns the catalog with detection state and a capability snapshot.
+ */
+export function GetPackages(): $CancellablePromise<$models.PackageCatalogView> {
+    return $Call.ByName("windeploy/modern/service.Service.GetPackages");
 }
 
 export function GetProfile(id: string): $CancellablePromise<$models.ProfileDetails> {
@@ -37,6 +58,14 @@ export function ListProfiles(): $CancellablePromise<$models.Catalog> {
 
 export function PreviewProfile(id: string, selected: string[] | null): $CancellablePromise<$models.ProfilePreview> {
     return $Call.ByName("windeploy/modern/service.Service.PreviewProfile", id, selected);
+}
+
+/**
+ * StartPackageInstall starts one background install run. Only one run may be
+ * active; progress is polled through GetPackageInstall.
+ */
+export function StartPackageInstall(ids: string[] | null): $CancellablePromise<$models.PackageInstallView> {
+    return $Call.ByName("windeploy/modern/service.Service.StartPackageInstall", ids);
 }
 
 export function StartScan(): $CancellablePromise<$models.State> {

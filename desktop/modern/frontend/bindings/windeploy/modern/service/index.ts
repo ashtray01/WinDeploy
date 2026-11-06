@@ -9,6 +9,12 @@ export {
 export type {
     Catalog,
     Entry,
+    PackageCatalogView,
+    PackageEnvironment,
+    PackageEvent,
+    PackageInstallView,
+    PackageResultView,
+    PackageView,
     PlannedTask,
     ProfileDetails,
     ProfilePreview,

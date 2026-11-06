@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) delete process.env[key];
 let browser;
-for (let i = 0; i < 20; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { timeout: 2000 }); break; } catch { await new Promise(resolve => setTimeout(resolve, 200)); } }
+for (let i = 0; i < 60; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { timeout: 2000 }); break; } catch { await new Promise(resolve => setTimeout(resolve, 250)); } }
 if (!browser) throw new Error('Desktop WebView2 unavailable');
 try {
   const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url() !== 'about:blank');
@@ -54,16 +54,27 @@ try {
   assert.equal(native.system.windows.major, 10);
   assert(native.system.windows.build >= 22000);
   await page.getByText('Несовместимо', { exact: true }).waitFor();
+  await nav.getByRole('button', { name: 'Установка ПО', exact: true }).click();
+  await page.getByRole('heading', { name: 'Каталог программ', exact: true }).waitFor();
+  await page.getByRole('button', { name: /Установить/ }).first().waitFor();
+  assert(await page.getByRole('row').count() >= 12);
+  assert(await page.getByText('WinGet', { exact: true }).first().isVisible());
+  assert(await page.getByText('SHA-256', { exact: false }).first().isVisible());
+  const checkboxes = page.getByRole('checkbox', { name: /^Выбрать / });
+  assert(await checkboxes.count() >= 6);
+  await checkboxes.first().uncheck();
+  await page.getByRole('button', { name: 'Проверить заново', exact: true }).click();
+  await page.getByRole('heading', { name: 'Каталог программ', exact: true }).waitFor();
+  await page.screenshot({ path: 'local/modern-packages.png' });
   await nav.getByRole('button', { name: 'Журнал', exact: true }).click();
   await page.getByRole('button', { name: 'Обновить журнал', exact: true }).click();
   await page.getByRole('textbox', { name: 'Поиск в таблице' }).fill('Построен предварительный план');
   await page.getByText('Построен предварительный план. Системные изменения не выполнялись.', { exact: true }).first().waitFor();
-  assert.equal(await page.getByRole('button', { name: /Установить|Применить|Выполнить/ }).count(), 0);
   assert.equal(await nav.locator('button.future:disabled').count(), 5);
   await page.setViewportSize({ width: 1024, height: 640 });
   assert(await page.locator('.app-shell').evaluate(e => e.scrollWidth <= e.clientWidth));
   assert.deepEqual(errors, []);
   await nav.getByRole('button', { name: 'Обзор', exact: true }).click();
   await page.setViewportSize({ width: 1366, height: 768 });
-  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, realJournal: true, noExecutionControls: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
+  console.log(JSON.stringify({ actualDesktop: true, nativeHostnameMatched: true, nativeAppCountMatched: true, apps: native.apps.length, rescan: true, inventoryTables: true, profileDAG: true, legacyIncompatible: true, packageCatalog: true, packageSelection: true, realJournal: true, viewports: ['1366x768', '1024x640'], pageErrors: errors.length }));
 } finally { await browser.close(); }

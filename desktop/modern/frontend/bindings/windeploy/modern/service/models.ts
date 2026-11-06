@@ -22,6 +22,102 @@ export interface Entry {
     "message": string;
 }
 
+/**
+ * PackageCatalogView is the complete package page state.
+ */
+export interface PackageCatalogView {
+    "source": string;
+    "environment": PackageEnvironment;
+    "packages": PackageView[] | null;
+    "warnings": string[] | null;
+}
+
+/**
+ * PackageEnvironment is the read-only capability snapshot shown in the GUI.
+ */
+export interface PackageEnvironment {
+    "elevated": boolean;
+    "winget": boolean;
+    "winget_version"?: string;
+    "windows": string;
+    "architecture": string;
+}
+
+/**
+ * PackageEvent is a translated, sanitized progress message.
+ */
+export interface PackageEvent {
+    "time": string;
+    "level": string;
+    "package_id"?: string;
+    "package_name"?: string;
+    "message": string;
+}
+
+/**
+ * PackageInstallView is the live install progress observed by the UI.
+ */
+export interface PackageInstallView {
+    "running": boolean;
+    "cancel_requested": boolean;
+    "generation": number;
+    "started_at": string;
+    "finished_at": string;
+    "total": number;
+    "completed": number;
+    "current"?: string;
+    "current_name"?: string;
+    "results": PackageResultView[] | null;
+    "events": PackageEvent[] | null;
+    "message": string;
+    "reboot_required": boolean;
+    "cancelled": boolean;
+}
+
+/**
+ * PackageResultView is the final state of one package operation.
+ */
+export interface PackageResultView {
+    "package_id": string;
+    "name": string;
+    "status": string;
+    "status_label": string;
+    "action": string;
+    "source_version"?: string;
+    "installed_before"?: string;
+    "installed_after"?: string;
+    "exit_code"?: number;
+    "attempts": number;
+    "reboot_required": boolean;
+    "error_code"?: string;
+    "error"?: string;
+    "started_at": string;
+    "finished_at": string;
+}
+
+/**
+ * PackageView is one row of the installable catalog with its current action.
+ */
+export interface PackageView {
+    "id": string;
+    "name": string;
+    "publisher": string;
+    "category": string;
+    "group"?: string;
+    "description"?: string;
+    "requirements": engine$0.OSRequirements;
+    "requires_admin": boolean;
+    "installed": boolean;
+    "installed_version"?: string;
+    "action": string;
+    "action_label": string;
+    "reason": string;
+    "source_kind"?: string;
+    "source_version"?: string;
+    "integrity"?: string;
+    "size_bytes"?: number;
+}
+
 export interface PlannedTask {
     "task": engine$0.PreviewTask;
     "compatibility": string;

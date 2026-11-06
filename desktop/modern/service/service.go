@@ -45,6 +45,7 @@ type Service struct {
 	closed        bool
 	state         State
 	nextEntry     uint64
+	packages      *packageState
 }
 
 func New(provider inventory.Provider) *Service {
@@ -53,7 +54,8 @@ func New(provider inventory.Provider) *Service {
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	s := &Service{provider: provider, ctx: ctx, stop: stop, state: State{Status: "idle", Journal: []Entry{}}}
-	s.appendLocked("info", "application", "WinDeploy запущен в режиме просмотра. Изменения системы недоступны.")
+	s.packages = newPackageState(ctx, defaultPackageDeps(), s.currentSystem)
+	s.appendLocked("info", "application", "WinDeploy запущен. Доступны просмотр сведений и установка программ из каталога.")
 	return s
 }
 
@@ -164,6 +166,9 @@ func (s *Service) ServiceShutdown() error {
 		s.cancel()
 	}
 	s.mu.Unlock()
+	if s.packages != nil {
+		s.packages.shutdown()
+	}
 	s.wg.Wait()
 	return nil
 }

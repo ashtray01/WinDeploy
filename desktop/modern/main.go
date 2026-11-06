@@ -18,15 +18,27 @@ import (
 var assets embed.FS
 
 func main() {
+	initStartupLog()
 	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
 	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
 	flag.Parse()
 	if *smokePort != 0 && (*smokePort < 1024 || *smokePort > 65535) {
-		log.Fatal("invalid smoke port")
+		logStation("некорректный порт отладки")
+		showStartupError()
+		os.Exit(2)
+	}
+	if version, ok := webView2RuntimeVersion(); !ok {
+		logStation("WebView2 Runtime не обнаружен")
+		showWebView2Missing("не найден")
+		os.Exit(3)
+	} else {
+		logStation("WebView2 Runtime %s", version)
 	}
 	cache, err := os.UserCacheDir()
 	if err != nil {
-		log.Fatal("user cache directory unavailable")
+		logStation("каталог пользовательского кэша недоступен")
+		showStartupError()
+		os.Exit(4)
 	}
 	options := application.WindowsOptions{WebviewUserDataPath: filepath.Join(cache, "WinDeploy", "WebView2")}
 	if *smokePort != 0 {
@@ -43,6 +55,7 @@ func main() {
 		Services: []application.Service{application.NewService(backend)},
 		ErrorHandler: func(err error) {
 			service.RuntimeErrorHandler(backend)(err)
+			logStation("ошибка среды: %v", err)
 			var fatal *application.FatalError
 			if errors.As(err, &fatal) {
 				showStartupError()
@@ -54,8 +67,11 @@ func main() {
 		Windows:          application.WindowsWindow{Theme: application.Dark},
 		BackgroundColour: application.NewRGB(14, 18, 26), URL: "/", DevToolsEnabled: *smokePort != 0,
 	})
+	logStation("окно создано, запуск Wails")
 	if err := app.Run(); err != nil {
+		logStation("Wails завершился с ошибкой: %v", err)
 		showStartupError()
 		log.Fatal(err)
 	}
+	logStation("приложение завершено")
 }
