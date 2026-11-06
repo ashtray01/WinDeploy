@@ -1,0 +1,28 @@
+# Build output and local tools
+/bin/
+/dist/
+/build/
+*.exe
+*.dll
+*.test
+*.out
+coverage.*
+
+# Frontend dependencies
+node_modules/
+
+# Local settings, credentials and runtime data
+.env
+.env.*
+!.env.example
+/local/
+/logs/
+/state/
+/cache/
+*.log
+
+# Editor and OS files
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
