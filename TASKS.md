@@ -24,7 +24,7 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Build selected-component plans, clone profiles and add examples
 - [ ] Stage 3 — Inventory
   - [x] Read Windows version/build and hostname via a read-only Windows adapter; parsing/error tests
-  - [ ] Read CPU model and logical processor count
+  - [x] Read CPU model and logical processor count
   - [ ] Read physical RAM totals and availability
   - [ ] Enumerate local volumes and free space
   - [ ] Enumerate interfaces, addresses and link state
