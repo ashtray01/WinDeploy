@@ -23,8 +23,16 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Resolve single-parent inheritance with cycle detection
   - [x] Build selected-component plans, clone profiles and add examples
 - [ ] Stage 3 — Inventory
-  - [ ] Read Windows version/build and hostname via a read-only Windows adapter; parsing/error tests
-  - [ ] Collect CPU, RAM, disks, interfaces and installed apps
+  - [x] Read Windows version/build and hostname via a read-only Windows adapter; parsing/error tests
+  - [ ] Read CPU model and logical processor count
+  - [ ] Read physical RAM totals and availability
+  - [ ] Enumerate local volumes and free space
+  - [ ] Enumerate interfaces, addresses and link state
+  - [ ] Read adapter gateways, DNS and DHCP configuration
+  - [ ] Enumerate installed apps in machine/user registry views
+  - [ ] Collect inventory with explicit partial errors and cancellation
+  - [ ] Enforce inventory-based OS/architecture applicability before task execution
+  - [ ] Add read-only inventory/plan-preview CLI and whole-project smoke check
 - [ ] Stage 4 — GUI
 - [ ] Stage 5 — Package Manager
 - [ ] Stage 6 — Network & Shares
