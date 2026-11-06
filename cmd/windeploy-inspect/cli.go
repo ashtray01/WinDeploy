@@ -8,17 +8,22 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"windeploy/core/inventory"
+	"windeploy/core/network"
 	"windeploy/core/profiles"
 )
 
+var diagnosticDependencies = network.NativeDependencies()
+
 func usage(writer io.Writer) {
-	fmt.Fprintln(writer, "WinDeploy read-only inspection\n  inventory [--format text|json] [--output NEW-FILE] [--timeout 15s]\n  preview --profile ID [--profiles profiles] [--select id,id] [--output NEW-FILE]\nExit codes: 0 complete, 1 input/output error, 2 partial inventory, 3 cancelled/deadline.\nInventory includes private workstation metadata; keep reports local.")
+	fmt.Fprintln(writer, "WinDeploy read-only inspection\n  inventory [--format text|json] [--output NEW-FILE] [--timeout 15s]\n  network [--dns name] [--tcp host:port] [--icmp host] [--http url] [--smb host] [--json] [--timeout 5s] [--output NEW-FILE]\n  preview --profile ID [--profiles profiles] [--select id,id] [--output NEW-FILE]\nExit codes: 0 complete, 1 input/output error, 2 partial inventory/failed diagnostics, 3 cancelled/deadline.\nInventory includes private workstation metadata; keep reports local.")
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer, provider inventory.Provider) int {
@@ -31,6 +36,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, provider 
 		return runInventory(ctx, args[1:], stdout, stderr, provider)
 	case "preview":
 		return runPreview(ctx, args[1:], stdout, stderr)
+	case "network":
+		return runNetwork(ctx, args[1:], stdout, stderr)
 	default:
 		fmt.Fprintln(stderr, "unknown command; use help")
 		return 1
@@ -154,6 +161,113 @@ func runPreview(ctx context.Context, args []string, stdout, stderr io.Writer) in
 	if err != nil || writeOutput(*output, data, stdout) != nil {
 		fmt.Fprintln(stderr, "could not write preview")
 		return 1
+	}
+	return 0
+}
+
+type stringList []string
+
+func (s *stringList) String() string { return strings.Join(*s, ",") }
+func (s *stringList) Set(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return errors.New("empty value")
+	}
+	*s = append(*s, strings.TrimSpace(value))
+	return nil
+}
+
+func runNetwork(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("network", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	var dnsNames, tcpTargets, icmpHosts, httpURLs, smbHosts stringList
+	flags.Var(&dnsNames, "dns", "DNS name to resolve (repeatable)")
+	flags.Var(&tcpTargets, "tcp", "TCP host:port (repeatable)")
+	flags.Var(&icmpHosts, "icmp", "ICMP host (repeatable)")
+	flags.Var(&httpURLs, "http", "HTTP(S) URL (repeatable)")
+	flags.Var(&smbHosts, "smb", "SMB server for port 445 (repeatable)")
+	timeout := flags.Duration("timeout", 5*time.Second, "per-check timeout")
+	asJSON := flags.Bool("json", false, "JSON output")
+	output := flags.String("output", "", "create a new local report file; never overwrite")
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+	if flags.NArg() != 0 || *timeout <= 0 {
+		fmt.Fprintln(stderr, "invalid network options")
+		return 1
+	}
+	configCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	adapters, adapterErr := inventory.Native{}.NetworkConfig(configCtx)
+	cancel()
+	if adapterErr != nil {
+		fmt.Fprintln(stderr, "network adapters could not be read")
+		return 1
+	}
+	endpoints := []network.Endpoint{}
+	for _, target := range tcpTargets {
+		host, portText, err := net.SplitHostPort(target)
+		if err != nil {
+			fmt.Fprintf(stderr, "invalid TCP target %q; use host:port\n", target)
+			return 1
+		}
+		port, convErr := strconv.Atoi(portText)
+		if convErr != nil || port <= 0 || port > 65535 {
+			fmt.Fprintf(stderr, "invalid TCP port in %q\n", target)
+			return 1
+		}
+		endpoints = append(endpoints, network.Endpoint{Host: host, Port: port})
+	}
+	gateways := []string{}
+	servers := []string{}
+	for _, adapter := range adapters {
+		if !adapter.Operational {
+			continue
+		}
+		gateways = append(gateways, adapter.Gateways...)
+		servers = append(servers, adapter.DNSServers...)
+	}
+	plan := network.Plan{
+		Adapters: adapters, DNSNames: dnsNames, Servers: servers, Gateways: gateways,
+		TCPTargets: endpoints, ICMPHosts: icmpHosts, HTTPURLs: httpURLs, SMBHosts: smbHosts, Timeout: *timeout,
+	}
+	checks := network.BuildChecks(plan)
+	if len(checks) == 0 {
+		fmt.Fprintln(stderr, "no checks selected; add --dns, --tcp, --icmp, --http or --smb")
+		return 1
+	}
+	runCtx, stop := context.WithTimeout(ctx, time.Duration(len(checks))*(*timeout+time.Second)+5*time.Second)
+	defer stop()
+	report, err := network.Diagnose(runCtx, checks, diagnosticDependencies)
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		fmt.Fprintln(stderr, "diagnostics failed")
+		return 1
+	}
+	var data []byte
+	if *asJSON {
+		data, err = encodeJSON(report)
+	} else {
+		var text bytes.Buffer
+		fmt.Fprintf(&text, "WinDeploy network diagnostics\nChecks: %d; failed: %d; complete: %t\n", len(report.Results), report.Failed, report.Complete)
+		for _, result := range report.Results {
+			detail := result.Detail
+			if detail == "" {
+				detail = result.ErrorCode
+			}
+			fmt.Fprintf(&text, "[%s] %s — %s (%d ms)\n", result.Status, result.Name, detail, result.LatencyMS)
+		}
+		data = text.Bytes()
+	}
+	if err != nil || writeOutput(*output, data, stdout) != nil {
+		fmt.Fprintln(stderr, "could not write diagnostics")
+		return 1
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return 3
+	}
+	if report.Failed > 0 || !report.Complete {
+		return 2
 	}
 	return 0
 }
