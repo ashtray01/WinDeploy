@@ -27,7 +27,7 @@ Stage 3 — Inventory: базовые критерии Profiles выполнен
   - [x] Read CPU model and logical processor count
   - [x] Read physical RAM totals and availability
   - [x] Enumerate local volumes and free space
-  - [ ] Enumerate interfaces, addresses and link state
+  - [x] Enumerate interfaces, addresses and link state
   - [ ] Read adapter gateways, DNS and DHCP configuration
   - [ ] Enumerate installed apps in machine/user registry views
   - [ ] Collect inventory with explicit partial errors and cancellation
