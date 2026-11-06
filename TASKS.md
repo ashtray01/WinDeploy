@@ -29,4 +29,4 @@ GitHub CLI отсутствует; remote не настроен. Локальн�
 Проверка Go 1.20 и Windows 7 VM не выполнена; совместимость не подтверждена.
 
 ## Last verified commit
-7dd54cf — bootstrap. Модели проверены в рабочем дереве; хеш их коммита будет записан после фиксации.
+47f2edc — `feat(core): add task models and validation tests`; go test/vet/build и gofmt прошли на Go 1.26.2 windows/amd64.

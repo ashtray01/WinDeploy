@@ -4,7 +4,9 @@
 Текущий этап: 1 — Core Foundation (первая часть).
 Текущая задача: модели завершены, сессия заканчивается.
 Последний завершённый этап: 0 — Bootstrap; модели первой части этапа 1.
-Последний успешный коммит: 7dd54cf — bootstrap; проверенные модели подготовлены к коммиту.
+Последний успешный коммит реализации: 47f2edc — `feat(core): add task models and validation tests`.
+Bootstrap: 7dd54cf — `chore: initialize WinDeploy repository`.
+Текущий документ фиксируется отдельным `docs: update agent handoff`; его хеш доступен в git log.
 Текущая ветка: master.
 
 ## Что уже реализовано
