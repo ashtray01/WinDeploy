@@ -1,0 +1,6 @@
+/frontend/dist/
+/frontend/tsconfig.tsbuildinfo
+/frontend/playwright-report/
+/frontend/test-results/
+/build/
+*.syso

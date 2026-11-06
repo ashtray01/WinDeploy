@@ -34,8 +34,16 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [x] Enforce inventory-based OS/architecture applicability before task execution
   - [x] Add read-only inventory/plan-preview CLI and whole-project smoke check
 - [ ] Stage 4 — GUI
-  - [ ] Verify current Wails version/toolchain/Windows compatibility and create isolated Modern module
-  - [ ] Add real Inventory dashboard and profile/plan preview with responsive Russian dark UI
+  - [ ] Modern 1 — Verify core with isolated Go 1.20 on amd64/386 (official archive transport interrupted; resume pending; root Go 1.26 regressions PASS)
+  - [x] Modern 2 — Isolate and pin stable Wails v3.1.0 module; root go.mod unchanged
+  - [x] Modern 3 — Build and launch Windows Wails/React/TypeScript EXE (real HWND + rendered WebView2 bootstrap smoke PASS)
+  - [ ] Modern 4 — Add responsive dark design system
+  - [ ] Modern 5 — Add navigation shell and honest unavailable sections
+  - [ ] Modern 6 — Typed Go bridge with real Inventory, cancellation and partial errors
+  - [ ] Modern 7 — Real dashboard and rescan
+  - [ ] Modern 8 — Searchable/sortable Inventory detail tables
+  - [ ] Modern 9 — YAML profile selection, real preview/DAG/applicability
+  - [ ] Modern 10 — Real journal, UI/backend tests, GUI smoke and core regression check
 - [ ] Stage 5 — Package Manager
 - [ ] Stage 6 — Network & Shares
 - [ ] Stage 7 — Drivers & Printers
