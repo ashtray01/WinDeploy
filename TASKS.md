@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 1 — Core Foundation: модели завершены; следующая часть — валидация DAG.
+Stage 1 — Core Foundation: модели и валидация DAG завершены; следующая часть — последовательный исполнитель.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -9,7 +9,7 @@ Stage 1 — Core Foundation: модели завершены; следующая
 - [x] Add Go 1.20 core skeleton (директива модуля; Go 1.20 toolchain ещё не проверен)
 - [x] Implement Task, TaskStatus and TaskResult models
 - [x] Add first model unit tests and verify compilation
-- [ ] Validate plan IDs, dependency references and DAG; deterministic topological order (следующая сессия)
+- [x] Validate plan IDs, dependency references and DAG; deterministic topological order
 - [ ] Implement execution engine and context cancellation
 - [ ] Implement retries, dry-run and concurrency control
 - [ ] Implement persistent state and resume

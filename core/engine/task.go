@@ -56,8 +56,8 @@ type Task struct {
 	Status       TaskStatus        `json:"status"`
 }
 
-// Validate checks a single task's structure. Missing dependencies, cycles,
-// OS compatibility and status transitions require the future plan validator.
+// Validate checks a single task's structure. OrderTasks checks dependency
+// references and cycles. Neither checks OS compatibility or status transitions.
 func (t Task) Validate() error {
 	if strings.TrimSpace(t.ID) == "" {
 		return fmt.Errorf("task ID is required")
