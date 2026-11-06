@@ -1,63 +1,67 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Ветка master. Завершены все 10 задач текущего Modern GUI пакета; следующий этап Package Manager не начат и не разрешён текущим объёмом. Последняя реализация: 169c239. База сессии: 4b6250c.
-Подробный итог: docs/reports/modern-gui.md; сборка/запуск/контракты: docs/modern.md. TASKS.md отмечает Modern 1–10, весь будущий Stage 4 не объявлен завершённым.
+Ветка master. Завершены Stage 5 «Package Manager» и Stage 6 «Network & Shares» (ядро + Modern GUI + CLI). Последние коммиты: 29f41fd, 6af236b, 1d38b1a, 4e2d883. Следующий этап — Stage 7 «Drivers & Printers». Root остаётся Go 1.20; Modern — отдельный модуль Go 1.26/Wails 3.1.
 
 ## Что реализовано
-- Изолированный desktop/modern: Wails/CLI/runtime v3.1.0 stable, Go 1.26.0+; проверен системный Go 1.26.2. Root windeploy сохраняет Go 1.20 и прежние зависимости. Root ./... не включает Modern.
-- Настоящий Windows EXE bin/WinDeploy-Windows-x64.exe: Wails + React/TypeScript, тёмные поверхности/синие акценты, sidebar/topbar/statusbar, реальные Dashboard и Inventory tables, поиск/сортировка/пагинация, 1366×768 и минимальное окно 1024×640. Будущие модули disabled/«Скоро».
-- service использует inventory.Native/Collect асинхронно: один scan, deadline 30s, cooperative cancel, partial/errors/unknown. Reports после публикации immutable, журнал ограничен 200 настоящими событиями. ServiceShutdown отменяет и дожидается scan. Typed bindings генерируются Wails -noevents; production fallback/fixtures отсутствуют.
-- Существующие 8 YAML встроены через profiles/embed.go (Go1.20 embed); --profiles path читает внешние YAML. Core strict parser/Resolve/Preview/Applicable; выбор включает dependency closure; DAG и incompatible/blocked/unknown честные. Parameters не экспортируются, execution API не подключён. Неудачный reload сбрасывает старый registry.
-- Реальный журнал текущего процесса, безопасные сообщения ошибок среды, UI ErrorBoundary и native dialog при fatal startup. Журнал не сохраняется на диск. WebView2 автоматически не устанавливается.
-- Core engine/state/profiles/inventory и read-only CLI предыдущей сессии сохранены. Их контракты/ограничения описаны в docs/architecture.md, execution.md, profiles.md, inventory.md и docs/reports/autonomous-inventory.md.
+
+### Package Manager (Stage 5)
+- `core/packages`: строгий каталог (12 программ), детекция (Uninstall, MSI ProductCode, файлы/маски), сравнение версий, выбор источника (WinGet/HTTPS/локальный файл) с приоритетами, потоковая загрузка с SHA-256 и проверенным кэшем, Authenticode через WinVerifyTrust + извлечение субъекта сертификата, тихая установка EXE/MSI/portable, классификация кодов выхода, повтор при 1618/retry-кодах, `RebootRequired`, пост-проверка, запрет переустановки и синхронная проверка прав администратора.
+- `catalog/packages.yaml`: 7-Zip, Chrome, Firefox, Яндекс Браузер, Telegram, TG WS Proxy, MAX, VLC, MPC-HC, SumatraPDF, IrfanView, PrinterOne. WinGet-ID проверены на месте; HTTPS-URL и SHA-256 взяты из актуальных WinGet-манифестов; есть офлайн-файлы `%ProgramData%\WinDeploy\Packages`.
+- Modern: страница «Установка ПО» — галочки, состояние/версия/источник/интеграция, установка в фоне, прогресс, журнал, отмена, итоговая таблица; без прав администратора системные пакеты блокируются.
+- CLI `cmd/windeploy-packages`: `list`, `plan`, `download`, `install` (требует `--yes`), `--dry-run`, `--no-winget`, JSON.
+- WinGet discovery: App Execution Alias не открывается `os.Stat`; ищем AppX-путь и используем fallback через `cmd.exe`/PowerShell. В текущей песочнице WinGet не получает identity, поэтому план честно уходит на HTTPS-источники.
+
+### Network & Shares (Stage 6)
+- `core/network`: DNS (системный и конкретный сервер), DHCP-сводка, шлюз, TCP, ICMP, HTTP, SMB-445; таймауты на проверку, статусы ok/failed/timeout/skipped/unsupported, отмена, безопасные детали.
+- `core/shares`: валидация UNC, WNetAddConnection2W, Windows Credential Manager (generic DPAPI, таргет `WinDeploy:share:<server>`), обнаружение Error 1219 и разрешение только по явному подтверждению, перечисление подключений WNet, нативные ярлыки `.lnk` (IShellLink/IPersistFile), Known Folder Desktop.
+- Modern: страницы «Диагностика» и «Сетевые папки» (dry-run, подтверждение, конфликт 1219, список подключений).
+- CLI `windeploy-inspect network` для реальной диагностики.
+
+### Прочее
+- `docs/packages.md`, `docs/network.md`, обновлены `docs/architecture.md`, `docs/modern.md`, `TASKS.md`.
+- Startup-диагностика Modern: журнал `%LOCALAPPDATA%\WinDeploy\logs\startup.log`, проверка WebView2 Runtime до Wails, нативные сообщения с путём лога.
 
 ## Проверки
-- Официальный отдельный Go 1.20.14, SHA-256 проверен до запуска. scripts/test-core.ps1: test/vet/build root windows/amd64 и windows/386 PASS. Повторные go test -count=1 ./... обеих архитектур PASS. Native Inventory tests реально исполнялись на текущей Windows, не Win7 VM.
-- Root Go1.26.2 test/vet/build PASS; go mod verify PASS; исходные root go.mod/go.sum не повышены ради GUI.
-- Modern Go test (также -count=1)/vet/build PASS, module cache verify PASS через временный workspace (см. docs/modern.md).
-- UI 8 файлов / 14 tests PASS, strict TypeScript/Vite production build PASS.
-- Финальный настоящий EXE на Windows11 x64 build26200/WebView2 156.0.4314.58: HWND/DOM/assets, native CLI comparison hostname+apps, rescan generation, Inventory tables/search/sort, Administrator DAG, Legacy incompatibility, real journal PASS; 1366×768 и 1024×640, 0 page errors. Скрипт scripts/gui-modern-smoke.mjs; это реальный desktop, не Vite browser preview.
-- Private screenshots local/modern-dashboard-final.png и local/modern-profiles.png визуально проверены; binaries/logs/private data не в Git. Diff --check и gofmt PASS.
-- После всех 10 задач выполнена проверка интеграции и регрессий; правило AGENTS whole-project check соблюдено.
+- Go 1.20.14 (windows/amd64 и windows/386): `scripts/test-core.ps1` — test/vet/build PASS после Stage 5 и Stage 6. Включая native-тесты Windows: подпись Authenticode (подписанный вендорский файл PASS, неподписанный отклонён), чтение версии файла, exit code/отмена процесса, Credential Manager round-trip, WNet enumeration, создание .lnk.
+- Modern Go: `go test ./...`, `go vet ./...` PASS; `scripts/build-modern.ps1` PASS (bindings, 23 UI tests, strict TypeScript, Vite production, module verify, Windows EXE 18+ МБ).
+- UI: 23 vitest-теста (Dashboard, Inventory, Profiles, Packages, Network, Shares, Shell, Journal, ErrorBoundary) PASS.
+- Реальная Windows (Windows 11 x64 build 26200): детекция установленных 7-Zip/Chrome/Firefox/Telegram/VLC/SumatraPDF/IrfanView; HTTPS-загрузки 7-Zip 26.05 (1 663 506 B, SHA-256 `fd99e86f…`), SumatraPDF 3.6.1 (11 075 960 B, `1eee71cc…`), PrinterOne 1.0.1 (21 647 518 B, `d0211d52…`) — хеши совпали; повторная загрузка из кэша без сети; сеть: DNS localhost, прямой DNS-сервер 10.20.20.1, TCP 445, HTTP локального сервера, DHCP-статусы, ICMP честно недоступен.
+- Реальный GUI smoke **не выполнялся** в этой сессии: хост перестал создавать WebView2-контроллер (`0x8000FFFF`) для любого Wails-приложения, включая минимальный тест и сборку из предыдущего коммита. Это внешняя среда; startup-диагностика теперь фиксирует такие сбои в файле. Предыдущий реальный smoke был PASS на сборке 169c239.
 
 ## Ограничения
-- Windows7 SP1 VM не проверена. Успешный Go1.20 на текущей Windows не доказывает Win7 runtime. Modern не предназначен для Win7; Legacy GUI отсутствует.
-- Не проверены Windows10 VM, missing/old WebView2, multi-monitor/DPI и ARM. Race detector не запускался: C compiler недоступен.
-- Нет Package Manager/реальных изменяющих adapters/драйверов/изменения сети. Preview — структура/DAG/OS requirements, не проверка установщиков/источников/прав/installed state.
-- Core native API синхронны, отмена кооперативная; Apps не включает AppX/MSIX/portable, HKCU зависит от пользователя процесса. Больше границ Inventory в docs/inventory.md.
-- Runtime cache %LOCALAPPDATA%/WinDeploy/WebView2; не запускать несколько экземпляров с одним cache. Журнал в памяти, параметры YAML скрыты, GUI editing/persistent sessions отсутствуют.
-- GitHub remote/CI/releases не создавались. Git status должен быть чистым после финального docs-коммита.
+- Реальная установка стороннего ПО и подключение к настоящему SMB-серверу не выполнялись: нет прав администратора и изолированной VM/сервера. WinGet-путь не проверен в нормальной интерактивной сессии.
+- Windows 7 SP1 VM отсутствует; Legacy GUI ещё не реализован. Go 1.20 на текущей Windows не доказывает Win7 runtime.
+- Windows 10 VM, отсутствующий/старый WebView2, DPI/мультимонитор, ARM не проверены. Race detector недоступен (нет C compiler).
+- HTTPS-хеши закреплены на версии WinGet-манифеста; при обновлении неизменяемого URL будет fail-closed.
+- Shares не интегрированы в исполнение профилей (Task Engine) — это Stage 9; ярлыки/автозапуск portable-программ не создаются; удаление пакетов не реализовано.
+- GitHub remote/CI/release отсутствуют.
 
 ## Коммиты сессии
-1 f1b893f — core Go1.20 verification script.
-2 e853495 — isolated pinned Wails module.
-3 3243666 — real desktop bootstrap.
-Checkpoint c812679.
-4 ad7ab1e — design system.
-112dc64 — actual Go1.20 amd64/386 verification after download.
-5 dbb6c86 — navigation shell.
-6 96163d5 — typed native async bridge + checkpoint.
-7 3dc6d2f — real dashboard/native smoke.
-8 42569e1 — Inventory detail tables.
-9 5048915 — Profiles/DAG/applicability.
-Checkpoint fb7c5ad.
-10 169c239 — journal/errors/full integration/build script.
-Итоговая документация — следующий docs-коммит, посмотреть git log.
+- 29f41fd — Package Manager: download API, CLI, WinGet discovery.
+- 6af236b — Modern: страница пакетов, service, startup-диагностика.
+- 1d38b1a — core/network + core/shares + network CLI.
+- 4e2d883 — Modern: страницы сети/папок, документация.
+Предыдущая база: 169c239 (Modern 10).
 
 ## Архитектурные решения
-Не переносить Wails в root module. Core остаётся Go1.20; Modern зависимости обновляются отдельно. Generated bindings, одна production transport boundary, UI без Windows API и execution logic. Report snapshot/preview read-only. Go mod verify Modern использует local/_modern-verify/go.work только во время проверки: Go1.26.2 иначе пытается проверить zip локального replacement. Это не root workspace/toolchain upgrade.
+- Каталог и установка не зависят от UI; все Windows-эффекты в адаптерах, Manager тестируется fake-адаптерами.
+- Integrity по умолчанию — pinned SHA-256; подпись издателя обязательна только при `integrity: signature` или заданном `signer`. `winget` использует собственные манифест-хеши.
+- Credential Manager: generic DPAPI credential, так как domain-password тип не сохраняет произвольный blob вне домена; пароль никогда не пишется в профиль/лог/командную строку.
+- Error 1219 никогда не разрешается автоматически: сначала typed error, затем повторный явный запрос.
+- `core/network` использует `ping.exe` только для ICMP; TCP/DNS/HTTP — нативные Go API.
+- `core/shares` COM-вызовы реализованы вручную через vtable; это проверено реальным созданием `.lnk`.
 
 ## Следующая конкретная задача
-Проверить воспроизводимую сборку Modern из чистого checkout и missing-WebView2 startup в изолированной Windows VM, записать результаты. Затем DPI/keyboard accessibility; Package Manager не начинать.
+Stage 7 — Drivers & Printers: `core/drivers` (unknown devices, Hardware ID, installed drivers, INF install with signature check and Windows-version/arch matching, local/network driver catalog, Windows Update-compatible mechanism) и `core/printers` (TCP/IP ports, shared Windows printers, default printer, test page, Kyocera 2460 с обязательным уточнением модели), затем Modern-страницы и CLI. Изменяющие операции — только с правами и явным подтверждением; реальная проверка — в VM.
 
 ## Инструкция следующему агенту
-1. git status/log; AGENTS/HANDOFF/TASKS, затем docs/modern.md. Не повторять исследование готового ядра.
-2. Build: scripts/build-modern.ps1 (-InstallDependencies для clean checkout). CLI закреплён cache/tools/wails-3.1/wails3.exe; npm/Go caches внутри cache/. Toolchain Go1.20.14: local/_toolchains/go1.20.14/go/bin/go.exe, cache/go-build-go120. Подчёркивания исключают toolchain/module sources из root ./....
-3. Core: scripts/test-core.ps1 -Go (Join-Path $PWD 'local/_toolchains/go1.20.14/go/bin/go.exe') -BuildCache go-build-go120. Не выдавать это за Win7 VM test.
-4. GUI smoke: независимая native CLI bin/WinDeploy-Inspect-Windows-x64.exe; GUI --smoke-port 9223; node scripts/gui-modern-smoke.mjs. Оба процесса под одним интерактивным пользователем: sandbox HKCU показал167, настоящий пользователь200 entries; сравнение разных HKCU неверно. CDP включается только флагом. Для background GUI в tool session держать PowerShell WaitForExit, иначе tool host может завершить child; запускать smoke сразу после Start-Process. Обычный запуск без smoke-port.
-5. GUI требует обычного доступа к user cache вне файловой sandbox; interactive launch и same-user smoke выполнялись через escalated exec. Это не разрешение системных изменений. Для пересборки закрывать только собственный EXE с проверкой Process.Path; не трогать чужие WebView/browser processes.
-6. Git .git защищён sandbox: commit через escalated exec с git -c safe.directory=C:/Users/ashtr/OneDrive/Desktop/git/WinDeploy, без global config/identity. После atomic task tests/commit/TASKS; HANDOFF каждые2–3; whole-project после10–15.
+1. `git status`, `git log -5 --oneline`, прочитать этот файл, `TASKS.md`, `docs/packages.md`, `docs/network.md`; не переисследовать готовое ядро.
+2. Core-проверка: `.\scripts\test-core.ps1 -Go (Join-Path $PWD 'local/_toolchains/go1.20.14/go/bin/go.exe') -BuildCache go-build-go120`. Скрипт сам переносит TEMP внутрь workspace из-за песочницы.
+3. Modern: `.\scripts\build-modern.ps1`; UI отдельно `npm test` и `npm run typecheck` в `desktop/modern/frontend`.
+4. Реальный CLI: `bin\WinDeploy-Packages-Windows-x64.exe plan|download -no-winget -cache local/pkg-cache`, `bin\WinDeploy-Inspect-Windows-x64.exe network --dns localhost --tcp 127.0.0.1:445`.
+5. GUI smoke: `node scripts/gui-modern-smoke.mjs` только если WebView2 снова создаёт контроллер; перед запуском проверьте `%LOCALAPPDATA%\WinDeploy\logs\startup.log`. Не выдавайте сборку за desktop smoke.
+6. Git commit разрешён без escalation в текущем режиме; не коммитить `bin/`, `cache/`, `local/`, логи и приватные данные. Перед завершением обновить TASKS/HANDOFF и проверить `git status`.
 
 ## Чего нельзя делать
-Не устанавливать пакеты/драйверы, не менять сеть/защиту/Windows settings на рабочем хосте; изменяющие операции только отдельно авторизованной VM. Не добавлять fixture data/Success в production GUI. Не коммитить EXE, кэши, runtime logs, hostname/IP/MAC/app lists и credentials. Не публиковать release как production-ready по одному desktop smoke.
+Не устанавливать пакеты/драйверы/принтеры и не менять сеть/защиту/Windows settings на рабочем хосте; изменяющие операции только в отдельно авторизованной VM. Не коммитить EXE, кэши, логи, hostname/IP/MAC/списки приложений и пароли. Не отключать проверку SHA-256/подписи ради «удобства». Не публиковать релиз как production-ready без реальных проверок.
