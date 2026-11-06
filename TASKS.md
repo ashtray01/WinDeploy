@@ -30,4 +30,4 @@ GitHub CLI отсутствует; remote не настроен. Локальн�
 Проверка Go 1.20 и Windows 7 VM не выполнена; совместимость не подтверждена.
 
 ## Last verified commit
-b516282 — `feat(engine): validate task dependency plans`; go test ./core/engine/..., go vet ./..., go build ./... и gofmt прошли на Go 1.26.2 windows/amd64.
+36fb704 — `feat(engine): add sequential task executor`; go test ./core/engine/..., go vet ./..., go build ./... и gofmt прошли на Go 1.26.2 windows/amd64.

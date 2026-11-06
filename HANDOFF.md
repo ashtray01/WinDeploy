@@ -4,10 +4,11 @@
 Текущий этап: 1 — Core Foundation (последовательный исполнитель).
 Текущая задача: исполнитель завершён, сессия заканчивается.
 Последний завершённый этап: 0 — Bootstrap; модели, DAG и последовательное выполнение этапа 1.
-Последний успешный коммит реализации: b516282 — `feat(engine): validate task dependency plans`.
+Последний успешный коммит реализации: 36fb704 — `feat(engine): add sequential task executor`.
+DAG: b516282 — `feat(engine): validate task dependency plans`.
 Модели: 47f2edc — `feat(core): add task models and validation tests`.
 Bootstrap: 7dd54cf — `chore: initialize WinDeploy repository`.
-Текущий документ фиксируется отдельным `docs: update agent handoff`; его хеш доступен в git log.
+Текущий документ фиксируется отдельным `docs: record sequential executor handoff`; его хеш доступен в git log.
 Текущая ветка: master.
 
 ## Что уже реализовано
