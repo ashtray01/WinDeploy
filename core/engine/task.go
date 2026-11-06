@@ -35,8 +35,9 @@ func (s TaskStatus) Valid() bool {
 }
 
 // OSRequirements describes allowed Windows versions and Go architecture names
-// (386, amd64). Empty lists mean no restriction. Evaluation belongs to the
-// future inventory/engine integration, not to structural task validation.
+// (386, amd64). Empty lists mean no restriction within the supported matrix.
+// Evaluation is provided by inventory.Applicable/GuardAdapter; Task.Validate
+// only checks structural fields and does not read the target system.
 type OSRequirements struct {
 	Versions      []string `json:"versions,omitempty"`
 	Architectures []string `json:"architectures,omitempty"`
