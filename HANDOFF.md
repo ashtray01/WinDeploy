@@ -1,7 +1,7 @@
 # WinDeploy — Agent Handoff
 
 ## Состояние проекта
-Этап 1 — Core Foundation. MULTI-TASK: четыре задачи завершены; далее resume и checkpoints.
+Этап 2 — Profiles. MULTI-TASK: шесть задач ядра завершены; далее четыре части профилей (до общего лимита 10 задач).
 Ветка: master. Коммиты: dfdadde preview, 0626c5e retries, de54b7a concurrency; snapshot storage — последний feat в git log.
 Пользователь явно разрешил 5–10 последовательных задач и переход между этапами; это выше прежнего ограничения одной задачи. Работа выполняется одним агентом.
 
@@ -14,18 +14,20 @@
 - MaxParallel по умолчанию 1, одинаковые Task.ResourceKey сериализуются; MSI-адаптеры обязаны назначать WindowsInstallerResource. Результаты в порядке плана, активные операции дожидаются завершения при отмене. Adapter должен быть thread-safe при MaxParallel>1.
 - engine.Snapshot/NewSnapshot/Validate: версия, SHA-256 исходного плана, результаты без Parameters. Допускаются только известные безопасные diagnostics.
 - state.FileStore: ограниченный JSON (4 MiB), запрет неизвестных полей/trailing data, проверка формата, temp+Sync+Close+Rename без обнуления старого файла. Каталог создаёт вызывающий код.
+- Resume/ValidateForPlan: проверка точного плана и результатов до операций. Успешные результаты сохраняются, interrupted проходят Precheck, Failed требует RetryFailed. Attempts и reboot flag накапливаются. Обязательный reboot barrier пока отклоняется.
+- RunOptions.Store: initial snapshot, Running до запуска и результаты после завершения. Save failure => ErrCheckpoint, отмена и ожидание активных операций. Save использует отдельный context с timeout 5s для сохранения при отмене. Тест реального FileStore restart с fake-установкой подтверждает отсутствие дублирования.
 
 ## Что проверено
 Go 1.26.2 windows/amd64: go test ./core/engine/... ./core/state/... и go vet ./... — PASS. Тесты каждой задачи запускались до её коммита; file replacement реально проверен на доступной Windows. C-компилятор не найден, race detector не запускался.
 GOCACHE: `$env:GOCACHE = Join-Path $PWD 'cache\go-build'` (игнорируется Git). Стандартный cache ранее был недоступен.
 
 ## Что сейчас не работает
-Нет реальных системных адаптеров/UI. Snapshot storage пока не подключён к исполнителю, resume/checkpoints — следующие задачи.
+Нет реальных системных адаптеров/UI и профилей (начинается этап 2). Checkpoints/resume подключены, но live inventory завершённых задач не перепроверяется. Автозапуск после reboot/проверка смены boot ID не реализованы.
 Go 1.20 и Windows VM-матрица, включая Windows 7 SP1 x86/x64, не проверены. GitHub CLI отсутствовал, remote/CI/releases не создавались.
 Отмена требует кооперации адаптера; Run ждёт возврата и не прерывает его принудительно. Диагностика содержит только этап, исходные ошибки адаптера отбрасываются для защиты credentials.
 
 ## Незавершённая работа
-Следом в текущей сессии: resume; checkpoint integration. Не выдавать их за реализованные.
+Следом в текущей сессии: модель профиля, strict YAML, наследование, планы/примеры. Не выдавать их за реализованные.
 
 ## Архитектурные решения
 - Task декларативен; методы в Adapter, не в сериализуемой модели. Adapter не меняет вложенные maps/slices.
@@ -37,11 +39,11 @@ Go 1.20 и Windows VM-матрица, включая Windows 7 SP1 x86/x64, не
 - Snapshot не аутентифицирован и предназначен для доверенного локального каталога. Path принадлежит одному процессу; mutex FileStore защищает только экземпляр. Windows ACL задаёт администратор, 0600 не заменяет ACL. Не заявлять гарантии atomicity/durability при сбое питания: Rename зависит от файловой системы. Хеш связывает точный план, но не является защитой от подмены.
 
 ## Следующая задача
-Добавить Resume и ValidateForPlan, затем checkpoints при выполнении.
+Реализовать четыре небольшие части этапа 2 из TASKS (модель, YAML, inheritance, планы/примеры).
 
 ## Инструкция следующему агенту
 Прочитать AGENTS/TASKS, core/engine/task.go, plan.go, executor.go и тесты. Проверить status/log.
-Resume должен проверить hash/ID/зависимости до вызовов Adapter, сохранить успешные результаты, а незавершённые операции отправить через Precheck. Failed не повторять без явного opt-in. Затем подключить Save до запуска операции и после её завершения; ошибка хранилища должна остановить новые операции и дождаться активных. Проверить интеграцию FileStore с fake-адаптерами, restart, partial state и fail-closed storage errors.
+Прочитать раздел 9 исходного ТЗ. Профили должны описывать компоненты, не выполнять операции и не содержать credentials. Schema version, строгая валидация, single-parent inheritance с циклами, преобразование в Pending Task-план и PreviewPlan. Для YAML использовать поддерживаемую YAML-org библиотеку go.yaml.in/yaml/v3 v3.0.4 (go.mod upstream: go 1.16; https://github.com/yaml/go-yaml/tree/v3.0.4), не писать собственный YAML parser.
 Каждую задачу сохранять отдельным коммитом с тестами; HANDOFF обновлять после 2–3 задач.
 
 ## Чего нельзя делать

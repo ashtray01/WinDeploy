@@ -1,7 +1,7 @@
 # WinDeploy Roadmap
 
 ## Current milestone
-Stage 1 — Core Foundation: последовательный исполнитель завершён; следующая часть — dry-run.
+Stage 2 — Profiles: Core Foundation расширен dry-run, retries, concurrency и checkpoints/resume. Реальная проверка ОС и Go 1.20 остаётся открытой.
 
 ## Tasks
 - [x] Initialize Git repository
@@ -18,6 +18,10 @@ Stage 1 — Core Foundation: последовательный исполните
 - [x] Resume completed tasks safely without duplicate execution
 - [x] Persist checkpoints during execution and fail closed on storage errors
 - [ ] Stage 2 — Profiles
+  - [ ] Add versioned profile/component model and structural validation
+  - [ ] Add strict bounded YAML import/export
+  - [ ] Resolve single-parent inheritance with cycle detection
+  - [ ] Build selected-component plans, clone profiles and add examples
 - [ ] Stage 3 — Inventory
 - [ ] Stage 4 — GUI
 - [ ] Stage 5 — Package Manager
