@@ -102,6 +102,12 @@ Stages 1–9 реализованы: ядро, профили, inventory, Modern
   - [x] Real read-only diagnostics deployment through CLI and service tests (session + reports)
   - [ ] Execute modifying components end-to-end in an isolated VM, including reboot continuation
 - [ ] Stage 10 — Legacy Windows 7
+  - [x] Separate Go 1.20 module with native Walk Win32 GUI, no WebView2/.NET
+  - [x] System summary, compatible package list, install/cancel, network diagnostics and UNC shares
+  - [x] Common Controls 6 manifest embedded for x64/x86 (fixes Walk TTM_ADDTOOL)
+  - [x] Legacy unit tests, `--selftest`, real GUI `--smoke` x64/x86 on Windows 11
+  - [x] `scripts/build-legacy.ps1` builds both architectures and hashes outputs
+  - [ ] Windows 7 SP1 VM runtime and real install/SMB tests
 - [ ] Stage 11 — CI/CD & Release
 
 ## Blocked

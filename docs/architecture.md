@@ -12,6 +12,7 @@
 | `core/profiles`, `core/inventory` | Профили и факты о системе |
 | `core/packages`, `core/drivers` | Установка пакетов и драйверов (реализовано) |
 | `core/network`, `core/shares`, `core/printers` | Диагностика, сетевые ресурсы и принтеры (реализовано) |
+| `legacy/` | Нативный Windows 7 GUI (Go 1.20, Walk, x86/x64) |
 | `core/browsers`, `core/security` | Настройки браузеров (реализовано), credentials и повышение прав |
 | `core/state`, `core/reporting`, `core/deploy` | Возобновление, журнал, отчёты, выполнение профилей (реализовано) |
 | `desktop`, `frontend` | Modern UI; отдельный Go-модуль при несовместимых требованиях toolchain |
