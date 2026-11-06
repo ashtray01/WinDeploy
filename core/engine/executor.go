@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -32,6 +33,29 @@ type Adapter interface {
 // which may include credentials. Detailed sanitized diagnostics are future work.
 // Input tasks are not updated; resume/retry of non-Pending tasks is not supported.
 func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, error) {
+	return RunWithOptions(ctx, tasks, adapter, RunOptions{})
+}
+
+// RunOptions controls execution. Zero values preserve single-attempt execution.
+type RunOptions struct {
+	MaxAttempts int
+	RetryDelay  time.Duration
+}
+
+// RetryableError is an explicit promise by an adapter that retrying is safe.
+// Each retry starts with Precheck to detect effects of the previous attempt.
+// Ordinary errors are never retried, even if MaxAttempts is greater than one.
+type RetryableError interface {
+	error
+	Retryable() bool
+}
+
+// RunWithOptions adds opt-in retries to Run. A task timeout covers every attempt
+// and retry delay. Adapters must not mark unsafe operations as retryable.
+func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions) ([]TaskResult, error) {
+	if options.MaxAttempts < 0 || options.RetryDelay < 0 {
+		return nil, fmt.Errorf("retry options must not be negative")
+	}
 	ordered, err := pendingPlan(tasks)
 	if err != nil {
 		return nil, err
@@ -59,7 +83,7 @@ func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, erro
 				result.Status = Skipped
 				result.Error = "dependency did not succeed"
 			} else {
-				result = runTask(ctx, task, adapter)
+				result = runTask(ctx, task, adapter, options)
 			}
 		}
 		result.FinishedAt = time.Now().UTC()
@@ -69,7 +93,7 @@ func Run(ctx context.Context, tasks []Task, adapter Adapter) ([]TaskResult, erro
 	return results, ctx.Err()
 }
 
-func runTask(parent context.Context, task Task, adapter Adapter) TaskResult {
+func runTask(parent context.Context, task Task, adapter Adapter, options RunOptions) TaskResult {
 	result := TaskResult{TaskID: task.ID, StartedAt: time.Now().UTC()}
 	var ctx context.Context
 	var cancel context.CancelFunc
@@ -80,52 +104,65 @@ func runTask(parent context.Context, task Task, adapter Adapter) TaskResult {
 	}
 	defer cancel()
 	task.Status = Running
-
-	// Check context both before and after each call: an adapter may return nil
-	// after cancellation, which must not be mistaken for a successful phase.
-	check := func(phase string, err error) bool {
-		switch {
-		case parent.Err() != nil:
-			result.Status, result.Error = Cancelled, "plan cancelled"
-		case ctx.Err() != nil:
-			result.Status, result.Error = Failed, "task deadline exceeded"
-		case err != nil:
-			result.Status, result.Error = Failed, phase+" failed"
-		default:
-			return true
+	limit := options.MaxAttempts
+	if limit == 0 {
+		limit = 1
+	}
+	for {
+		if ctx.Err() != nil {
+			break
 		}
-		return false
+		result.Attempts++
+		phase := "precheck"
+		err := func() error {
+			status, err := adapter.Precheck(ctx, task)
+			if err != nil || ctx.Err() != nil {
+				return err
+			}
+			switch status {
+			case AlreadyInstalled, NotApplicable, Skipped:
+				result.Status = status
+				return nil
+			case Pending:
+			default:
+				return fmt.Errorf("invalid precheck outcome")
+			}
+			phase = "execute"
+			reboot, err := adapter.Execute(ctx, task)
+			result.RebootRequired = result.RebootRequired || reboot
+			if err != nil || ctx.Err() != nil {
+				return err
+			}
+			phase = "verify"
+			if err := adapter.Verify(ctx, task); err != nil {
+				return err
+			}
+			result.Status = Success
+			return nil
+		}()
+		if ctx.Err() != nil {
+			break
+		}
+		if err == nil {
+			result.Error = ""
+			return result
+		}
+		result.Status, result.Error = Failed, phase+" failed"
+		var retry RetryableError
+		if result.Attempts >= limit || !errors.As(err, &retry) || !retry.Retryable() {
+			return result
+		}
+		timer := time.NewTimer(options.RetryDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+		case <-timer.C:
+		}
 	}
-	if !check("precheck", nil) {
-		return result
-	}
-	status, err := adapter.Precheck(ctx, task)
-	if !check("precheck", err) {
-		return result
-	}
-	switch status {
-	case AlreadyInstalled, NotApplicable, Skipped:
-		result.Status = status
-		return result
-	case Pending:
-		// Continue with execution.
-	default:
-		result.Status, result.Error = Failed, "precheck returned an invalid outcome"
-		return result
-	}
-	if !check("execute", nil) {
-		return result
-	}
-	result.RebootRequired, err = adapter.Execute(ctx, task)
-	if !check("execute", err) {
-		return result
-	}
-	if !check("verify", nil) {
-		return result
-	}
-	err = adapter.Verify(ctx, task)
-	if check("verify", err) {
-		result.Status = Success
+	if parent.Err() != nil {
+		result.Status, result.Error = Cancelled, "plan cancelled"
+	} else {
+		result.Status, result.Error = Failed, "task deadline exceeded"
 	}
 	return result
 }

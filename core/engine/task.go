@@ -101,4 +101,5 @@ type TaskResult struct {
 	FinishedAt     time.Time  `json:"finished_at"`
 	Error          string     `json:"error,omitempty"`
 	RebootRequired bool       `json:"reboot_required"`
+	Attempts       int        `json:"attempts,omitempty"`
 }

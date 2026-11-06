@@ -12,7 +12,7 @@ Stage 1 — Core Foundation: последовательный исполните
 - [x] Validate plan IDs, dependency references and DAG; deterministic topological order
 - [x] Implement sequential execution engine, context cancellation and task timeout
 - [x] Add dry-run plan preview without Adapter calls (engine tests/vet PASS)
-- [ ] Add explicit retryable-error handling with bounded attempts and cancellable delay
+- [x] Add explicit retryable-error handling with bounded attempts and cancellable delay
 - [ ] Add bounded concurrency and exclusive resource keys
 - [ ] Add validated file-backed session snapshots
 - [ ] Resume completed tasks safely without duplicate execution
