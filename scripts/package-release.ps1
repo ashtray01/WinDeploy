@@ -140,7 +140,7 @@ $notes = @(
     "## Что внутри",
     "",
     "- Portable x64/x86: Modern (x64), Legacy (x86/x64), CLI inspect/packages/run.",
-    "- Offline x64/x86: portable + catalog/packages.yaml + Packages (только реально загруженные файлы).",
+    "- Offline x64: portable + catalog/packages.yaml + Packages (только реально загруженные файлы).",
     "- docs/: архитектура, пакеты, сеть, драйверы/принтеры, браузеры/настройки, выполнение, Legacy.",
     "",
     "## Проверки",
