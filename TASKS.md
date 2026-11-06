@@ -37,7 +37,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [ ] Modern 1 — Verify core with isolated Go 1.20 on amd64/386 (official archive transport interrupted; resume pending; root Go 1.26 regressions PASS)
   - [x] Modern 2 — Isolate and pin stable Wails v3.1.0 module; root go.mod unchanged
   - [x] Modern 3 — Build and launch Windows Wails/React/TypeScript EXE (real HWND + rendered WebView2 bootstrap smoke PASS)
-  - [ ] Modern 4 — Add responsive dark design system
+  - [x] Modern 4 — Add responsive dark design system (primitives UI tests + TS/build PASS)
   - [ ] Modern 5 — Add navigation shell and honest unavailable sections
   - [ ] Modern 6 — Typed Go bridge with real Inventory, cancellation and partial errors
   - [ ] Modern 7 — Real dashboard and rescan
