@@ -41,7 +41,7 @@ Stage 4 — GUI: Inventory и read-only CLI проверены на доступ
   - [x] Modern 5 — Add navigation shell and honest unavailable sections (UI tests/TS/build PASS)
   - [x] Modern 6 — Generated typed Wails bridge, real async Collector, cancellation/partial errors (Go/UI tests + TS/build PASS)
   - [x] Modern 7 — Real dashboard and rescan (desktop DOM matches native CLI; 1366×768 smoke PASS)
-  - [ ] Modern 8 — Searchable/sortable Inventory detail tables
+  - [x] Modern 8 — Searchable/sortable Inventory detail tables (9 UI tests + TS/build PASS)
   - [ ] Modern 9 — YAML profile selection, real preview/DAG/applicability
   - [ ] Modern 10 — Real journal, UI/backend tests, GUI smoke and core regression check
 - [ ] Stage 5 — Package Manager
@@ -59,3 +59,4 @@ GitHub CLI отсутствует; remote не настроен. Локальн�
 ## Last verified commit
 1ff69d4 — `feat(cli): add read-only inventory and profile preview commands`.
 Go 1.26.2: windows/amd64 — go test/vet/build ./... PASS; windows/386 — go test/build ./... PASS; linux/amd64 cross-build PASS. Real x64/x86 CLI inventory + 8 profile previews PASS; go mod verify/gofmt/diff --check PASS. Go 1.20/Win7 VM/race detector не проверены. Подробности: docs/reports/autonomous-inventory.md.
+
