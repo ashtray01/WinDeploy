@@ -5,6 +5,12 @@ SemVer. Проект находится в стадии public beta.
 
 ## [0.1.0-beta.1] — 2026-11-08
 
+Опубликован [GitHub Pre-release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1),
+commit `56fe16351720b4a74a5e773a7a26e270fe4bbf84`.
+[Release workflow](https://github.com/ashtray01/WinDeploy/actions/runs/42421767518) PASS;
+публичные downloads и SHA-256 проверены. [Доказательства и хеши](docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md).
+Документация после выпуска обновлена отдельно; tag/assets не переписывались.
+
 ### Added
 
 - Первая Modern-only сборка `WinDeploy-Windows-x64.exe` с единым номером версии
@@ -54,6 +60,8 @@ SemVer. Проект находится в стадии public beta.
   перед изменяющим resume (входит в beta).
 
 ### Security
+
+- Release workflow проверяет tracked files и Git history существующим secret preflight до сборки.
 
 - SID пользователя процесса сверяется с владельцем интерактивного shell перед
   user-scoped изменениями.

@@ -42,9 +42,9 @@
 
 ## Установка
 
-Релиз `v0.1.0-beta.1` готовится. После публикации файлы будут доступны в
-[Releases](https://github.com/ashtray01/WinDeploy/releases). Публичный Release
-ещё не создан; владелец разрешил выпуск после проверки CI, draft и артефактов.
+Опубликован [v0.1.0-beta.1 — Pre-release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1).
+EXE, portable ZIP, SHA256SUMS.txt и Release Notes доступны в Assets.
+[Проверки выпуска и SHA-256](docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md).
 
 1. Скачайте `WinDeploy-Windows-x64.exe` из Assets.
 2. Проверьте SHA-256 по `SHA256SUMS.txt`.
@@ -137,7 +137,7 @@ Windows 7 FROZEN; не запускайте Legacy-сборку как част�
 - [Issues](https://github.com/ashtray01/WinDeploy/issues) — шаблоны Bug report и
   Feature request.
 - [Releases](https://github.com/ashtray01/WinDeploy/releases) — артефакты и
-  SHA256SUMS после публикации.
+  SHA256SUMS опубликованной beta.
 - [BETA_READINESS](docs/BETA_READINESS.md) — что проверено, что отключено и какие
   блокеры остаются.
 - [CHANGELOG](CHANGELOG.md) — изменения версии.

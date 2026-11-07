@@ -1,28 +1,18 @@
 # WinDeploy — Beta Readiness
 
-## Решение владельца о выпуске — 2026-11-08
-
-Текущая задача явно разрешает публичный Pre-release v0.1.0-beta.1 после
-успешного CI, проверки draft и SHA-256 скачанных assets. Это решение заменяет
-прежний запрет binary Release и требование B1/B2 как общего release gate.
-B1/B2 не выполнены: package-install/SMB acceptance остаются открытыми
-ограничениями beta, не подтверждением безопасности или E2E. Runtime gates
-не изменяются. B8 закрыт разрешением; B6 ожидает release workflow и assets.
-В release workflow добавлен существующий secret preflight с Git history;
-сборка/typecheck/tests/vet/packaging сохранены. Локально version gate PASS,
-secret preflight — 0 blocking; manual items остаются test/doc fixtures.
-
-
 Дата среза: 2026-11-08. Целевая версия: **v0.1.0-beta.1**. Это не повторный
 аудит и не заявление о production readiness. Матрица описывает только то, что
 подтверждено кодом, тестами и реальными проверками на текущем хосте.
 
 ## Итог
 
-**Статус: beta candidate; source push разрешён, binary Release пока нельзя.**
-MIT/URL/source-разрешение зафиксированы; source опубликован, GitHub CI PASS.
-Остаются B1, B2 и проверка draft Release; публикация binary Release требует
-отдельного решения владельца.
+**Статус: публичный Pre-release v0.1.0-beta.1 опубликован 2026-11-08.**
+[Release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1),
+[проверки и SHA-256](RELEASE_VERIFICATION_v0.1.0-beta.1.md).
+Владелец явно разрешил выпуск после CI/draft/assets checks. B1/B2 остаются
+непроверенными beta-сценариями, а не общим release gate; они не объявлены PASS.
+Security gates не ослаблялись. CI/release прошли на commit
+`56fe16351720b4a74a5e773a7a26e270fe4bbf84`, публичные downloads проверены.
 
 | # | Блокер | Доказательство | Что нужно |
 |---|---|---|---|
@@ -31,13 +21,13 @@ MIT/URL/source-разрешение зафиксированы; source опуб�
 | B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт 2026-11-08:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый source push после финального secret preflight |
 | B4 | ~~Git-история не проверена на секреты и персональные данные~~ | **Закрыт для текущего среза:** `check-release-secrets.ps1 -IncludeHistory` — 0 blocking findings; manual-review items — тестовые/документационные примеры. Повторить после финального docs commit | Владелец проверяет findings; повторный прогон перед открытием repo |
 | B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; production EXE не содержит remote-debug strings. Screenshots обезличены | Повторять при изменении UI/EXE |
-| B6 | GitHub CI / draft Release | **CI закрыт:** run `42419867600` PASS для `619ca04` (Core Go 1.20 amd64/386, Modern, Wails build/package/upload); draft не запускался | Проверить draft отдельно после B1/B2 и разрешения владельца |
+| B6 | GitHub CI / draft / public Release | **Закрыт:** CI 42421280314 и release 42421767518 PASS; draft и public downloads/SHA-256 проверены | Тег и assets не переписывать |
 | B7 | Windows 10/LTSC не проверены | Нет VM; текущий хост — Windows 11 | **Решено:** beta scope — только Windows 11 x64; Win10/LTSC не заявляются |
-| B8 | Разрешение на source и Release разделено | Владелец явно разрешил source push 2026-11-08; binary Release не разрешён | Release требует отдельного подтверждения после B1/B2/B6 |
+| B8 | Разрешение на Release | **Закрыт:** владелец явно разрешил публичный v0.1.0-beta.1 Pre-release | Не распространяется автоматически на следующий релиз |
 
-B3 закрыт; B6 — release-процессный блокер. B1–B2 — функциональные. B4 закрыт для
-текущего среза, B5 закрыт фактическим smoke, B7 закрыт сужением supported scope.
-B8 нельзя закрыть технической проверкой.
+B3/B4/B6/B8 закрыты для выпуска. B1–B2 открыты как неподтверждённые сценарии.
+B5 опирается на предыдущий actual GUI smoke, нового запуска release EXE нет.
+B7 закрыт сужением supported scope, не подтверждением Windows 10/LTSC.
 
 ## Матрица возможностей
 
@@ -62,7 +52,7 @@ unit/integration/UI без реального системного эффект�
 | Принтеры | Enumeration, default/read-back, INF install | Да | Read-only; install нет | TCP/IP port не создаётся (P1-01), печать/VM нет | **Эксперимент** | Добавление принтера не обещать | Нет |
 | Политики браузеров | Registry write + read-back, webapps | Да | Fake-store + negative tests; VM нет | Полная VM-проверка и восстановление старых значений не закрыты | **Эксперимент** | Нет | Нет |
 | Windows settings | Rename/timezone/Explorer/power, preview/read-back | Да | Read-only API + fake-store; VM нет | Rename/reboot/домен, restore, VM | **Эксперимент** | Нет | Нет |
-| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | GitHub CI/package dry-run PASS | Draft Release и signing не проверены | CI готов | Нет | Draft после B1/B2 |
+| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | GitHub CI/package dry-run PASS | Draft/public assets проверены; EXE NotSigned | Опубликован Pre-release | Нет | Нет |
 | Windows 7 Legacy | Отдельный frozen-модуль | Нет в beta | Не проверялась | FROZEN | Нет | Да, не включать | Нет |
 
 ## Что включается в beta
@@ -71,7 +61,7 @@ unit/integration/UI без реального системного эффект�
 - Inventory, профили, каталог программ, явная установка выбранного ПО,
   подтверждение, прогресс, отмена, результат и HTML/JSON-отчёт.
 - Network diagnostics read-only.
-- SMB-подключение и ярлыки — только как beta-функция после B2.
+- SMB-подключение и ярлыки — как непроверенная beta-функция; B2 остаётся открытым.
 - Session resume без false success; реальный reboot acceptance остаётся
   ограничением и не заявляется как проверенный.
 
@@ -101,12 +91,11 @@ unit/integration/UI без реального системного эффект�
   same-user/administrator tampering. Elevated resume автоматически не
   используется; при другом SID операция отклоняется.
 - Отсутствует отдельный elevated worker; SID gate не замена two-account VM.
-- Real install/SMB/reboot acceptance остаётся обязательным до публикации.
+- Real install/SMB/reboot acceptance не выполнен; это раскрыто в опубликованной beta.
 - EXE не подписан; это должно быть в release notes и Known Issues.
-- License/public repository URL/owner confirmation — обязательные действия
-  владельца, не технические задачи агента.
+- MIT, публичный URL и разрешение владельца на этот выпуск подтверждены.
 
-## Проверено в этой итерации
+## Предыдущие runtime-проверки (не повторялись в release-итерации)
 
 - **B5 закрыт:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke
   PASS (`actualDesktop`, hostname/app count matched, 2 viewport, pageErrors=0);
@@ -135,6 +124,6 @@ unit/integration/UI без реального системного эффект�
 
 ## Следующее обновление статуса
 
-После B1/B2 и любых новых проверок этот файл обновляется. Не отмечать B1/B2/B6
-закрытыми без воспроизводимого лога, реального сервера/пакета и подтверждения
-GitHub. B5 закрыт только для текущей сборки; UI-изменения требуют нового smoke.
+После B1/B2 и новых проверок обновить этот файл. B1/B2 не закрывать без
+реального сервера/пакета и воспроизводимых результатов. B6 закрыт GitHub evidence.
+Runtime/UI-изменения требуют нового smoke; release tag не переписывать.

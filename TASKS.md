@@ -1,95 +1,56 @@
 # WinDeploy — controlled development (Public Beta)
 
-## Решение владельца о выпуске — 2026-11-08
-
-Текущая задача явно разрешает публичный Pre-release v0.1.0-beta.1 после
-успешного CI, проверки draft и SHA-256 скачанных assets. Это решение заменяет
-прежний запрет binary Release и требование B1/B2 как общего release gate.
-B1/B2 не выполнены: package-install/SMB acceptance остаются открытыми
-ограничениями beta, не подтверждением безопасности или E2E. Runtime gates
-не изменяются. B8 закрыт разрешением; B6 ожидает release workflow и assets.
-В release workflow добавлен существующий secret preflight с Git history;
-сборка/typecheck/tests/vet/packaging сохранены. Локально version gate PASS,
-secret preflight — 0 blocking; manual items остаются test/doc fixtures.
-
-
 ## Текущий этап
 
-Цель — **v0.1.0-beta.1**, Modern Windows 11 x64. Public Beta, не stable. Windows 10/
-LTSC не заявляются без проверки. Windows 7 Legacy FROZEN. Одна итерация — 2–4
-задачи с тестами и коммитами.
+2026-11-08: [v0.1.0-beta.1](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1)
+опубликован как **Pre-release**, не Stable. Release commit:
+`56fe16351720b4a74a5e773a7a26e270fe4bbf84`. Windows 11 x64 — проверенная платформа;
+Win10/LTSC не подтверждены, Windows 7 Legacy FROZEN и исключён из Modern release.
+Владелец явно разрешил выпуск с честно раскрытыми B1/B2; сами проверки не выполнены.
 
-Текущий срез — beta candidate. Владелец выбрал MIT и разрешил отправить исходный
-код в `ashtray01/WinDeploy`; `main` опубликован. GitHub Modern CI PASS для
-`619ca04`. Публикация binary Release не разрешена: остаются B1/B2 и проверка
-draft Release из [BETA_READINESS](docs/BETA_READINESS.md).
-Release workflow создаёт только draft. VM acceptance больше не является
-обязательным общим критерием, но конкретные изменяющие сценарии без проверки не
-заявляются.
+## Сделано в этой итерации — 3 задачи
 
-## Сделано в этой итерации
+- [x] Проверены текущие Git/remote/VERSION/tags/Releases (до выпуска прежних
+      тегов/Releases не было), MIT и существующий CI/CD.
+      Добавлен отсутствовавший history secret preflight (`fb2920c`), исправлены
+      устаревшие packaged docs (`56fe163`); runtime/UI/Legacy не менялись.
+- [x] Modern CI `42421280314` и release workflow `42421767518` PASS на release
+      commit. Annotated tag создан без подписи (не настроена). Draft проверен,
+      assets скачаны и сверены до публикации; опубликован Pre-release.
+- [x] Публичная HTML/API страница и все 4 downloads проверены без авторизации;
+      SHA-256 совпадают с draft, manifest и GitHub digest. Итоговые документы
+      обновлены отдельным коммитом без изменения release tag/assets.
 
-- [x] **Beta Readiness**: матрица, scope, blockers, отказ от полного аудита;
-  TASKS переклассифицирован; AGENTS закрепляет Public Beta.
-- [x] **Security release gates**: session trust/bounded JSON/owner ACL и SID gate
-  подтверждены тестами; добавлены bounded atomic rename, безопасная работа с
-  temp и negative tests. Elevated worker/impersonation нет; unknown/mismatch
-  fail closed (`ba09bc6`).
-- [x] **Core journey**: preview-before-execute, explicit package selection and
-  confirmation, честные failed/empty статусы, потеря polling видна, Legacy не
-  выбирается по умолчанию, version в UI/EXE, startup log не теряет запись при
-  недоступном stderr, WebView2 fallback с безопасным ACL/reparse gate и выбором
-  «Продолжить»/«Выход» без UAC. Actual diagnostic/smoke GUI smoke PASS (native
-  hostname/app count, два viewport, pageErrors=0) (`96e9fb1`, `f90b7bf`,
-  `95b1b77`).
-- [x] **Release infrastructure**: `VERSION`, version gate, Modern-only CI,
-  Modern release workflow (draft pre-release), SHA256SUMS/portable ZIP,
-  `verify-version.ps1`, `package-modern-release.ps1`, production EXE без
-  remote-debug flag (`2e7dbc6`, `5ca5dbf`).
-- [x] **Public docs**: README со screenshots, MIT LICENSE, CHANGELOG,
-  CONTRIBUTING, SECURITY, KNOWN_ISSUES, release notes, issue templates,
-  publication checklist (`b032eb8`).
-- [x] **Secret preflight**: tracked files + Git history проверены; blocking
-  findings 0, manual items — тестовые/документационные примеры. Повторить после
-  финального docs commit.
-- [x] **Startup ACL regression**: составная `FILE_GENERIC_WRITE` больше не
-  принимает общие read/synchronize-биты за право записи; `(RX)` разрешён,
-  реальные write/delete/ACL-права посторонних по-прежнему fail closed. Свежий
-  default-path diagnostic startup и GUI bridge smoke PASS (`740a3e4`).
-- [ ] B1/B2/B6 ещё не закрыты. Не считать документацию их заменой.
+## BETA BLOCKER / открытые ограничения
 
-## BETA BLOCKER
+| ID | Статус | Доказательство / следующий шаг |
+|---|---|---|
+| B1 | Открытый непроверенный beta-сценарий | Нет real package-install/update/cancel acceptance. По явному решению владельца не общий запрет выпуска; нужен согласованный пакет и VM/разрешение |
+| B2 | Открытый непроверенный beta-сценарий | Нет real SMB server/credentials/1219 acceptance; нужен тестовый сервер/учётная запись |
+| B3 | Закрыт | MIT, ashtray01/WinDeploy |
+| B4 | Закрыт для release-среза | Локальный и release CI history preflight: 0 blocking, manual items test/docs |
+| B5 | Исторический Windows 11 actual GUI smoke PASS | Runtime/UI в этой итерации не менялись; скачанный EXE заново не запускался |
+| B6 | Закрыт | CI/release PASS, draft/assets/public downloads проверены |
+| B7 | Scope ограничен | Windows 11 x64; Win10/LTSC не подтверждены |
+| B8 | Закрыт | Явное разрешение владельца на публичный v0.1.0-beta.1 Pre-release |
 
-| ID | Блокер | Доказательство | Критерий закрытия |
-|---|---|---|---|
-| B1 | Реальная установка одного безопасного пакета не выполнена | Есть unit/service/UI, EXE собран; install не запускался | С разрешения владельца: 7-Zip или другой согласованный пакет; detection до/после, повтор, update, failure/cancel, отчёт |
-| B2 | SMB-сервер и credentials context не проверены | Native list/.lnk read-back PASS; сервера нет | Тестовый SMB: connect, shortcut, repeat, 1219, no secret in report |
-| B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый public source push после финального preflight |
-| B4 | ~~Git-история не проверена на секреты/данные~~ | **Закрыт для среза:** secret-scan + history — 0 blocking; manual items — test/doc примеры | Повторить после финального docs commit; владелец проверяет findings |
-| B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual diagnostic/smoke GUI DOM/bridge/native smoke PASS, pageErrors=0, два viewport; production EXE без remote-debug; screenshots обезличены | Повторять при UI/EXE изменениях |
-| B6 | GitHub CI / draft Release | **CI закрыт:** run `42419867600` PASS (Core Go 1.20 amd64/386, Modern, Wails build/package/upload); draft Release не запускался | Проверить draft отдельно после B1/B2 и разрешения владельца |
-| B7 | Windows 10/LTSC scope | Не проверялись | **Решено:** beta только Windows 11 x64; не расширять без проверки |
-| B8 | Разрешение разделено для source и Release | **Source push явно разрешён 2026-11-08**; binary Release не разрешён | Release — отдельное решение после B1/B2/B6 |
-
-Примечание: Windows 10/LTSC не является блокером, если beta явно поддерживает
-только Windows 11 x64. Не расширять supported scope без проверки.
+B1/B2 не объявлены PASS и не перенесены в POST-BETA как решённые security-проблемы.
+Runtime SID/session/ACL/installer gates сохранены. Полный security audit не выполнялся.
 
 ## BETA REQUIRED
 
-- [x] Production EXE не регистрирует `--smoke-port`/DevTools; remote debugging
-  вынесен в непакетируемую diagnostic-сборку с тегом `smoke`.
-- [x] Повторная production-сборка после runtime-коммита; SHA-256 и
-  `SHA256SUMS.txt` совпадают, версия EXE `0.1.0-beta.1`.
-- [x] CI package dry-run создал EXE/checksums/portable ZIP и загрузил artifact.
-- [ ] Release notes отражают реальные проверки и отсутствие code signing.
-- [ ] README screenshots обезличены; hostname/IP/имена не публикуются.
-- [x] `scripts/check-release-secrets.ps1 -IncludeHistory`: 0 blocking findings;
-  manual-review entries — test/docs fixtures.
-- [x] Owner selected MIT and replaced the placeholder before public source access.
-- [x] GitHub Actions PASS на disposable runner; package artifact загружен.
-- [ ] Draft Release отдельно не создавался и не проверялся.
-- [ ] Visible/manual desktop smoke владельцем (текущий automated DOM/bridge smoke
-  не заменяет ручное подтверждение окна и UAC-сценария).
+- [x] VERSION/tag/EXE совпадают; EXE и ZIP BUILD-INFO содержат release commit.
+- [x] Core Go 1.20 amd64+386 test/vet/build, Modern tests/vet, frontend
+      tests/strict typecheck/build и Wails production EXE PASS в CI.
+- [x] Portable ZIP, MIT, Release Notes, SHA256SUMS и все 4 публичных downloads
+      проверены; EXE NotSigned, production debug flags отсутствуют.
+- [x] Release Notes раскрывают beta, Win11 scope, Win10/LTSC/Win7 ограничения,
+      отсутствие подписи, экспериментальные функции и невыполненные B1/B2.
+- [x] Draft проверен и опубликован как Pre-release по разрешению владельца.
+- [ ] Новый visible/manual desktop smoke опубликованного EXE не выполнялся;
+      предыдущий actual diagnostic DOM/bridge smoke не заменяет его.
+
+Подробные результаты и SHA-256: [RELEASE_VERIFICATION](docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md).
 
 ## POST-BETA
 
@@ -115,15 +76,10 @@ Windows 7 Legacy: `legacy/`, `profiles/legacy.yaml`, tests/docs сохранен
 добавлять Legacy features/fixes/tests, не включать Legacy в Modern CI/release.
 Возврат — только отдельное решение владельца.
 
-## Следующая итерация — 3 задачи
+## Следующая итерация — v0.1.0-beta.2 (3 задачи)
 
-1. **B1**: согласовать и выполнить один безопасный install на Win11 x64 (с
-   разрешения владельца); зафиксировать detection/repeat/update/failure/cancel и
-   отчёт.
-2. **B2**: поднять/получить тестовый SMB-сервер и проверить connect/credentials/
-   shortcut/1219 без секретов в отчёте.
-3. **B6/Release**: после B1/B2 и отдельного разрешения создать только draft
-   pre-release, сверить assets/SHA-256; не нажимать Publish автоматически.
-
-Не начинать новые крупные модули, Legacy или VM-wide roadmap. После задач —
-тесты, отдельные коммиты, TASKS/HANDOFF/BETA_READINESS и git status.
+1. B1: реальный package install/update/repeat/failure/cancel и отчёт на
+   одноразовой Windows 11 VM либо с отдельного разрешения владельца.
+2. B2: реальный SMB server/credentials/shortcut/1219 acceptance без секретов в logs.
+3. Исправления по воспроизводимым GitHub Issues; следующий релиз выпускать
+   отдельной задачей. Не переписывать v0.1.0-beta.1 и не начинать Legacy roadmap.
