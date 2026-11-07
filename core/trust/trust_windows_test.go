@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"golang.org/x/sys/windows"
 	"windeploy/internal/trusttest"
 )
 
@@ -82,6 +83,25 @@ func TestCheckAllowsReadOnlyAccessForUsers(t *testing.T) {
 	}
 	if err := Check(context.Background(), file, false); err != nil {
 		t.Fatalf("file with read-only Users access was rejected: %v", err)
+	}
+}
+
+func TestCheckAllowsAdministratorsAsElevatedDefaultOwner(t *testing.T) {
+	dir := trusttest.Dir(t)
+	file := filepath.Join(dir, "elevated-state.json")
+	if err := os.WriteFile(file, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	administrators, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(file, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION, administrators, nil, nil, nil); err != nil {
+		t.Skipf("cannot assign elevated default owner: %v", err)
+	}
+	if err := Check(context.Background(), file, false); err != nil {
+		t.Fatalf("Administrators-owned file with private DACL was rejected: %v", err)
 	}
 }
 

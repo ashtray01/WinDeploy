@@ -291,3 +291,21 @@ func TestWebViewDataDirectoryProbePreservesExistingData(t *testing.T) {
 		t.Fatal("regular file accepted as data directory")
 	}
 }
+
+func TestWebViewDataDirectoryRejectsJunctionAncestor(t *testing.T) {
+	if _, err := exec.LookPath("cmd.exe"); err != nil {
+		t.Skip("cmd.exe is unavailable")
+	}
+	root := t.TempDir()
+	target := filepath.Join(root, "target")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "link")
+	if output, err := exec.Command("cmd.exe", "/c", "mklink", "/J", link, target).CombinedOutput(); err != nil {
+		t.Skipf("junctions are unavailable: %v %s", err, output)
+	}
+	if _, err := prepareWebViewDataDir(filepath.Join(link, "profile")); err == nil {
+		t.Fatal("junction ancestor was accepted")
+	}
+}

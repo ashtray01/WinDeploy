@@ -61,14 +61,25 @@ func ensureWebViewDataDir(dir string) (string, error) {
 }
 
 func rejectReparseAncestors(path string) error {
-	resolved, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return fmt.Errorf("path cannot be resolved: %w", err)
+	current := filepath.Clean(path)
+	for {
+		ptr, err := windows.UTF16PtrFromString(current)
+		if err != nil {
+			return fmt.Errorf("path cannot be inspected: %w", err)
+		}
+		attributes, err := windows.GetFileAttributes(ptr)
+		if err != nil {
+			return fmt.Errorf("path cannot be inspected: %w", err)
+		}
+		if attributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+			return fmt.Errorf("path contains a symbolic link or junction")
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return nil
+		}
+		current = parent
 	}
-	if !strings.EqualFold(filepath.Clean(resolved), filepath.Clean(path)) {
-		return fmt.Errorf("path contains a symbolic link or junction")
-	}
-	return nil
 }
 
 func probeWebViewDataDir(absolute string) (string, error) {

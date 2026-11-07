@@ -45,8 +45,9 @@ type aceHeader struct {
 }
 
 // check requires a regular file (or directory) that is not a link, is owned by the
-// current process user and has a non-null DACL whose only write grants are the
-// current user, SYSTEM, Administrators or owner-mapped CREATOR OWNER entries.
+// current process user (or the built-in Administrators group used as the default
+// owner by an elevated token) and has a non-null DACL whose only write grants are
+// the current user, SYSTEM, Administrators or owner-mapped CREATOR OWNER entries.
 // Administrators can take ownership of any local object, so this rejects ordinary
 // users and groups rather than machine administrators.
 func check(path string, dir bool) error {
@@ -73,7 +74,8 @@ func check(path string, dir bool) error {
 	if err != nil || processUser.User.Sid == nil {
 		return fmt.Errorf("current user is unavailable")
 	}
-	if !owner.Equals(processUser.User.Sid) {
+	administrators, administratorsErr := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+	if !owner.Equals(processUser.User.Sid) && (administratorsErr != nil || !owner.Equals(administrators)) {
 		return fmt.Errorf("owner does not match the current user")
 	}
 	dacl, _, err := descriptor.DACL()
