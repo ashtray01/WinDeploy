@@ -66,6 +66,25 @@ func TestCheckRejectsWritableByUsers(t *testing.T) {
 	}
 }
 
+func TestCheckAllowsReadOnlyAccessForUsers(t *testing.T) {
+	if _, err := exec.LookPath("icacls.exe"); err != nil {
+		t.Skip("icacls is unavailable")
+	}
+	dir := trusttest.Dir(t)
+	file := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(file, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// A read/execute ACE contains READ_CONTROL and SYNCHRONIZE. Those common
+	// standard rights must not be mistaken for FILE_GENERIC_WRITE.
+	if output, err := exec.Command("icacls.exe", file, "/grant", "*S-1-5-32-545:(RX)").CombinedOutput(); err != nil {
+		t.Skipf("could not add a read-only test ACE: %v %s", err, output)
+	}
+	if err := Check(context.Background(), file, false); err != nil {
+		t.Fatalf("file with read-only Users access was rejected: %v", err)
+	}
+}
+
 func TestCheckRejectsDirectoryJunction(t *testing.T) {
 	if _, err := exec.LookPath("cmd.exe"); err != nil {
 		t.Skip("cmd.exe is unavailable")

@@ -115,6 +115,7 @@ func prepareDefaultWebViewDataDir(cache, temp, executableDir string) (string, bo
 			}
 			return dir, false, nil
 		}
+		logStation("кандидат каталога WebView2 отклонён (%s): %v", candidate, err)
 		if firstErr == nil {
 			firstErr = err
 		}

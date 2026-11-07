@@ -21,8 +21,14 @@ const (
 )
 
 // writeAccess covers every way a trustee could rewrite the object itself.
-const writeAccess = uint32(windows.FILE_GENERIC_WRITE | windows.GENERIC_WRITE | windows.GENERIC_ALL |
-	windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER | fileDeleteChild)
+// Do not use FILE_GENERIC_WRITE here: that composite mask also contains
+// READ_CONTROL and SYNCHRONIZE, which are present in an ordinary FILE_GENERIC_READ
+// grant. Treating any overlap as write access rejects harmless inherited (RX)
+// entries such as endpoint-management and sandbox reader groups.
+const writeAccess = uint32(windows.FILE_WRITE_DATA | windows.FILE_APPEND_DATA |
+	windows.FILE_WRITE_EA | windows.FILE_WRITE_ATTRIBUTES | windows.GENERIC_WRITE |
+	windows.GENERIC_ALL | windows.DELETE | windows.WRITE_DAC | windows.WRITE_OWNER |
+	fileDeleteChild)
 
 type aclHeader struct {
 	Revision uint8

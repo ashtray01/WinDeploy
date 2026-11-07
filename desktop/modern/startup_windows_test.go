@@ -180,6 +180,19 @@ func TestTrustedFallbackRejectsWritableByUsers(t *testing.T) {
 	}
 }
 
+func TestTrustedFallbackAllowsReadOnlyUsers(t *testing.T) {
+	if _, err := exec.LookPath("icacls.exe"); err != nil {
+		t.Skip("icacls is unavailable")
+	}
+	dir := trusttest.Dir(t)
+	if output, err := exec.Command("icacls.exe", dir, "/grant", "*S-1-5-32-545:(OI)(CI)(RX)").CombinedOutput(); err != nil {
+		t.Skipf("could not add a read-only test ACE: %v %s", err, output)
+	}
+	if _, err := prepareTrustedWebViewDataDir(dir); err != nil {
+		t.Fatalf("read-only fallback was rejected: %v", err)
+	}
+}
+
 func TestProgramFilesPortableFallbackIsSkipped(t *testing.T) {
 	programFiles := strings.TrimSpace(os.Getenv("ProgramFiles"))
 	if programFiles == "" {
