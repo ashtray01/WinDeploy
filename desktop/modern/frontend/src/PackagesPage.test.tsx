@@ -46,20 +46,26 @@ describe('package manager page', () => {
     mocks.cancelPackageInstall.mockResolvedValue({ ...idleInstall, running: false, cancelled: true });
   });
 
-  it('selects installable packages and starts a real install request', async () => {
+  it('requires an explicit selection and confirmation before starting a real install', async () => {
     render(<PackagesPage query="" />);
     expect(await screen.findByText('7-Zip')).toBeInTheDocument();
     expect(screen.getByText('Google Chrome')).toBeInTheDocument();
     expect(screen.getByText('Уже установлено')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Установить/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Выбрать 7-Zip' }));
     const installButton = screen.getByRole('button', { name: /Установить \(1\)/ });
     expect(installButton).toBeEnabled();
     fireEvent.click(installButton);
+    expect(mocks.startPackageInstall).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Подтвердить установку' }));
     expect(mocks.startPackageInstall).toHaveBeenCalledWith(['sevenzip']);
   });
 
   it('blocks system installs without administrator rights', async () => {
     mocks.getPackages.mockResolvedValue({ ...catalog, environment: { ...catalog.environment, elevated: false } });
     render(<PackagesPage query="" />);
+    expect(await screen.findByText(/доступна установка только пользовательских программ/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Выбрать 7-Zip' }));
     expect(await screen.findByText(/нужны права администратора/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Установить \(1\)/ })).toBeDisabled();
   });
@@ -75,6 +81,23 @@ describe('package manager page', () => {
     expect(await screen.findByText('Загрузка установщика…')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Отменить' }));
     expect(mocks.cancelPackageInstall).toHaveBeenCalled();
+  });
+
+  it('does not show a completion panel before any install request', async () => {
+    render(<PackagesPage query="" />);
+    await screen.findByText('7-Zip');
+    expect(screen.queryByRole('heading', { name: 'Ход установки' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Завершено')).not.toBeInTheDocument();
+  });
+
+  it('does not show a green completion when a package failed', async () => {
+    mocks.getPackageInstall.mockResolvedValue({
+      ...idleInstall, total: 1, completed: 1, message: 'Установка завершена с ошибками. Успешно: 0, ошибок: 1.',
+      results: [{ package_id: 'sevenzip', name: '7-Zip', status: 'failed', status_label: 'Ошибка', action: 'install', attempts: 1, started_at: '', finished_at: '', error: 'Установщик завершился с ошибкой.' }],
+    });
+    render(<PackagesPage query="" />);
+    expect(await screen.findByText('Завершено с ошибками')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Прогресс установки' })).toHaveAttribute('aria-valuenow', '100');
   });
 
   it('filters the catalog by the shared search query', async () => {

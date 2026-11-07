@@ -65,7 +65,10 @@ export default function PackagesPage({ query }: { query: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [connectionLost, setConnectionLost] = useState(false);
   const runningRef = useRef(false);
+  const pollFailures = useRef(0);
   const busy = install?.running ?? false;
 
   const reload = useCallback(async (keepSelection = false) => {
@@ -75,7 +78,9 @@ export default function PackagesPage({ query }: { query: string }) {
       const data = await api.getPackages();
       setCatalog(data);
       const available = (data.packages ?? []).filter(p => p.action === 'install' || p.action === 'update').map(p => p.id);
-      setSelected(previous => keepSelection ? previous.filter(id => available.includes(id)) : available);
+      // Never preselect installers: selecting a program is an explicit action.
+      setSelected(previous => keepSelection ? previous.filter(id => available.includes(id)) : []);
+      setConfirming(false);
     } catch {
       setCatalog(null);
       setError('Не удалось прочитать каталог программ. Повторите попытку.');
@@ -92,6 +97,8 @@ export default function PackagesPage({ query }: { query: string }) {
       try {
         const next = await api.getPackageInstall();
         if (!active) return;
+        pollFailures.current = 0;
+        setConnectionLost(false);
         setInstall(next);
         if (runningRef.current && !next.running) {
           runningRef.current = false;
@@ -99,7 +106,10 @@ export default function PackagesPage({ query }: { query: string }) {
         }
         runningRef.current = next.running;
       } catch {
-        // A transient bridge failure must not erase the progress already shown.
+        // Keep the last real progress visible, but say that it is stale.
+        if (!active) return;
+        pollFailures.current += 1;
+        if (pollFailures.current >= 3) setConnectionLost(true);
       }
     };
     void poll();
@@ -122,9 +132,14 @@ export default function PackagesPage({ query }: { query: string }) {
   const blocked = !!catalog && !catalog.environment.elevated && selected.some(id => byId.get(id)?.requires_admin);
   const allSelected = selectable.length > 0 && selectable.every(pkg => selectedSet.has(pkg.id));
   const progress = install && install.total > 0 ? Math.round((install.completed / install.total) * 100) : 0;
+  const hasInstallActivity = !!install && (install.running || install.total > 0 || (install.results?.length ?? 0) > 0 || !!install.message.trim());
+  const failedResults = (install?.results ?? []).filter(result => ['failed', 'unavailable', 'incompatible'].includes(result.status)).length;
+  const installTone = !hasInstallActivity ? 'muted' : install?.running ? 'blue' : install?.cancelled ? 'muted' : failedResults > 0 ? 'red' : install?.reboot_required ? 'amber' : 'green';
+  const installLabel = !hasInstallActivity ? 'Нет запуска' : install?.running ? 'Выполняется' : install?.cancelled ? 'Отменено' : failedResults > 0 ? 'Завершено с ошибками' : install?.reboot_required ? 'Нужна перезагрузка' : 'Завершено';
 
   function toggle(id: string) {
     setSelected(previous => previous.includes(id) ? previous.filter(item => item !== id) : [...previous, id]);
+    setConfirming(false);
   }
 
   async function startInstall() {
@@ -132,9 +147,10 @@ export default function PackagesPage({ query }: { query: string }) {
     try {
       const view = await api.startPackageInstall(selected);
       setInstall(view);
+      setConfirming(false);
       runningRef.current = view.running;
-    } catch {
-      setActionError('Не удалось запустить установку. Проверьте выбранные программы и права администратора.');
+    } catch (caught) {
+      setActionError(typeof caught === 'string' ? caught : 'Не удалось запустить установку. Проверьте выбранные программы и права администратора.');
     }
   }
 
@@ -151,13 +167,15 @@ export default function PackagesPage({ query }: { query: string }) {
     <PageHeading eyebrow="Установка программ" title="Каталог программ" detail="Проверенный каталог WinGet, официальных HTTPS-источников и локальных установщиков. Перед запуском проверяются SHA-256, подпись издателя и состояние системы." action={<Button onClick={() => void reload(true)} disabled={loading || busy}><RefreshCw size={15} />Проверить заново</Button>} />
     {error && <div className="callout red" role="alert">{error}</div>}
     {actionError && <div className="callout red" role="alert">{actionError}</div>}
+    {connectionLost && <div className="callout" role="alert">Связь с backend потеряна. Показан последний полученный прогресс; не запускайте установку повторно, пока связь не восстановится.</div>}
     {catalog && <EnvironmentBanner env={catalog.environment} blocked={blocked} />}
     {catalog?.warnings?.map((warning, index) => <div key={index} className="callout">{warning === 'target OS or architecture is unknown; compatibility cannot be confirmed' ? 'Не удалось определить версию Windows и архитектуру: совместимость программ не подтверждена.' : warning}</div>)}
-    {loading ? <Spinner label="Проверка установленных программ" /> : <div className={`packages-layout ${install ? 'with-install' : ''}`}>
+    {loading ? <Spinner label="Проверка установленных программ" /> : <div className={`packages-layout ${hasInstallActivity ? 'with-install' : ''}`}>
       <Panel className="packages-panel" title={<><PackagePlus size={16} /> Каталог программ</>} action={!busy && <div className="package-toolbar">
-        <label className="select-all"><input type="checkbox" checked={allSelected} onChange={event => setSelected(event.target.checked ? selectable.map(pkg => pkg.id) : [])} />Выбрать все</label>
+        <label className="select-all"><input type="checkbox" checked={allSelected} onChange={event => { setSelected(event.target.checked ? selectable.map(pkg => pkg.id) : []); setConfirming(false); }} />Выбрать все</label>
         <span className="selected-count">Выбрано {selected.length} из {packages.length}</span>
-        <Button variant="primary" disabled={!selected.length || blocked} onClick={() => void startInstall()}><DownloadCloud size={15} />Установить {selected.length ? `(${selected.length})` : ''}</Button>
+        {!confirming ? <Button variant="primary" disabled={!selected.length || blocked} onClick={() => setConfirming(true)}><DownloadCloud size={15} />Установить {selected.length ? `(${selected.length})` : ''}</Button>
+          : <><Button variant="danger" disabled={blocked || busy} onClick={() => void startInstall()}>Подтвердить установку</Button><Button variant="ghost" onClick={() => setConfirming(false)}>Отмена</Button></>}
       </div>}>
         {packages.length === 0 ? <EmptyState title="Каталог пуст" detail="Встроенный каталог не содержит программ." /> : <div className="package-table-wrap"><table className="package-table">
           <thead><tr><th scope="col" className="check-col"><span className="visually-hidden">Выбор</span></th><th scope="col">Программа</th><th scope="col">Состояние</th><th scope="col">Источник</th><th scope="col" className="size-col">Размер</th></tr></thead>
@@ -179,10 +197,10 @@ export default function PackagesPage({ query }: { query: string }) {
           </tbody>
         </table></div>}
       </Panel>
-      {install && <Panel title={<><DownloadCloud size={16} /> Ход установки</>} action={install.running ? <Button variant="danger" className="small" onClick={() => void cancelInstall()} disabled={install.cancel_requested}><X size={14} />{install.cancel_requested ? 'Отмена…' : 'Отменить'}</Button> : <Badge tone={install.cancelled ? 'muted' : install.reboot_required ? 'amber' : 'green'}>{install.cancelled ? 'Отменено' : install.reboot_required ? 'Нужна перезагрузка' : 'Завершено'}</Badge>}>
+      {hasInstallActivity && <Panel title={<><DownloadCloud size={16} /> Ход установки</>} action={install!.running ? <Button variant="danger" className="small" onClick={() => void cancelInstall()} disabled={install!.cancel_requested}><X size={14} />{install!.cancel_requested ? 'Отмена…' : 'Отменить'}</Button> : <Badge tone={installTone}>{installLabel}</Badge>}>
         <div className="install-progress">
           <div className="install-summary"><div><strong>{install.running ? (install.current_name || install.current || 'Подготовка…') : install.message || 'Установка не запускалась'}</strong><small>{install.running ? `Обработано ${install.completed} из ${install.total}` : install.message}</small></div><span className="install-percent">{progress}%</span></div>
-          <Progress value={install.running ? progress : install.cancelled ? progress : 100} label="Прогресс установки" />
+          <Progress value={install.total > 0 ? progress : null} label="Прогресс установки" />
           {install.reboot_required && <div className="callout">Установка выполнена, но Windows требует перезагрузку. Продолжите после перезагрузки.</div>}
         </div>
         {(install.events ?? []).length > 0 && <div className="install-events" aria-live="polite">{(install.events ?? []).slice(-60).map((event, index) => <div key={`${event.time}-${index}`} className={`install-event ${event.level}`}><time>{new Date(event.time).toLocaleTimeString('ru-RU')}</time><span>{event.package_name && <b>{event.package_name}: </b>}{event.message}</span></div>)}</div>}

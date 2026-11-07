@@ -4,7 +4,7 @@ import ExecutionPage from './ExecutionPage';
 import type { DeploymentView, DeploySessionView } from './bridge';
 
 const mocks = vi.hoisted(() => ({
-  listProfiles: vi.fn(), getProfile: vi.fn(), getDeployment: vi.fn(), listDeploymentSessions: vi.fn(),
+  listProfiles: vi.fn(), getProfile: vi.fn(), previewProfile: vi.fn(), getDeployment: vi.fn(), listDeploymentSessions: vi.fn(),
   startDeployment: vi.fn(), cancelDeployment: vi.fn(), resumeDeployment: vi.fn(), getDeploymentSession: vi.fn(),
 }));
 vi.mock('./bridge', () => ({ api: mocks }));
@@ -19,6 +19,7 @@ describe('deployment execution page', () => {
     vi.clearAllMocks();
     mocks.listProfiles.mockResolvedValue({ source: 'test', profiles: [{ id: 'office', name: 'Офис', parent: '' }], errors: [] });
     mocks.getProfile.mockResolvedValue({ id: 'office', name: 'Офис', components: [{ id: 'dns-check', name: 'Проверить DNS', category: 'diagnostics', dependencies: [], requirements: {}, timeout: 30000000000 }] });
+    mocks.previewProfile.mockResolvedValue({ scope: 'structure-and-dag-only', tasks: [{ task: { id: 'dns-check', name: 'Проверить DNS', category: 'diagnostics', dependencies: [], requirements: {}, timeout: 30000000000 }, compatibility: 'compatible', reason: 'Требования ОС совпадают' }] });
     mocks.getDeployment.mockResolvedValue(idle);
     mocks.listDeploymentSessions.mockResolvedValue(sessions);
     mocks.startDeployment.mockResolvedValue(running);
@@ -26,10 +27,14 @@ describe('deployment execution page', () => {
     mocks.getDeploymentSession.mockResolvedValue({ ...running, running: false, completed: true, tasks: [{ ...runningTask, status: 'Success', status_label: 'Успешно' }] });
   });
 
-  it('requires confirmation and starts the selected profile', async () => {
+  it('requires a preview and confirmation before starting the selected profile', async () => {
     render(<ExecutionPage />);
     await waitFor(() => expect(mocks.getProfile).toHaveBeenCalledWith('office'));
     expect(await screen.findByText('Проверить DNS')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Запустить' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Проверить план' }));
+    await waitFor(() => expect(mocks.previewProfile).toHaveBeenCalledWith('office', ['dns-check']));
+    expect(await screen.findByText(/План проверен/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Запустить' }));
     expect(await screen.findByText(/Выполнить выбранные компоненты/)).toBeInTheDocument();
     expect(mocks.startDeployment).not.toHaveBeenCalled();
@@ -37,6 +42,23 @@ describe('deployment execution page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Подтвердить запуск' }));
     await waitFor(() => expect(mocks.startDeployment).toHaveBeenCalledWith('office', ['dns-check']));
     expect((await screen.findAllByText('Выполняется')).length).toBeGreaterThan(0);
+  });
+
+  it('blocks a plan with incompatible components', async () => {
+    mocks.previewProfile.mockResolvedValue({ scope: 'structure-and-dag-only', tasks: [{ task: { id: 'dns-check', name: 'Проверить DNS', category: 'diagnostics', dependencies: [], requirements: {}, timeout: 30000000000 }, compatibility: 'incompatible', reason: 'Требования ОС не совпадают' }] });
+    render(<ExecutionPage />);
+    await screen.findByText('Проверить DNS');
+    fireEvent.click(screen.getByRole('button', { name: 'Проверить план' }));
+    expect(await screen.findByText(/Есть несовместимые/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Запустить' })).toBeDisabled();
+  });
+
+  it('never selects the frozen legacy profile by default', async () => {
+    mocks.listProfiles.mockResolvedValue({ source: 'test', profiles: [{ id: 'legacy', name: 'Legacy', parent: '' }, { id: 'office', name: 'Офис', parent: '' }], errors: [] });
+    render(<ExecutionPage />);
+    await waitFor(() => expect(mocks.getProfile).toHaveBeenCalledWith('office'));
+    expect(screen.getByLabelText('Профиль для выполнения')).toHaveValue('office');
+    expect(screen.queryByRole('option', { name: 'Legacy' })).not.toBeInTheDocument();
   });
 
   it('shows saved sessions and allows viewing them', async () => {
