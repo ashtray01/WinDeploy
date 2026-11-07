@@ -303,8 +303,8 @@ func (m *Manager) runItem(ctx context.Context, item PlanItem, options InstallOpt
 		result.FinishedAt = time.Now().UTC()
 		return result
 	}
-	if err == nil && !after.Installed {
-		result.Status, result.ErrorCode, result.Error = StatusFailed, CodeVerifyFailed, "installed package was not detected after installation"
+	if err != nil || !after.Installed {
+		result.Status, result.ErrorCode, result.Error = StatusFailed, CodeVerifyFailed, "installed package could not be confirmed after installation"
 		m.emit("error", "package.verify-failed", item.PackageID, "")
 	} else if result.Status == StatusSuccess && after.Installed {
 		m.emit("info", "package.verified", item.PackageID, detailVersion(after.Version))

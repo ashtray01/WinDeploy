@@ -124,3 +124,7 @@ WebView2 в текущей сессии хоста не создаёт конт�
 
 ## Last verified session
 Финальная проверка Stages 1–11: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Wails build, 37 UI-тестов, strict TypeScript, Vite, service tests PASS; Legacy test/vet x64/x86, selftest и реальный GUI smoke (окно + auto-close) PASS на Windows 11; read-only deployment создал сессию и HTML/JSON отчёты; 5 CLI-тестов `windeploy-run` PASS; workflows прошли YAML parse и actionlint. Portable x64/x86 и offline x64 ZIP + SHA256SUMS собраны. Реальные установки, Win7/10 VM, Modern WebView2 smoke и публикация не выполнялись. Детали: HANDOFF.md, docs/release.md, docs/legacy.md, docs/execution.md.
+
+## Audit iteration — 2026-11-07
+- [x] P0: reject installation Success when post-install detection fails; regression reproduced before fix, packages/deploy/CLI tests and vet PASS.
+

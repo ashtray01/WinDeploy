@@ -575,6 +575,27 @@ func TestInstallUsesVerifiedCache(t *testing.T) {
 	}
 }
 
+func TestInstallDetectionFailureCannotReportSuccess(t *testing.T) {
+	facts := &fakeFacts{}
+	manager, runner, _ := testManager(testPackage(), facts)
+	runner.onRun = func(Command) {
+		facts.mu.Lock()
+		defer facts.mu.Unlock()
+		facts.appsErr = errors.New("registry unavailable after install")
+	}
+	run, err := manager.Install(context.Background(), nil, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(run.Results) != 1 || runner.callCount() != 1 {
+		t.Fatalf("expected one completed installer: %+v", run)
+	}
+	result := run.Results[0]
+	if result.Status != StatusFailed || result.ErrorCode != CodeVerifyFailed {
+		t.Fatalf("unknown post-install state must not succeed: %+v", result)
+	}
+}
+
 func TestInstallCancelledBeforeStart(t *testing.T) {
 	facts := &fakeFacts{}
 	manager, runner, _ := testManager(testPackage(), facts)
