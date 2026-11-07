@@ -39,7 +39,7 @@ foreach ($patternName in $secretPatterns.Keys) {
 # Password-like assignments are meaningful in configuration files only. Go/TS
 # test fixtures such as `Password: "stored-password"` are not release secrets.
 $configPattern = '(password|passwd|secret|api[_-]?key)\s*[:=]\s*["''][^"'']{8,}["'']'
-$configFiles = $tracked | Where-Object { $_ -match '\.(env|ya?ml|json|toml|ini|config|xml|ps1)$' -and $_ -notmatch '(^|/)(docs|local|cache)/' }
+$configFiles = $tracked | Where-Object { $_ -match '\.(env|ya?ml|json|toml|ini|config|xml|ps1)$' -and $_ -notmatch '(^|/)(docs|local|cache)/' -and $_ -ne 'scripts/check-release-secrets.ps1' }
 foreach ($file in $configFiles) {
     $full = Join-Path $root $file
     if (!(Test-Path -LiteralPath $full)) { continue }

@@ -48,8 +48,9 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `96e9fb1` — fix(modern): require plan preview and explicit package confirmation.
 - `2e7dbc6` — feat(release): unify beta identity and add Modern-only pipeline.
 - `b032eb8` — docs: prepare public beta materials and anonymized screenshots.
-- Финальный docs commit с HANDOFF/TASKS/AGENTS — hash: `git log -1 --oneline`.
-  Он не меняет runtime; release workflow пересоберёт EXE из тега.
+- `a307147` — docs: record beta readiness handoff and open blockers.
+- Последующие release/secret-scan fixes (включая self-match fix) — `git log -3 --oneline`;
+  они не меняют runtime EXE. Release workflow пересоберёт EXE из тега.
 
 ## Фактические проверки
 
