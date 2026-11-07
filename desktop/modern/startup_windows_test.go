@@ -50,6 +50,30 @@ func TestStartupLogWritesConsoleAndFile(t *testing.T) {
 	}
 }
 
+func TestStartupLogWritesFileWhenConsoleIsUnavailable(t *testing.T) {
+	previous, path := log.Writer(), startupLogPath
+	t.Cleanup(func() { log.SetOutput(previous); startupLogPath = path })
+	file, err := configureStartupLog(t.TempDir(), failingWriter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	logStation("file-only evidence")
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(startupLogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "file-only evidence") {
+		t.Fatalf("GUI startup evidence was lost: %q", data)
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
+
 func TestWebViewDataDirectoryProbePreservesExistingData(t *testing.T) {
 	dir := t.TempDir()
 	existing := filepath.Join(dir, "existing.txt")

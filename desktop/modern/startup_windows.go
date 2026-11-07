@@ -70,7 +70,10 @@ func configureStartupLog(dir string, fallback io.Writer) (io.Closer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open startup log: %w", err)
 	}
-	log.SetOutput(io.MultiWriter(fallback, file))
+	// Write the durable file first. A GUI process usually has no valid stderr, and
+	// io.MultiWriter stops at the first error; putting stderr first would leave the
+	// startup log empty even though the file opened successfully.
+	log.SetOutput(io.MultiWriter(file, fallback))
 	logStation("запуск приложения")
 	return file, nil
 }
