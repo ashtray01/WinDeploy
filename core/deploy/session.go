@@ -18,6 +18,7 @@ import (
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
 	"windeploy/core/trust"
+	"windeploy/internal/atomicfile"
 )
 
 // SessionVersion is the supported session file schema.
@@ -181,7 +182,7 @@ func (s Store) Save(ctx context.Context, session Session) error {
 		os.Remove(tempName)
 		return fmt.Errorf("session could not be closed")
 	}
-	if err := os.Rename(tempName, s.path(session.ID)); err != nil {
+	if err := atomicfile.Replace(ctx, tempName, s.path(session.ID)); err != nil {
 		os.Remove(tempName)
 		return fmt.Errorf("session could not be stored")
 	}

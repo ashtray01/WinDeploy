@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"windeploy/core/engine"
+	"windeploy/internal/atomicfile"
 )
 
 const maxSnapshotBytes = 4 << 20
@@ -69,7 +70,7 @@ func (s *FileStore) Save(ctx context.Context, snapshot engine.Snapshot) error {
 	if err = ctx.Err(); err != nil {
 		return err
 	}
-	return os.Rename(temp, s.Path)
+	return atomicfile.Replace(ctx, temp, s.Path)
 }
 
 func (s *FileStore) Load(ctx context.Context) (engine.Snapshot, error) {

@@ -111,6 +111,39 @@ func TestReportIncludesTaskWarnings(t *testing.T) {
 	}
 }
 
+func TestReportOmitsTaskParametersAndSecrets(t *testing.T) {
+	secret := "super-secret-value"
+	tasks := []engine.Task{{
+		ID: "share", Name: "Сетевая папка", Category: "shares", Status: engine.Pending,
+		Parameters: map[string]string{"password": secret, "unc": `\\server\finance`},
+	}}
+	now := time.Now().UTC()
+	results := []engine.TaskResult{{TaskID: "share", Status: engine.Failed, StartedAt: now, FinishedAt: now, Error: "execute failed"}}
+	report, err := Build("s", "p", "P", inventory.SystemInfo{}, tasks, results, now, now, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var jsonBuffer, htmlBuffer bytes.Buffer
+	if err := WriteJSON(&jsonBuffer, report); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteHTML(&htmlBuffer, report); err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range map[string]string{"json": jsonBuffer.String(), "html": htmlBuffer.String()} {
+		if strings.Contains(value, secret) {
+			t.Fatalf("%s report contains a task password", name)
+		}
+		if strings.Contains(value, "server") {
+			t.Fatalf("%s report contains a task path parameter", name)
+		}
+	}
+	// The task's public safe metadata must still be present.
+	if !strings.Contains(htmlBuffer.String(), "Сетевая папка") {
+		t.Fatal("safe task metadata missing from report")
+	}
+}
+
 func TestSaveRefusesOverwrite(t *testing.T) {
 	report := sampleReport(t)
 	directory := t.TempDir()

@@ -15,6 +15,7 @@ import (
 
 	"windeploy/core/inventory"
 	"windeploy/core/trust"
+	"windeploy/internal/atomicfile"
 )
 
 // Status is the final state of one package operation.
@@ -626,7 +627,7 @@ func (m *Manager) installPortable(ctx context.Context, item PlanItem, source Sou
 		result.ErrorCode = CodeInstallFailed
 		return fmt.Errorf("could not close portable application")
 	}
-	if err := os.Rename(tempName, target); err != nil {
+	if err := atomicfile.Replace(ctx, tempName, target); err != nil {
 		os.Remove(tempName)
 		result.ErrorCode = CodeInstallFailed
 		return fmt.Errorf("could not store portable application")

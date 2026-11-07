@@ -1,4 +1,9 @@
-param([string]$Go = 'go', [string]$BuildCache = 'go-build')
+param(
+    [string]$Go = 'go',
+    [string]$BuildCache = 'go-build',
+    [string]$TestTemp = '',
+    [switch]$AllowNativeWrites
+)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskOldArch = $env:GOARCH
@@ -12,9 +17,14 @@ Push-Location $taskRoot
 try {
     $env:GOCACHE = Join-Path $taskRoot ('cache\' + $BuildCache)
     $env:GOMODCACHE = Join-Path $taskRoot 'cache\_go-mod'
-    # A sandboxed shell can deny the user TEMP directory; keep go test/build
-    # temporaries inside the workspace and restore the environment afterwards.
-    $taskTemp = Join-Path $taskRoot 'cache\tmp'
+    # Go 1.20's test binary is confined to the workspace by this host's file
+    # sandbox, and ACL tests need permission to change a private test DACL. The
+    # default is therefore a workspace directory; CI and normal shells may pass
+    # -TestTemp to use any fast local disk. Atomic replacement is used by state
+    # and session stores so a OneDrive indexer cannot turn a rename into a failed
+    # checkpoint.
+    if (!$TestTemp) { $TestTemp = Join-Path $taskRoot 'cache/tmp' }
+    $taskTemp = [IO.Path]::GetFullPath($TestTemp)
     New-Item -ItemType Directory -Force -Path $taskTemp | Out-Null
     $env:TEMP = $taskTemp
     $env:TMP = $taskTemp
@@ -22,9 +32,14 @@ try {
     $env:GOOS = 'windows'
     & $Go version
     if ($LASTEXITCODE -ne 0) { throw 'Go toolchain is unavailable' }
+    $taskTestArgs = @('./...', '-count=1')
+    if (!$AllowNativeWrites) {
+        # Credential Manager and HKCU writes are safe only on a disposable runner.
+        $taskTestArgs += @('-skip', 'TestWindowsCredentialStoreRoundTrip|TestRegistryStoreRoundTrip')
+    }
     foreach ($taskArch in @('amd64', '386')) {
         $env:GOARCH = $taskArch
-        & $Go test ./...
+        & $Go test @taskTestArgs
         if ($LASTEXITCODE -ne 0) { throw "Core tests failed for $taskArch" }
         & $Go vet ./...
         if ($LASTEXITCODE -ne 0) { throw "Core vet failed for $taskArch" }

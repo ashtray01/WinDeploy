@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"windeploy/internal/atomicfile"
+	"windeploy/internal/buildinfo"
 )
 
 // ErrHashMismatch reports a downloaded artifact that does not match the pinned
@@ -62,7 +65,7 @@ func NewHTTPFetcher() *HTTPFetcher {
 				ForceAttemptHTTP2:     true,
 			},
 		},
-		UserAgent: "WinDeploy/0.2 (+https://github.com/)",
+		UserAgent: "WinDeploy/" + buildinfo.DisplayVersion(),
 		MaxBytes:  2 << 30,
 	}
 }
@@ -161,7 +164,7 @@ func (f *HTTPFetcher) Download(ctx context.Context, req DownloadRequest) (Downlo
 		os.Remove(tempName)
 		return DownloadResult{}, fmt.Errorf("could not close downloaded artifact")
 	}
-	if err := os.Rename(tempName, req.Destination); err != nil {
+	if err := atomicfile.Replace(ctx, tempName, req.Destination); err != nil {
 		os.Remove(tempName)
 		return DownloadResult{}, fmt.Errorf("could not store downloaded artifact")
 	}
