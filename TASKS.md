@@ -2,31 +2,21 @@
 
 ## Текущий этап
 
-2026-11-07: startup diagnostics и P0-02/P0-05 реализованы и проверены backend/service тестами; запуск Modern GUI остаётся FAIL до main. Приоритет — Modern Windows 11/10 x64 (включая совместимые LTSC). Источник фактов — [docs/AUDIT.md](docs/AUDIT.md); команды и ограничения среды — [HANDOFF.md](HANDOFF.md). Наличие backend/страницы не означает завершение пользовательского сценария. Старые Stages 1–11 — история реализации, не критерий готовности MVP; полный прежний список сохранён в Git (`b990439:TASKS.md`).
+2026-11-07: Modern startup stderr/UDF recovery и программный контракт reboot boundary реализованы. Реальный DOM/bridge smoke GUI EXE с новым UDF PASS на текущем Win11; visible/default-UDF launch и native reboot VM ещё открыты. Источники фактов — docs/AUDIT.md и HANDOFF.md.
 
 ## Завершено в этой итерации
 
-- [x] P0-03 программный контракт: ErrRebootPending → RebootRequired, dependencies blocked, persisted per-task boot evidence, same-boot/unknown-boot fail closed, Verify-only recovery без Execute, pending отчёт/CLI/UI. Root и Modern test/vet/build PASS, UI 38/38. Boot GUID read-only стабильность проверена на текущем Win11; реальная reboot/install VM-матрица остаётся открытой.
+- [x] Startup stderr fallback, file-open failure tests, WebView2 write probe/explicit UDF без очистки старого профиля, launcher arguments; actual GUI EXE DOM/bridge smoke PASS с новым UDF (`b1b6dac`). Native Inventory совпал, pageErrors=0; visible/default-user acceptance отдельно.
+- [x] P0-03 software contract: ErrRebootPending → RebootRequired, blocked dependencies, persisted per-task boot evidence, same/unknown-boot gate, Verify-only recovery без повторного Execute, pending CLI/report/UI (`d4c4171`). Root/Modern checks PASS, UI 38/38. Реальный reboot/install VM остаётся открытым.
 
-- [x] Startup logger сохраняет stderr при отказе файла; WebView2 data-directory probe и явный --webview-data-dir без очистки старого профиля. Console EXE с новым workspace UDF: настоящий GUI/DOM/bridge smoke PASS на текущем Win11, native Inventory совпал, pageErrors=0. Старый UDF давал 800700aa; default user launch отдельно.
-
-- [x] Диагностика раннего выхода Modern: production build tag, отдельный console EXE и `scripts/start-modern-diagnostic.ps1`. Полная сборка/37 UI tests PASS вне sandbox; запуск окна остаётся FAIL (exit 1 до main, sandbox console показывает DLL/COM init panic). Это диагностическое улучшение, не исправленный GUI runtime.
-
-- [x] Аудит всех подсистем, bridge и сценариев A–H, матрица доказательств и security findings (`5a52c7e`).
-- [x] P0-01: detection error после exit 0 больше не даёт Success (`972e44e`); regression FAIL до изменения, PASS после.
-- [x] Перепланирование P0–P3; Legacy вынесена в FROZEN.
-- [x] Закрепить стратегию в AGENTS/архитектуре/README, обновить HANDOFF и итоговые результаты.
-
-- [x] Runtime applicability подключён на общей границе Runner: свежий native/provider snapshot, проверка всего плана и GuardAdapter на start/resume; core/CLI/service tests и test/vet/build PASS. Отклонённый resume не отображается Completed.
-
-- [x] Общий process-local gate package/deployment от подготовки до завершения; повторные start/resume/shutdown checks. Конкурентные barrier tests PASS, включая 20 повторов. Другие standalone mutations и отдельные процессы этим gate не покрыты.
+Ранее завершены исходный аудит/roadmap (`5a52c7e`), package detection fail-closed (`972e44e`), runtime applicability (`d81df3e`), process-local package/deployment gate (`2d3562c`). Старые test результаты — история HANDOFF/Git, не новая VM evidence.
 
 ## P0 — блокирующие ошибки
 
-- [ ] Modern startup: свежий GUI/console EXE вне sandbox выходит 1 до новой записи startup.log. Найти причину интерактивно, восстановить окно и пройти реальный read-only GUI smoke. Sandbox console отдельно показывает COM DLL init panic; не объявлять её причиной внешнего exit 1.
+- [ ] Modern startup acceptance: DOM/bridge настоящего GUI EXE с явным fresh UDF PASS; вручную подтвердить visible/default-UDF запуск владельцем. User script-paste ошибка исправляется запуском файла .ps1, старый UDF давал 800700aa; данные/ACL не сбрасывались.
 
 - [x] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
-- [ ] P0-03: убрать ложный Success при отложенной reboot verification (engine/deploy/state/reporting/UI). Готово: зависимости ждут подтверждения, состояние переживает restart, resume не переустанавливает завершённое; persistence/negative tests и затем Win11 VM. Не лечить простым изменением флага.
+- [ ] P0-03 VM acceptance: программный контракт исправлен (`d4c4171`), pending не Success/Completed; Verify-only после смены kernel BootID. Unit/file/CLI/service/UI tests PASS. Осталось: реальный reboot/fast startup + native readiness/dependencies/report в Win11 VM, затем Win10/LTSC.
 - [ ] P0-04: честные результаты составных операций. Готово: отсутствие обязательного ярлыка/read-back или default printer не теряется в отчёте; warnings доступны; fake failure tests. Не смешивать подключённый UNC с выполненным shortcut requirement.
 - [x] P0-05: единое исключение изменяющих операций и атомарный start/resume/shutdown. Готово: package page и deployment не запускают конкурирующие установки; два resume не пишут одну сессию; barrier-based concurrent service tests.
 - [ ] P0-06: явная граница user/machine context. Готово: при Run as another admin пользовательские операции не направляются молча в чужие HKCU/Desktop/CredMan; fail-closed gate или проверенный elevated worker; two-account VM test.
@@ -35,7 +25,7 @@
 
 - [ ] Подтверждать target version после update, отличать unknown/absent/outdated; fail/cancel detection tests. Каталог и detection уже реализованы, переписывать их не требуется.
 - [ ] Semantic profile preflight: category parameters, package refs, check_ref/diagnostic targets, dependency closure; ошибочный профиль отклоняется до первой мутации. Preview и execution используют одинаковые правила.
-- [ ] Modern desktop smoke на доступной интерактивной Windows 11 с WebView2: настоящий HWND/DOM, native inventory comparison, действия/ошибки bridge. Отдельно от Vite build и happy-dom.
+- [ ] Modern desktop acceptance: actual EXE DOM/bridge/native Inventory smoke PASS с explicit UDF; проверка запускалась Hidden, MainWindowHandle=0. Нужна visible/default-user проверка, Windows 10/LTSC отдельно.
 - [ ] Win11 VM: один одобренный пакет (7-Zip), clean install → detection → повтор без установки → update/failure/cancel; UI progress, exit codes и отчёт совпадают с системой. Затем остальные пакеты каталога и Windows 10/LTSC.
 - [ ] SMB VM/server: UNC access, credential storage в правильном контексте, conflict preview/consent, shortcut existence, повтор и ошибки. Native WNet/list/link код уже есть; полный сценарий не подтверждён.
 - [ ] Persistent безопасный журнал с error codes и связью task/session; не включать secrets/raw installer output. UI сообщает об ошибках polling; отчёт сохраняет warnings/partial outcomes.
@@ -74,10 +64,10 @@
 
 | Задача | Приоритет / компоненты | Критерий готовности / проверка |
 |---|---|---|
-| 1. Реальный запуск Modern | Startup/main/Wails/build | интерактивно локализовать exit 1 до main; минимальный доказанный fix; HWND/CDP/DOM/native Inventory и read-only bridge smoke PASS на Win11; Win10/LTSC отдельно |
-| 2. Честная reboot boundary | P0-03, engine/deploy/reporting/UI | зависимости ждут verify, persistence/restart tests, resume не переустанавливает завершённое; TS/UI tests; VM отдельно |
-| 3. User/machine context | P0-06, managers/service | fail-closed context gate или worker с исходным SID; unit tests и отдельный two-account VM gate |
+| 1. User/machine context | P0-06, managers/service | fail-closed gate или worker с исходным SID; user-scoped mutations не направляются другому admin; unit/service tests, two-account VM отдельно |
+| 2. Честные составные результаты | P0-04, deploy/shares/browsers/report | обязательный UNC+shortcut/webapp effect не теряется, warnings доступны; negative tests; VM отдельно |
+| 3. Win11 VM acceptance | startup/P0-03/основной package scenario | visible/default-UDF launch, 7-Zip install/detection/repeat; настоящая reboot boundary, boot GUID changed, Verify-only/dependencies/report; fast startup; затем отдельная Win10/LTSC матрица |
 
-Завершённый текущий пакет: диагностика/production сборка (`90d9905`, runtime всё ещё FAIL), runtime applicability (`d81df3e`), package/deployment coordinator (`2d3562c`). Root test/vet/build и полная Modern сборка PASS; UI 37/37; конкурентные tests x20 PASS. Gate process-local и не охватывает остальные standalone mutations. Подробные команды/ограничения — HANDOFF.
+Текущий пакет: startup diagnostics/recovery (`b1b6dac`) и persisted reboot verification (`d4c4171`). Root test/vet/build, полная Modern сборка PASS; UI 38/38; actual GUI EXE DOM/bridge smoke PASS с новым UDF. Native reboot/install и visible HWND не подтверждены. Без VM продолжать независимые задачи 1–2, VM acceptance оставить открытой. Подробности/точные команды — HANDOFF.
 
-Каждую задачу завершать отдельным коммитом. Не добавлять новые features/Legacy; после итерации — HANDOFF и чистый Git. P0-04 остаётся следующим после указанного пакета.
+Каждую задачу завершать отдельным commit; после пакета документы, clean Git и stop. Новые features и Legacy не начинать.

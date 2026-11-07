@@ -26,7 +26,9 @@ results, err := engine.Resume(ctx, tasks, adapter, snapshot, engine.ResumeOption
 
 Resume не запускает повторно Success/AlreadyInstalled/NotApplicable и явно пропущенные задачи. Failed сохраняется, если администратор явно не задал RetryFailed. Running/Cancelled и пропуски из-за зависимостей возвращаются в план через Precheck. Успешные сохранённые результаты не перепроверяются по live inventory; это доверенный отчёт предыдущего выполнения, не факт текущего состояния системы.
 
-RebootRequired по контракту engine — флаг проверенного успеха. Текущий deploy.Adapter нарушает этот контракт: пропускает Verify для reboot, после чего Success сохраняется Resume без новой проверки. Отложенная post-reboot verification не реализована; зависимые задачи могут стартовать преждевременно (P0-03, docs/AUDIT.md). Resume отклоняет status RebootRequired; boot-ID validation и автоматический запуск при входе отсутствуют. Не обещать корректное reboot continuation.
+RebootRequired **status** означает, что результат ещё не проверен. Adapter.Verify возвращает engine.ErrRebootPending, engine сохраняет status/flag и блокирует dependencies. Pending snapshot принимается Resume, но по умолчанию сохраняет барьер. Только доверенный caller, подтвердивший другую загрузку, задаёт ResumeOptions.VerifyReboot: engine вызывает исключительно Verify, без Precheck/Execute и без увеличения install attempts. Failed/cancelled Verify сохраняет pending status; checkpoint во время Verify тоже сохраняет обязательство, поэтому restart не переводит его в повторную установку. Успешный Verify снимает flag и разрешает зависимости. Success с reboot flag остаётся допустимым для других adapters только после реального подтверждения readiness.
+
+deploy.Runner читает fresh boot identity через DI или inventory.Native.BootID, сохраняет boot_id и origin каждой reboot-задачи в reboot_boot_ids. Same/unknown boot отклоняет resume до adapter phases, RetryFailed не обходит gate. Новый reboot при выполнении следующих задач после resume привязывается к новой загрузке и снова требует reboot. Historical reboot sessions без boot evidence отклоняются; их нельзя исправлять простым редактированием JSON. Boot GUID — private NT query с fail-closed проверками; его смена и managers read-back при реальном reboot/fast startup требуют Win11 VM acceptance, затем Windows 10/LTSC. Автозапуска после входа нет.
 
 ## Интеграция профилей: `core/deploy`
 
@@ -39,7 +41,7 @@ RebootRequired по контракту engine — флаг проверенно�
 | drivers | устройство с Hardware ID уже ok → AlreadyInstalled | `drivers.Manager.Install` | устройство ok |
 | printers | очередь с именем существует → AlreadyInstalled | `printers.Manager.Add` | очередь существует |
 | browsers | Pending | политики Chromium/Firefox | nil без read-back; warnings теряются в deploy |
-| windows | Pending | computer-name/timezone/explorer/power-plan | nil без read-back |
+| windows | Pending | computer-name/timezone/explorer/power-plan | computer-name: active hostname после reboot; остальное без read-back |
 | diagnostics | Pending | DNS/DHCP/gateway/TCP/ICMP/HTTP/SMB | Execute |
 
 Пароли никогда не читаются из параметров профиля; для shares используется Windows Credential Manager. Параметры компонентов в отчёт не попадают.
@@ -47,6 +49,8 @@ RebootRequired по контракту engine — флаг проверенно�
 ## Сессии и отчёты
 
 `deploy.Store` хранит `sessions/<id>.json` (0600, атомарная запись) с исходным Pending-планом, snapshot и итогом. `deploy.Runner.Start` создаёт сессию до первой операции и пишет полную сессию на каждый checkpoint engine. `Resume` загружает план и snapshot, сохраняет успешные результаты и повторяет только разрешённые задачи; `retryFailed` требуется явно. Сессия не содержит паролей, но содержит параметры компонентов, поэтому каталог должен быть приватным.
+
+Pending reboot session получает Completed=false; Summarize не считает её успешной. CLI возвращает ненулевой exit для незавершённого результата. JSON/HTML отдельно считают awaiting_verification; Modern показывает ожидание проверки и оставляет продолжение доступным. Новые boot fields optional в session schema v1; old non-reboot sessions читаются, отсутствие boot evidence у old reboot не разрешает execution. ACL/owner/trusted storage всё ещё обязательны.
 
 После завершения/прерывания `reporting.Build` создаёт JSON и автономный HTML (`reports/windeploy-<session>-<time>.html`): профиль, система, итог по статусам, таблица задач с временем/попытками/ошибками, флаг перезагрузки. HTML экранирует все значения; параметры компонентов не включаются. Повторная запись в тот же файл запрещена.
 

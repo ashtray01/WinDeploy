@@ -33,7 +33,9 @@ Standalone pages используют managers напрямую. Выполне�
 
 Engine проверяет DAG, не применимость Windows автоматически; Adapter обязан проверить requirements. Timeouts/отмена кооперативны; engine ждёт adapter, CommandContext не гарантирует завершение дерева installer children. Errors отдельных tasks отражаются в results; nil error Run не означает успех всех задач.
 
-Success с reboot flag по контракту engine означает уже подтверждённую готовность. Текущий deploy.Adapter пропускает Verify при reboot, а Resume сохраняет Success. Post-reboot verification и boot identity **не реализованы**: P0-03, нельзя считать их готовыми по наличию кнопки Resume.
+Success с reboot flag по контракту engine означает подтверждённую готовность. deploy.Adapter возвращает ErrRebootPending, который engine сохраняет как RebootRequired; этот status не разрешает dependencies. Runner сохраняет boot_id и per-task reboot_boot_ids, блокирует same/unknown boot и разрешает только Verify после смены boot identity. Проверка не повторяет Precheck/Execute; failure/cancel и checkpoint во время Verify сохраняют obligation. Pending session не Completed; report/CLI/UI показывают ожидание проверки. Исторический reboot Success без boot evidence автоматически не восстанавливается. Native reboot/fast startup VM acceptance пока открыта.
+
+Windows boot query изолирован в inventory.Native.BootID: private NT class 90, kernel GUID, проверка size/error/nonzero, fail closed при недоступности. Layout сверяется с [первичным phnt header System Informer](https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntexapi.h); [Microsoft предупреждает об изменяемости NT query API](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation). Это осознанная ограниченная зависимость с native read-only test на текущем Win11, не подтверждение смены GUID на всех Win10/LTSC/fast-startup режимах. Boot evidence не аутентифицирует владельца session.
 
 Browser/windows Verify возвращает nil без read-back; некоторые warnings исчезают при deploy dispatch. Session Completed означает завершение run, а не отсутствие Failed. Modern Service сериализует package/deployment preparation и execution общим operationGate, закрывая admission при shutdown. Gate не охватывает другие standalone mutations и другие процессы/CLI; межпроцессная защита session storage остаётся открытой.
 
@@ -43,6 +45,6 @@ Persistent files записываются через temp/Sync/Close/Rename. Э�
 
 ## Проверка и развитие
 
-Следующий пакет: восстановить реальный Modern startup, честная reboot boundary, user/machine context. Applicability и process-local package/deployment gate реализованы, подтверждены backend/service tests; UI runtime остаётся непроверенным из-за раннего exit. Затем один полный Modern install scenario в Win11 VM и расширение до Win10/LTSC. Существующие Windows adapters сохраняются. Legacy CI/packaging пока исторически связаны с общим выпуском; отдельный Modern release gate запланирован, workflows не менялись.
+Следующий пакет: user/machine context, честные составные результаты, Win11 VM acceptance. Applicability, process-local package/deployment gate и reboot software contract реализованы. Actual GUI EXE DOM/bridge smoke PASS с fresh WebView2 UDF; visible/default-user launch и reboot/install VM не подтверждены. Startup logger сохраняет stderr при отказе file log, --webview-data-dir явно выбирает отдельный профиль без очистки существующего. Затем расширение VM до Win10/LTSC. Legacy CI/packaging пока связаны с общим выпуском; Modern release gate запланирован, workflows не менялись.
 
 Команды и результаты этой сессии — HANDOFF. Контракты engine — [execution.md](execution.md); аудит имеет приоритет над прежними заявлениями о готовности.

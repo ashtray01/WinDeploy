@@ -1,5 +1,17 @@
 # WinDeploy technical audit — 2026-11-07
 
+## Последующая итерация: startup и reboot boundary
+
+Текущая база результатов — `b1b6dac` и `d4c4171`; разделы ниже описывают исторический аудит/предыдущую итерацию и не отменяют эти уточнения. Полный аудит повторно не выполнялся.
+
+- Startup: прежнее предположение «нет startup.log → не достигнут main» оказалось неверным. Вне sandbox Go inittrace проходит все пакеты, а исправленный stderr logger показал startup.log Access denied и WebView2 controller 800700aa. Раньше io.Discard скрывал эти ошибки. Добавлены stderr fallback/tests, UDF write probe и explicit --webview-data-dir без изменения старого профиля/ACL. Пользовательская попытка вставить текст .ps1 в терминал отдельно не доходила до EXE из-за пустого $PSScriptRoot; запускать нужно файл.
+- Console и финальный GUI EXE с новым workspace UDF: actual DOM/bridge smoke PASS, native hostname/app count совпали, rescan/tables/DAG/catalog/diagnostics/pages/journal/два viewport, pageErrors=0. Smoke выбирает Все устройства: default problems filter законно пуст. Проверка запускалась Hidden, MainWindowHandle=0; visible/default-UDF double-click владельцем и Windows 10/LTSC не подтверждены. Точная причина busy старого UDF остаётся не локализована.
+- P0-03 software contract исправлен: ErrRebootPending сохраняется как RebootRequired, не Success/Completed; dependencies blocked; file checkpoint сохраняет boot_id/per-task origin; same/unknown boot fail closed. После смены boot engine вызывает Verify-only без Precheck/Execute; failure/cancel/checkpoint сохраняют obligation. Второй reboot после resume требует новую загрузку. Historical reboot sessions без evidence не восстанавливаются автоматически. Rename проверяет active hostname. CLI/report/UI отражают pending.
+- Root safe test/vet/build PASS, финальная Modern build PASS (bindings, UI 38/38, strict TS/Vite, Go test/vet, module verify, GUI/Diagnostic). Native boot GUID repeated read/cancel PASS на текущем Win11. Regression tests покрывают simulated reboot/restart/persistence/failed verify/cancel/second reboot, CLI/service/report/UI. **Реальный reboot/install/fast startup не выполнялись: P0-03 VM acceptance остаётся открытой.**
+- Boot query изолирован в Windows adapter, использует private NT class 90 с validation/fail-closed. Layout — [первичный phnt header](https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntexapi.h); [Microsoft описывает изменяемость NT query](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation). Это ограничение архитектуры, не обещание поддержки всех builds. Boot evidence не заменяет session ACL/owner authentication.
+
+Следующий пакет: P0-06 user/machine context, P0-04 required effects/warnings, Win11 VM startup/install/reboot acceptance; подробности — TASKS/HANDOFF. Legacy не запускалась.
+
 ## Controlled development update — после базы аудита
 
 Этот раздел уточняет исторические findings ниже; полный аудит не повторялся. Текущие команды/ограничения — [HANDOFF](../HANDOFF.md).
@@ -57,7 +69,7 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 
 `core/inventory/applicability.go:GuardAdapter` реализован и тестируется, preview использует applicability. Однако `core/deploy/adapter.go:Precheck` не проверяет `Task.Requirements`; `deploy.Runner.Start/Resume`, Modern `deploymentAdapter` и CLI execution передают незавёрнутый Adapter. Проверка package catalog не заменяет ограничения профиля. Воспроизводимый по коду сценарий: windows-компонент с несовместимыми requirements всё равно достигает Execute. Нужна единая проверка свежего system snapshot на start/resume и тест, запрещающий вызов изменяющего адаптера. Это runtime safety gate, а не Legacy-only задача.
 
-### P0-03 — reboot превращается в проверенный Success
+### P0-03 — reboot превращается в проверенный Success (software contract исправлен, VM acceptance открыта)
 
 `core/deploy/adapter.go:Verify` возвращает nil при `rebootPending`. Engine трактует nil как Success и разрешает зависимые задачи (`core/engine/executor.go`). `core/engine/resume.go:retainResult` сохраняет Success, `ValidateForPlan` запрещает status RebootRequired; `deploy.Runner.Resume` отклоняет completed session без retryFailed. Даже retryFailed не перепроверяет Success. Поэтому «после reboot проверим» не реализовано. Требуется согласованная модель deferred verification, зависимостей, persistence и отчёта; локальная замена одного статуса небезопасна. До исправления нельзя обещать reboot continuation.
 

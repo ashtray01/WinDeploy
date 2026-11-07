@@ -49,7 +49,9 @@ Remove-Item Env:GOBIN
 
 Сборка использует `-tags production`, чтобы EXE использовал production Wails runtime/embedded assets и не зависел от dev-server environment. `scripts/build-modern.ps1 -Diagnostic` дополнительно создаёт console `bin/WinDeploy-Diagnostic-x64.exe`. Запускайте `scripts/start-modern-diagnostic.ps1` из PowerShell для сохранения ранних ошибок в `local/modern-diagnostic.log`; launcher сообщает ненулевой exit, даже если main/startup.log не достигнуты. Диагностический EXE имеет те же bridge/mutation возможности — для диагностики не запускайте изменяющие операции на хосте.
 
-Проверка 2026-11-07: full build PASS, реальный GUI smoke FAIL. Свежий GUI и console вне sandbox выходят 1 без новой записи startup.log; причина не локализована. В sandbox console отдельно воспроизводит COM DLL initialization panic до main. Наличие WebView2 registration не доказывает успешную загрузку окна. Не использовать старый startup.log как доказательство нового запуска.
+Проверка 2026-11-07: full build PASS, UI 38/38; actual GUI EXE DOM/bridge/native Inventory smoke PASS с новым workspace WebView2 UDF. Старый UDF давал controller 800700aa, startup.log был недоступен; inittrace показал, что main был достигнут, а прежний logger скрывал ошибки. Теперь stderr сохраняется при отказе file log. Точная внутренняя причина отказа старого профиля не установлена; он и ACL не менялись. Запуск был Hidden (MainWindowHandle=0), поэтому visible/default-user окно и Win10/LTSC acceptance не заявляются.
+
+Запускать **файл**, не вставлять его текст в PowerShell: `.\scripts\start-modern-diagnostic.ps1 -WebViewDataDir "$PWD\local\webview-user"`. В построчном вводе `$PSScriptRoot` пуст. Launcher также принимает `-SmokePort 9223`; GUI EXE — `--webview-data-dir PATH --smoke-port 9223`. Новый каталог не копирует/удаляет старые данные и не меняет storage сессий. Скрипт блокируется до выхода приложения; ошибки/exit пишутся в терминал и local log.
 
 Скрипт проверяет module cache с временным workspace `local/_modern-verify/go.work`, включающим root и Modern. В Go 1.26.2 обычный `go mod verify` вложенного модуля ошибочно пытался проверить отсутствующий zip локального `windeploy v0.0.0`; workspace делает оба локальных модуля main modules. Он используется только при verify; окружение восстанавливается. Root проверки остаются независимыми.
 
@@ -68,7 +70,7 @@ Remove-Item Env:GOBIN
 ## Реальный GUI smoke
 
 Соберите CLI независимо: `go build -o bin/WinDeploy-Inspect-Windows-x64.exe ./cmd/windeploy-inspect`.
-Запустите GUI с `--smoke-port 9223`, затем из корня:
+Запустите GUI с `--smoke-port 9223` (при необходимости с отдельным `--webview-data-dir "$PWD\local\webview-user"`), затем из корня:
 
 ```powershell
 node scripts/gui-modern-smoke.mjs
