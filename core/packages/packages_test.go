@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
+	"windeploy/internal/trusttest"
 )
 
 type fakeFacts struct {
@@ -544,7 +546,7 @@ func TestInstallPortable(t *testing.T) {
 func TestInstallUsesVerifiedCache(t *testing.T) {
 	content := []byte("cached-installer")
 	digest := HashBytes(content)
-	cacheDir := t.TempDir()
+	cacheDir := trusttest.Dir(t)
 	cached := filepath.Join(cacheDir, "sha256", digest+".exe")
 	if err := os.MkdirAll(filepath.Dir(cached), 0o755); err != nil {
 		t.Fatal(err)
@@ -572,6 +574,49 @@ func TestInstallUsesVerifiedCache(t *testing.T) {
 	}
 	if fetcher.count != 0 {
 		t.Fatal("verified cached artifact must not be downloaded again")
+	}
+}
+
+func TestInstallRefusesUntrustedCachedArtifact(t *testing.T) {
+	if _, err := exec.LookPath("icacls.exe"); err != nil {
+		t.Skip("icacls is unavailable")
+	}
+	content := []byte("cached-installer")
+	digest := HashBytes(content)
+	cacheDir := trusttest.Dir(t)
+	cached := filepath.Join(cacheDir, "sha256", digest+".exe")
+	if err := os.MkdirAll(filepath.Dir(cached), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cached, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Loosen the ACL for the built-in Users group: the artifact is then writable by
+	// other principals and must not be executed even though its hash matches.
+	for _, target := range []string{cacheDir, cached} {
+		if output, err := exec.Command("icacls.exe", target, "/grant", "*S-1-5-32-545:(W)").CombinedOutput(); err != nil {
+			t.Skipf("could not loosen test ACL: %v %s", err, output)
+		}
+	}
+	pkg := testPackage()
+	pkg.Sources = []Source{{
+		ID: "http-source", Kind: "http", URL: "https://example.test/setup.exe", Type: "exe",
+		Version: "2.0", SHA256: digest, Priority: 0,
+	}}
+	facts := &fakeFacts{}
+	manager, runner, _ := testManager(pkg, facts)
+	manager.Winget = fakeWinget{}
+	manager.CacheDir = cacheDir
+	runner.results = []Execution{{ExitCode: 0}}
+	run, err := manager.Install(context.Background(), nil, InstallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.Results[0].Status != StatusFailed {
+		t.Fatalf("untrusted artifact accepted: %+v", run.Results[0])
+	}
+	if runner.callCount() != 0 {
+		t.Fatal("untrusted cached artifact must not be executed")
 	}
 }
 

@@ -75,7 +75,7 @@ func (r *Runner) Resume(ctx context.Context, id string, retryFailed bool) (Sessi
 	if r.Adapter == nil {
 		return Session{}, fmt.Errorf("deployment adapter is required")
 	}
-	session, err := r.Store.Load(ctx, id)
+	session, err := r.Store.LoadForMutation(ctx, id)
 	if err != nil {
 		return Session{}, err
 	}

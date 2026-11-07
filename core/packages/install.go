@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"windeploy/core/inventory"
+	"windeploy/core/trust"
 )
 
 // Status is the final state of one package operation.
@@ -516,6 +517,16 @@ func (m *Manager) runInstaller(ctx context.Context, item PlanItem, source Source
 	if m.Runner == nil {
 		result.ErrorCode = CodeInstallFailed
 		return fmt.Errorf("process runner is required")
+	}
+	// A downloaded artifact is executed with the caller's rights, so its cache file
+	// must belong to the current user and must not be writable by other principals.
+	// Local file sources are supplied explicitly by the operator and are not cache.
+	if source.Kind != "file" {
+		if err := trust.Check(ctx, artifact, false); err != nil {
+			result.ErrorCode = CodeInstallFailed
+			m.emit("error", "package.artifact-untrusted", item.PackageID, "")
+			return fmt.Errorf("installation artifact is not trusted local storage")
+		}
 	}
 	command := installerCommand(source, artifact)
 	timeout := options.InstallTimeout

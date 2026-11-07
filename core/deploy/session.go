@@ -1,11 +1,13 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,12 +17,20 @@ import (
 
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
+	"windeploy/core/trust"
 )
 
 // SessionVersion is the supported session file schema.
 const SessionVersion = 1
 
+// maxSessionBytes bounds a session document before any of it is loaded into memory.
+const maxSessionBytes int64 = 16 << 20
+
+// maxSessionTasks bounds a plan accepted from a session file.
+const maxSessionTasks = 500
+
 var sessionIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
+var profileIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 // Session is a resumable deployment run. Parameters stay local; the file must be
 // kept in a trusted per-user directory and never published.
@@ -67,8 +77,17 @@ func (s Session) Validate() error {
 	if s.Version != SessionVersion || !sessionIDPattern.MatchString(s.ID) {
 		return fmt.Errorf("invalid session")
 	}
-	if strings.TrimSpace(s.ProfileID) == "" || len(s.Tasks) == 0 {
-		return fmt.Errorf("session has no profile or tasks")
+	if !profileIDPattern.MatchString(s.ProfileID) || strings.TrimSpace(s.ProfileID) == "" {
+		return fmt.Errorf("session has no valid profile")
+	}
+	if len([]rune(s.ProfileName)) > 200 || strings.ContainsAny(s.ProfileName, "\x00\r\n") {
+		return fmt.Errorf("invalid session profile name")
+	}
+	if len(s.Tasks) == 0 || len(s.Tasks) > maxSessionTasks {
+		return fmt.Errorf("session has no valid plan")
+	}
+	if len(s.BootID) > 128 {
+		return fmt.Errorf("invalid session boot identity")
 	}
 	if s.UpdatedAt.Before(s.CreatedAt) {
 		return fmt.Errorf("invalid session timestamps")
@@ -105,10 +124,21 @@ func (s Session) Summarize() Summary {
 // Store persists sessions in one local directory.
 type Store struct {
 	Dir string
+	// Trust overrides the owner/ACL verification used before a resumed, mutating
+	// run. Nil uses the native Windows check. Tests inject this only to simulate a
+	// rejected directory; production code must leave it nil.
+	Trust func(context.Context, string, bool) error
 }
 
 func (s Store) path(id string) string {
 	return filepath.Join(s.Dir, id+".json")
+}
+
+func (s Store) trust() func(context.Context, string, bool) error {
+	if s.Trust != nil {
+		return s.Trust
+	}
+	return trust.Check
 }
 
 // Save writes the session atomically and refuses invalid data.
@@ -158,26 +188,97 @@ func (s Store) Save(ctx context.Context, session Session) error {
 	return nil
 }
 
-// Load reads and validates one session.
+// Load reads and validates one session. The file is bounded before it is read into
+// memory, unexpected or trailing JSON is rejected, and the stored identity must
+// match the requested session. Storage trust is checked separately by
+// LoadForMutation before any system change.
 func (s Store) Load(ctx context.Context, id string) (Session, error) {
 	if err := ctx.Err(); err != nil {
 		return Session{}, err
 	}
-	if !sessionIDPattern.MatchString(id) {
+	if strings.TrimSpace(s.Dir) == "" {
+		return Session{}, fmt.Errorf("session directory is required")
+	}
+	if !validSessionID(id) {
 		return Session{}, fmt.Errorf("invalid session ID")
 	}
-	data, err := os.ReadFile(s.path(id))
+	data, err := readSessionFile(s.path(id), maxSessionBytes)
 	if err != nil {
-		return Session{}, fmt.Errorf("session is unavailable")
+		return Session{}, err
 	}
-	if len(data) > 16<<20 {
-		return Session{}, fmt.Errorf("session file is too large")
+	session, err := decodeSession(data)
+	if err != nil {
+		return Session{}, err
 	}
-	var session Session
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	if session.ID != id {
+		return Session{}, fmt.Errorf("session identity does not match the requested session")
+	}
+	return session, nil
+}
+
+// LoadForMutation loads a session for a resumed, mutating run. The session
+// directory and file must be trusted local storage owned by the current user, so a
+// foreign or shared session cannot drive elevated changes. Trust failures are
+// reported generically and never include ACL or file contents.
+func (s Store) LoadForMutation(ctx context.Context, id string) (Session, error) {
+	if err := ctx.Err(); err != nil {
+		return Session{}, err
+	}
+	if strings.TrimSpace(s.Dir) == "" {
+		return Session{}, fmt.Errorf("session directory is required")
+	}
+	if !validSessionID(id) {
+		return Session{}, fmt.Errorf("invalid session ID")
+	}
+	check := s.trust()
+	if err := check(ctx, s.Dir, true); err != nil {
+		return Session{}, fmt.Errorf("session directory is not trusted")
+	}
+	if err := check(ctx, s.path(id), false); err != nil {
+		return Session{}, fmt.Errorf("session file is not trusted")
+	}
+	return s.Load(ctx, id)
+}
+
+func validSessionID(id string) bool {
+	return sessionIDPattern.MatchString(id) && filepath.Base(id) == id && !filepath.IsAbs(id)
+}
+
+// readSessionFile rejects links and non-regular files and never reads more than
+// limit bytes, even when the file grows between stat and read.
+func readSessionFile(path string, limit int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("session is unavailable")
+	}
+	if info.Size() > limit {
+		return nil, fmt.Errorf("session file is too large")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("session is unavailable")
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return nil, fmt.Errorf("session is unavailable")
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("session file is too large")
+	}
+	return data, nil
+}
+
+func decodeSession(data []byte) (Session, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
+	var session Session
 	if err := decoder.Decode(&session); err != nil {
 		return Session{}, fmt.Errorf("session file is invalid")
+	}
+	var extra json.RawMessage
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return Session{}, fmt.Errorf("session file contains trailing data")
 	}
 	if err := session.Validate(); err != nil {
 		return Session{}, err

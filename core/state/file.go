@@ -78,6 +78,19 @@ func (s *FileStore) Load(ctx context.Context) (engine.Snapshot, error) {
 	if err := ctx.Err(); err != nil {
 		return engine.Snapshot{}, err
 	}
+	if s.Path == "" {
+		return engine.Snapshot{}, fmt.Errorf("snapshot path is required")
+	}
+	info, err := os.Lstat(s.Path)
+	if err != nil {
+		return engine.Snapshot{}, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return engine.Snapshot{}, fmt.Errorf("snapshot path is not a regular file")
+	}
+	if info.Size() > maxSnapshotBytes {
+		return engine.Snapshot{}, fmt.Errorf("snapshot exceeds size limit")
+	}
 	file, err := os.Open(s.Path)
 	if err != nil {
 		return engine.Snapshot{}, err

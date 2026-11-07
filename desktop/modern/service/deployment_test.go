@@ -9,6 +9,7 @@ import (
 
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
+	"windeploy/internal/trusttest"
 )
 
 func TestResumeDeploymentShowsUnverifiedRebootInsteadOfCompleted(t *testing.T) {
@@ -102,7 +103,7 @@ func newDeploymentTestService(t *testing.T) *Service {
 	if err := os.WriteFile(filepath.Join(dir, "selftest.yaml"), []byte(deploymentProfile), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("WINDEPLOY_STATE_DIR", t.TempDir())
+	t.Setenv("WINDEPLOY_STATE_DIR", trusttest.Dir(t))
 	service := NewWithProfiles(&fixtureProvider{}, os.DirFS(dir))
 	t.Cleanup(func() { _ = service.ServiceShutdown() })
 	return service

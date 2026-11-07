@@ -9,6 +9,7 @@ import (
 
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
+	"windeploy/internal/trusttest"
 )
 
 type fakeAdapter struct {
@@ -39,7 +40,7 @@ func sampleTasks() []engine.Task {
 
 func newRunner(t *testing.T, adapter engine.Adapter) (Runner, string) {
 	t.Helper()
-	dir := t.TempDir()
+	dir := trusttest.Dir(t)
 	reportDir := t.TempDir()
 	return Runner{
 		Adapter: adapter, Store: Store{Dir: dir}, ProfileID: "office", ProfileName: "Офис",

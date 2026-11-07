@@ -12,11 +12,12 @@ import (
 	"windeploy/core/deploy"
 	"windeploy/core/engine"
 	"windeploy/core/inventory"
+	"windeploy/internal/trusttest"
 )
 
 func testEnvironment(t *testing.T) environment {
 	t.Helper()
-	return environment{CheckUserContext: func(context.Context) error { return nil }, Sessions: t.TempDir(), Reports: t.TempDir(), RunOptions: engine.RunOptions{MaxAttempts: 1}}
+	return environment{CheckUserContext: func(context.Context) error { return nil }, Sessions: trusttest.Dir(t), Reports: t.TempDir(), RunOptions: engine.RunOptions{MaxAttempts: 1}}
 }
 
 type forbiddenAdapter struct{ calls int }
