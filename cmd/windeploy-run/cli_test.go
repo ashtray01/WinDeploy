@@ -11,11 +11,51 @@ import (
 
 	"windeploy/core/deploy"
 	"windeploy/core/engine"
+	"windeploy/core/inventory"
 )
 
 func testEnvironment(t *testing.T) environment {
 	t.Helper()
 	return environment{Sessions: t.TempDir(), Reports: t.TempDir(), RunOptions: engine.RunOptions{MaxAttempts: 1}}
+}
+
+type forbiddenAdapter struct{ calls int }
+
+func (a *forbiddenAdapter) Precheck(context.Context, engine.Task) (engine.TaskStatus, error) {
+	a.calls++
+	return engine.Pending, nil
+}
+func (a *forbiddenAdapter) Execute(context.Context, engine.Task) (bool, error) {
+	a.calls++
+	return false, nil
+}
+func (a *forbiddenAdapter) Verify(context.Context, engine.Task) error { a.calls++; return nil }
+
+func TestRunAndResumeRejectUnknownExecutionTarget(t *testing.T) {
+	env := testEnvironment(t)
+	adapter := &forbiddenAdapter{}
+	env.Adapter = adapter
+	reads := 0
+	env.ReadSystem = func(context.Context) (inventory.SystemInfo, error) { reads++; return inventory.SystemInfo{}, nil }
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), []string{"run", "--profile", "office", "--yes"}, &stdout, &stderr, env); code != exitSession {
+		t.Fatalf("run code=%d: %s", code, stderr.String())
+	}
+	tasks := []engine.Task{{ID: "one", Name: "One", Category: "packages", Status: engine.Pending}}
+	snapshot, err := engine.NewSnapshot(tasks, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := deploy.Session{Version: deploy.SessionVersion, ID: deploy.NewSessionID(), ProfileID: "office", Tasks: tasks, Snapshot: snapshot}
+	if err := (deploy.Store{Dir: env.Sessions}).Save(context.Background(), session); err != nil {
+		t.Fatal(err)
+	}
+	if code := run(context.Background(), []string{"resume", "--session", session.ID, "--yes"}, &stdout, &stderr, env); code != exitSession {
+		t.Fatalf("resume code=%d: %s", code, stderr.String())
+	}
+	if adapter.calls != 0 || reads != 2 {
+		t.Fatalf("adapter calls=%d target reads=%d", adapter.calls, reads)
+	}
 }
 
 func TestPlanEmbeddedProfile(t *testing.T) {

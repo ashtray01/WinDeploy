@@ -20,8 +20,11 @@ type Runner struct {
 	ProfileID   string
 	ProfileName string
 	System      inventory.SystemInfo
-	Options     engine.RunOptions
-	ReportDir   string
+	// ReadSystem obtains execution facts on every Start/Resume, never from a saved session.
+	// Nil uses the native provider. System is report metadata, not authorization.
+	ReadSystem func(context.Context) (inventory.SystemInfo, error)
+	Options    engine.RunOptions
+	ReportDir  string
 	// SessionID is optional; empty generates a new ID (tests and callers that
 	// need to poll the session file may supply one).
 	SessionID string
@@ -34,6 +37,10 @@ func (r *Runner) Start(ctx context.Context, tasks []engine.Task) (Session, error
 		return Session{}, fmt.Errorf("deployment adapter and session store are required")
 	}
 	snapshot, err := engine.NewSnapshot(tasks, nil)
+	if err != nil {
+		return Session{}, err
+	}
+	adapter, err := r.executionAdapter(ctx, tasks)
 	if err != nil {
 		return Session{}, err
 	}
@@ -52,7 +59,7 @@ func (r *Runner) Start(ctx context.Context, tasks []engine.Task) (Session, error
 	checkpoint := &checkpointStore{store: r.Store, session: session}
 	options := r.Options
 	options.Store = checkpoint
-	results, runErr := engine.RunWithOptions(ctx, tasks, r.Adapter, options)
+	results, runErr := engine.RunWithOptions(ctx, tasks, adapter, options)
 	return r.finish(ctx, checkpoint.session, tasks, results, runErr)
 }
 
@@ -69,11 +76,46 @@ func (r *Runner) Resume(ctx context.Context, id string, retryFailed bool) (Sessi
 	if session.Completed && !retryFailed {
 		return session, fmt.Errorf("deployment session is already complete")
 	}
+	adapter, err := r.executionAdapter(ctx, session.Tasks)
+	if err != nil {
+		return session, err
+	}
+	session.System = r.System
 	checkpoint := &checkpointStore{store: r.Store, session: session}
 	options := engine.ResumeOptions{Execution: r.Options, RetryFailed: retryFailed}
 	options.Execution.Store = checkpoint
-	results, runErr := engine.Resume(ctx, session.Tasks, r.Adapter, session.Snapshot, options)
+	results, runErr := engine.Resume(ctx, session.Tasks, adapter, session.Snapshot, options)
 	return r.finish(ctx, checkpoint.session, session.Tasks, results, runErr)
+}
+
+// Validate the entire plan before any adapter phase, including retained resume tasks.
+func (r *Runner) executionAdapter(ctx context.Context, tasks []engine.Task) (engine.Adapter, error) {
+	read := r.ReadSystem
+	if read == nil {
+		read = inventory.Native{}.System
+	}
+	system, err := read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("deployment target could not be read: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	guard, err := inventory.GuardAdapter(system, r.Adapter)
+	if err != nil {
+		return nil, err
+	}
+	for _, task := range tasks {
+		ok, err := inventory.Applicable(task.Requirements, system)
+		if err != nil {
+			return nil, fmt.Errorf("task %s requirements: %w", task.ID, err)
+		}
+		if !ok {
+			return nil, fmt.Errorf("task %s: %w", task.ID, inventory.ErrNotApplicable)
+		}
+	}
+	r.System = system
+	return guard, nil
 }
 
 func (r *Runner) finish(ctx context.Context, session Session, tasks []engine.Task, results []engine.TaskResult, runErr error) (Session, error) {

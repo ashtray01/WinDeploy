@@ -1,11 +1,55 @@
 package service
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"windeploy/core/inventory"
 )
+
+type unknownExecutionProvider struct{ fixtureProvider }
+
+func (*unknownExecutionProvider) System(context.Context) (inventory.SystemInfo, error) {
+	return inventory.SystemInfo{}, nil
+}
+
+func TestDeploymentExecutionIgnoresCachedTarget(t *testing.T) {
+	s := newDeploymentTestService(t)
+	// A previous successful preview is not authorization for a later execution.
+	system, _ := s.provider.System(context.Background())
+	s.state.Report = &inventory.Report{System: &system}
+	s.provider = &unknownExecutionProvider{}
+	if _, err := s.StartDeployment("selftest", nil); err != nil {
+		t.Fatal(err)
+	}
+	view := waitDeployment(t, s)
+	if view.Completed || view.ReportHTML != "" {
+		t.Fatalf("unknown target reported success: %+v", view)
+	}
+	sessions, err := s.ListDeploymentSessions()
+	if err != nil || len(sessions) != 0 {
+		t.Fatalf("rejected start persisted execution: %+v %v", sessions, err)
+	}
+}
+
+func TestResumeDeploymentRejectsFreshUnknownTarget(t *testing.T) {
+	s := newDeploymentTestService(t)
+	if _, err := s.StartDeployment("selftest", nil); err != nil {
+		t.Fatal(err)
+	}
+	completed := waitDeployment(t, s)
+	s.provider = &unknownExecutionProvider{}
+	if _, err := s.ResumeDeployment(completed.SessionID, true); err != nil {
+		t.Fatal(err)
+	}
+	view := waitDeployment(t, s)
+	if view.Completed {
+		t.Fatalf("unknown resume target reported success: %+v", view)
+	}
+}
 
 const deploymentProfile = `version: 1
 id: selftest

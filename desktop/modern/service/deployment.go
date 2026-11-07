@@ -157,7 +157,11 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 	if len(tasks) == 0 {
 		return DeploymentView{}, errors.New("План не содержит задач.")
 	}
-	adapter, err := s.deploymentAdapter(s.currentSystem(context.Background()))
+	system, err := s.provider.System(d.ctx)
+	if err != nil {
+		return DeploymentView{}, errors.New("Не удалось проверить систему перед выполнением.")
+	}
+	adapter, err := s.deploymentAdapter(system)
 	if err != nil {
 		return DeploymentView{}, err
 	}
@@ -181,7 +185,7 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
-		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: profile.ID, ProfileName: profile.Name, System: s.currentSystem(context.Background()), Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports, SessionID: sessionID}
+		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: profile.ID, ProfileName: profile.Name, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports, SessionID: sessionID}
 		session, runErr := runner.Start(ctx, tasks)
 		d.finish(session, runErr)
 	}()
@@ -209,7 +213,11 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 	if session.Completed && !retryFailed {
 		return DeploymentView{}, errors.New("Сессия уже завершена. Для повтора ошибок выберите повтор неудачных задач.")
 	}
-	adapter, err := s.deploymentAdapter(s.currentSystem(context.Background()))
+	system, err := s.provider.System(d.ctx)
+	if err != nil {
+		return DeploymentView{}, errors.New("Не удалось проверить систему перед продолжением.")
+	}
+	adapter, err := s.deploymentAdapter(system)
 	if err != nil {
 		return DeploymentView{}, err
 	}
@@ -237,7 +245,7 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
-		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: session.ProfileID, ProfileName: session.ProfileName, System: session.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports}
+		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: session.ProfileID, ProfileName: session.ProfileName, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports}
 		resumed, runErr := runner.Resume(ctx, session.ID, retryFailed)
 		d.finish(resumed, runErr)
 	}()
@@ -282,7 +290,7 @@ func (d *deploymentState) finish(session deploy.Session, runErr error) {
 		d.view.ReportJSON, d.view.ReportHTML = session.ReportJSON, session.ReportHTML
 		d.view.RebootRequired = session.RebootRequired
 		d.view.Cancelled = session.Cancelled
-		d.view.Completed = session.Completed
+		d.view.Completed = session.Completed && runErr == nil
 		known := map[string]engine.TaskResult{}
 		for _, result := range session.Snapshot.Results {
 			known[result.TaskID] = result
@@ -292,7 +300,9 @@ func (d *deploymentState) finish(session deploy.Session, runErr error) {
 				d.view.Tasks[index] = deployTaskView(result, d.view.Tasks[index].Name, d.view.Tasks[index].Category)
 			}
 		}
-		d.appendEventLocked("info", fmt.Sprintf("Выполнение завершено. Успешно: %d, ошибок: %d.", session.Summarize().Succeeded, session.Summarize().Failed))
+		if runErr == nil {
+			d.appendEventLocked("info", fmt.Sprintf("Выполнение завершено. Успешно: %d, ошибок: %d.", session.Summarize().Succeeded, session.Summarize().Failed))
+		}
 	}
 	switch {
 	case errors.Is(runErr, context.Canceled), errors.Is(runErr, context.DeadlineExceeded):

@@ -13,9 +13,11 @@
 - [x] Перепланирование P0–P3; Legacy вынесена в FROZEN.
 - [x] Закрепить стратегию в AGENTS/архитектуре/README, обновить HANDOFF и итоговые результаты.
 
+- [x] Runtime applicability подключён на общей границе Runner: свежий native/provider snapshot, проверка всего плана и GuardAdapter на start/resume; core/CLI/service tests и test/vet/build PASS. Отклонённый resume не отображается Completed.
+
 ## P0 — блокирующие ошибки
 
-- [ ] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
+- [x] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
 - [ ] P0-03: убрать ложный Success при отложенной reboot verification (engine/deploy/state/reporting/UI). Готово: зависимости ждут подтверждения, состояние переживает restart, resume не переустанавливает завершённое; persistence/negative tests и затем Win11 VM. Не лечить простым изменением флага.
 - [ ] P0-04: честные результаты составных операций. Готово: отсутствие обязательного ярлыка/read-back или default printer не теряется в отчёте; warnings доступны; fake failure tests. Не смешивать подключённый UNC с выполненным shortcut requirement.
 - [ ] P0-05: единое исключение изменяющих операций и атомарный start/resume/shutdown. Готово: package page и deployment не запускают конкурирующие установки; два resume не пишут одну сессию; barrier-based concurrent service tests.

@@ -44,6 +44,9 @@ func newRunner(t *testing.T, adapter engine.Adapter) (Runner, string) {
 	return Runner{
 		Adapter: adapter, Store: Store{Dir: dir}, ProfileID: "office", ProfileName: "Офис",
 		System: inventory.SystemInfo{Hostname: "PC-01"}, ReportDir: reportDir,
+		ReadSystem: func(context.Context) (inventory.SystemInfo, error) {
+			return inventory.SystemInfo{Hostname: "PC-01", Architecture: "amd64", Windows: inventory.Version{Major: 10, Build: 26100, ProductType: 1}}, nil
+		},
 	}, dir
 }
 
@@ -144,14 +147,14 @@ func TestStartRecordsFailureAndResumeRetries(t *testing.T) {
 func TestResumeContinuesCancelledSession(t *testing.T) {
 	adapter := &fakeAdapter{}
 	runner, _ := newRunner(t, adapter)
-	cancelled, cancel := context.WithCancel(context.Background())
-	cancel()
-	session, err := runner.Start(cancelled, sampleTasks())
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("expected cancellation, got %v", err)
+	tasks := sampleTasks()
+	snapshot, err := engine.NewSnapshot(tasks, []engine.TaskResult{{TaskID: "one", Status: engine.Cancelled, FinishedAt: time.Now().UTC()}, {TaskID: "two", Status: engine.Cancelled, FinishedAt: time.Now().UTC()}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if session.Completed || !session.Cancelled {
-		t.Fatalf("unexpected cancelled session: %+v", session)
+	session := Session{Version: SessionVersion, ID: NewSessionID(), ProfileID: "office", Tasks: tasks, Snapshot: snapshot, Cancelled: true}
+	if err := runner.Store.Save(context.Background(), session); err != nil {
+		t.Fatal(err)
 	}
 	resumed, err := runner.Resume(context.Background(), session.ID, false)
 	if err != nil {

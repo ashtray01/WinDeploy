@@ -38,7 +38,8 @@ const (
 )
 
 type environment struct {
-	Adapter    *deploy.Adapter
+	Adapter    engine.Adapter
+	ReadSystem func(context.Context) (inventory.SystemInfo, error)
 	Sessions   string
 	Reports    string
 	System     inventory.SystemInfo
@@ -271,7 +272,7 @@ func runDeployment(ctx context.Context, args []string, stdout, stderr io.Writer,
 		fmt.Fprintln(stderr, "выполнение изменяет систему; повторите с --yes")
 		return exitConfirm
 	}
-	runner := deploy.Runner{Adapter: env.Adapter, Store: deploy.Store{Dir: *sessions}, ProfileID: profile.ID, ProfileName: profile.Name, System: env.System, Options: env.RunOptions, ReportDir: *reports}
+	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, Store: deploy.Store{Dir: *sessions}, ProfileID: profile.ID, ProfileName: profile.Name, System: env.System, Options: env.RunOptions, ReportDir: *reports}
 	session, runErr := runner.Start(ctx, tasks)
 	fmt.Fprintf(stdout, "Сессия: %s; отчёт: %s\n", session.ID, session.ReportHTML)
 	if runErr != nil {
@@ -306,7 +307,7 @@ func runResume(ctx context.Context, args []string, stdout, stderr io.Writer, env
 		fmt.Fprintf(stderr, "сессия недоступна: %v\n", err)
 		return exitSession
 	}
-	runner := deploy.Runner{Adapter: env.Adapter, Store: store, ProfileID: loaded.ProfileID, ProfileName: loaded.ProfileName, System: loaded.System, Options: env.RunOptions, ReportDir: *reports}
+	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, Store: store, ProfileID: loaded.ProfileID, ProfileName: loaded.ProfileName, System: env.System, Options: env.RunOptions, ReportDir: *reports}
 	session, runErr := runner.Resume(ctx, *sessionID, *retryFailed)
 	fmt.Fprintf(stdout, "Сессия: %s; отчёт: %s\n", session.ID, session.ReportHTML)
 	if runErr != nil {
