@@ -55,8 +55,10 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `f90b7bf` — fix(modern): keep startup log when stderr is unavailable.
 - `603919c` — fix(modern): offer admin relaunch when WebView2 cache is limited.
 - `95b1b77` — fix(modern): harden WebView fallback and remove startup UAC.
-- Финальный docs commit с обновлёнными хешами — `git log -1 --oneline`; runtime
-  не меняет. Release workflow пересоберёт EXE из тега.
+- `ea7caef` — docs: secure WebView fallback/без startup UAC.
+- `2f63524` — test(modern): pin TaskDialog packed layout.
+- Текущий HEAD после docs/test-коммитов — `git log -1 --oneline`; runtime EXE
+  собран из `95b1b77`. Release workflow пересоберёт EXE из тега.
 
 ## Фактические проверки
 
