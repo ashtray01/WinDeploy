@@ -11,6 +11,8 @@ import (
 // OS requirements) and existing state, returning Pending to execute or one of
 // AlreadyInstalled, NotApplicable, Skipped to finish without execution.
 // Execute reports whether a reboot is needed; Verify must confirm actual success.
+// An adapter may implement WarningReporter to report effects that were applied but
+// not confirmed; those warnings are persisted with the task result.
 // Methods must honor ctx, clean up before returning and never mutate Task's nested
 // maps/slices. The executor waits for methods to return, even after cancellation;
 // it cannot safely interrupt an adapter that ignores context.
@@ -18,6 +20,13 @@ type Adapter interface {
 	Precheck(context.Context, Task) (TaskStatus, error)
 	Execute(context.Context, Task) (rebootRequired bool, err error)
 	Verify(context.Context, Task) error
+}
+
+// WarningReporter is an optional Adapter capability. Warnings must be short,
+// translated user notices without credentials or raw command output. The executor
+// copies them after Execute and Verify, so an adapter never mutates results.
+type WarningReporter interface {
+	TaskWarnings(Task) []string
 }
 
 // Run executes a Pending-only plan sequentially in OrderTasks order. No operation
@@ -268,6 +277,7 @@ func runTask(parent context.Context, task Task, adapter Adapter, options RunOpti
 			phase = "execute"
 			reboot, err := adapter.Execute(ctx, task)
 			result.RebootRequired = result.RebootRequired || reboot
+			collectWarnings(adapter, task, &result)
 			if err != nil || ctx.Err() != nil {
 				return err
 			}
@@ -275,6 +285,7 @@ func runTask(parent context.Context, task Task, adapter Adapter, options RunOpti
 			if err := adapter.Verify(ctx, task); err != nil {
 				return err
 			}
+			collectWarnings(adapter, task, &result)
 			result.Status = Success
 			return nil
 		}()
@@ -329,6 +340,7 @@ func verifyAfterReboot(parent context.Context, task Task, adapter Adapter, prior
 		return result
 	}
 	err := adapter.Verify(ctx, task)
+	collectWarnings(adapter, task, &result)
 	if ctx.Err() != nil {
 		result.Error = "plan cancelled"
 		if parent.Err() == nil {
@@ -342,4 +354,19 @@ func verifyAfterReboot(parent context.Context, task Task, adapter Adapter, prior
 	}
 	result.Status, result.RebootRequired, result.Error = Success, false, ""
 	return result
+}
+
+// collectWarnings copies the adapter's current notices into the result. A
+// WarningReporter that panics is ignored: warnings must never break execution.
+func collectWarnings(adapter Adapter, task Task, result *TaskResult) {
+	reporter, ok := adapter.(WarningReporter)
+	if !ok {
+		return
+	}
+	var warnings []string
+	func() {
+		defer func() { _ = recover() }()
+		warnings = reporter.TaskWarnings(task)
+	}()
+	result.Warnings = SanitizeWarnings(append(append([]string{}, result.Warnings...), warnings...))
 }

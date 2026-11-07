@@ -112,4 +112,46 @@ type TaskResult struct {
 	Error          string     `json:"error,omitempty"`
 	RebootRequired bool       `json:"reboot_required"`
 	Attempts       int        `json:"attempts,omitempty"`
+	// Warnings are short, already-translated user notices about effects that
+	// were not confirmed. They never contain raw diagnostics or credentials.
+	Warnings []string `json:"warnings,omitempty"`
+}
+
+// MaxWarnings bounds warnings persisted per task.
+const MaxWarnings = 8
+
+// WarningTextLimit bounds one warning's length in runes.
+const WarningTextLimit = 300
+
+func validateWarnings(warnings []string) error {
+	if len(warnings) > MaxWarnings {
+		return fmt.Errorf("too many task warnings")
+	}
+	for _, warning := range warnings {
+		if strings.TrimSpace(warning) == "" || len([]rune(warning)) > WarningTextLimit || strings.ContainsAny(warning, "\x00\r\n") {
+			return fmt.Errorf("invalid task warning")
+		}
+	}
+	return nil
+}
+
+// SanitizeWarnings trims, de-duplicates and bounds warnings for persistence.
+func SanitizeWarnings(warnings []string) []string {
+	clean := make([]string, 0, len(warnings))
+	seen := map[string]bool{}
+	for _, warning := range warnings {
+		text := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(warning, "\r", " "), "\n", " "))
+		if text == "" || seen[text] {
+			continue
+		}
+		if runes := []rune(text); len(runes) > WarningTextLimit {
+			text = string(runes[:WarningTextLimit])
+		}
+		seen[text] = true
+		clean = append(clean, text)
+		if len(clean) == MaxWarnings {
+			break
+		}
+	}
+	return clean
 }

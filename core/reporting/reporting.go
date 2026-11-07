@@ -142,10 +142,14 @@ footer{margin-top:28px;color:#7486a0;font-size:10px}
 		case engine.Skipped, engine.NotApplicable, engine.Cancelled:
 			statusClass = "muted"
 		}
+		diagnostic := html.EscapeString(result.Error)
+		for _, warning := range result.Warnings {
+			diagnostic += "<br><span class=\"warn\">" + html.EscapeString(warning) + "</span>"
+		}
 		fmt.Fprintf(&builder, "<tr><td>%s</td><td>%s</td><td class=\"%s\">%s%s</td><td>%s</td><td>%s</td><td>%d</td><td>%s</td></tr>",
 			html.EscapeString(firstNonEmpty(task.Name, result.TaskID)), html.EscapeString(task.Category),
 			statusClass, html.EscapeString(string(result.Status)), rebootSuffix(result.RebootRequired),
-			formatTime(result.StartedAt), formatTime(result.FinishedAt), result.Attempts, html.EscapeString(result.Error))
+			formatTime(result.StartedAt), formatTime(result.FinishedAt), result.Attempts, diagnostic)
 	}
 	builder.WriteString("</tbody></table>")
 	builder.WriteString("<footer>Сгенерировано WinDeploy " + report.GeneratedAt.Local().Format("02.01.2006 15:04:05") + ". Отчёт не содержит паролей и параметров компонентов.</footer>")

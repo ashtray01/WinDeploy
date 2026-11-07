@@ -59,6 +59,9 @@ func (s Snapshot) Validate() error {
 		if r.Status == RebootRequired && (!r.RebootRequired || r.StartedAt.IsZero()) {
 			return fmt.Errorf("invalid pending reboot evidence")
 		}
+		if err := validateWarnings(r.Warnings); err != nil {
+			return err
+		}
 		switch r.Error {
 		case "", "precheck failed", "execute failed", "verify failed", "precheck returned an invalid outcome", "task deadline exceeded", "plan cancelled", "dependency did not succeed":
 		default:

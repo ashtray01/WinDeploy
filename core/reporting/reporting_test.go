@@ -91,6 +91,26 @@ func TestWriteJSONAndHTML(t *testing.T) {
 	}
 }
 
+func TestReportIncludesTaskWarnings(t *testing.T) {
+	report := sampleReport(t)
+	report.Results[0].Warnings = []string{"Ярлык веб-приложения не подтверждён <b>"}
+	var jsonBuffer bytes.Buffer
+	if err := WriteJSON(&jsonBuffer, report); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(jsonBuffer.String(), "Ярлык веб-приложения не подтверждён") {
+		t.Fatal("warnings missing from JSON report")
+	}
+	var htmlBuffer bytes.Buffer
+	if err := WriteHTML(&htmlBuffer, report); err != nil {
+		t.Fatal(err)
+	}
+	output := htmlBuffer.String()
+	if !strings.Contains(output, `<span class="warn">Ярлык веб-приложения не подтверждён &lt;b&gt;</span>`) {
+		t.Fatal("warnings missing or unescaped in HTML report")
+	}
+}
+
 func TestSaveRefusesOverwrite(t *testing.T) {
 	report := sampleReport(t)
 	directory := t.TempDir()
