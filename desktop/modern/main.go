@@ -62,8 +62,8 @@ func main() {
 		handleWebViewDataDirFailure(err)
 		os.Exit(4)
 	}
-	if fallbackCache {
-		offerElevatedRecovery(dataDir)
+	if fallbackCache && !confirmFallback(dataDir) {
+		os.Exit(0)
 	}
 	logStation("каталог WebView2: %s", dataDir)
 	options := application.WindowsOptions{WebviewUserDataPath: dataDir, WndClass: mainWindowClass}

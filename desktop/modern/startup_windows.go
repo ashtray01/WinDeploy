@@ -1,23 +1,52 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
-	"windeploy/core/packages"
+	"windeploy/core/trust"
 )
 
-const webView2ClientGUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+const (
+	webView2ClientGUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+	fallbackMarkerName = ".windeploy-fallback-accepted"
+)
 
 var startupLogPath string
 
+// prepareWebViewDataDir validates an explicitly selected directory. It rejects
+// reparse points but leaves ACL policy to the operator for explicit paths.
 func prepareWebViewDataDir(dir string) (string, error) {
+	absolute, err := ensureWebViewDataDir(dir)
+	if err != nil {
+		return "", err
+	}
+	return probeWebViewDataDir(absolute)
+}
+
+// prepareTrustedWebViewDataDir is used for automatic WebView2 cache selection.
+// The directory must be owned by the current user, must not be writable by other
+// principals and must not traverse a link/junction. This prevents a fallback from
+// silently sharing WebView2 cookies/cache with another local account.
+func prepareTrustedWebViewDataDir(dir string) (string, error) {
+	absolute, err := ensureWebViewDataDir(dir)
+	if err != nil {
+		return "", err
+	}
+	if err := trust.Check(context.Background(), absolute, true); err != nil {
+		return "", fmt.Errorf("WebView2 data directory is not trusted: %w", err)
+	}
+	return probeWebViewDataDir(absolute)
+}
+
+func ensureWebViewDataDir(dir string) (string, error) {
 	absolute, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
@@ -25,6 +54,24 @@ func prepareWebViewDataDir(dir string) (string, error) {
 	if err := os.MkdirAll(absolute, 0o700); err != nil {
 		return "", fmt.Errorf("WebView2 data directory %s: %w", absolute, err)
 	}
+	if err := rejectReparseAncestors(absolute); err != nil {
+		return "", fmt.Errorf("WebView2 data directory %s: %w", absolute, err)
+	}
+	return absolute, nil
+}
+
+func rejectReparseAncestors(path string) error {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return fmt.Errorf("path cannot be resolved: %w", err)
+	}
+	if !strings.EqualFold(filepath.Clean(resolved), filepath.Clean(path)) {
+		return fmt.Errorf("path contains a symbolic link or junction")
+	}
+	return nil
+}
+
+func probeWebViewDataDir(absolute string) (string, error) {
 	probe, err := os.CreateTemp(absolute, ".windeploy-write-probe-*")
 	if err != nil {
 		return "", fmt.Errorf("WebView2 data directory %s: %w", absolute, err)
@@ -42,10 +89,11 @@ func prepareWebViewDataDir(dir string) (string, error) {
 }
 
 // prepareDefaultWebViewDataDir keeps an existing user profile when it is
-// writable. A stale ACL, sandbox principal or antivirus lock must not prevent the
-// application from starting: a fresh directory under the same user cache, the
-// user temp root, and finally the portable executable directory are tried. No
-// existing directory is deleted or repaired.
+// writable and trusted. A stale ACL, sandbox principal or antivirus lock must not
+// prevent the application from starting: a fresh trusted directory under the
+// user cache, the user temp root, and finally the portable executable directory
+// are tried. Program Files is never used as a portable fallback. No existing
+// directory is deleted or repaired.
 func prepareDefaultWebViewDataDir(cache, temp, executableDir string) (string, bool, error) {
 	candidates := []string{
 		filepath.Join(cache, "WinDeploy", "WebView2"),
@@ -54,12 +102,12 @@ func prepareDefaultWebViewDataDir(cache, temp, executableDir string) (string, bo
 	if temp != "" {
 		candidates = append(candidates, filepath.Join(temp, "WinDeploy", "WebView2"))
 	}
-	if executableDir != "" {
-		candidates = append(candidates, filepath.Join(executableDir, "WinDeploy-WebView2"))
+	if executableDir != "" && !isProgramFilesPath(executableDir) {
+		candidates = append(candidates, filepath.Join(executableDir, "WinDeploy-WebView2Data"))
 	}
 	var firstErr, lastErr error
 	for index, candidate := range candidates {
-		dir, err := prepareWebViewDataDir(candidate)
+		dir, err := prepareTrustedWebViewDataDir(candidate)
 		if err == nil {
 			if index > 0 {
 				logStation("каталог WebView2 по умолчанию недоступен; используется резервный каталог: %s", dir)
@@ -73,6 +121,46 @@ func prepareDefaultWebViewDataDir(cache, temp, executableDir string) (string, bo
 		lastErr = err
 	}
 	return "", false, fmt.Errorf("каталог WebView2 недоступен (primary: %v): %w", firstErr, lastErr)
+}
+
+func isProgramFilesPath(dir string) bool {
+	cleaned := strings.ToLower(filepath.Clean(dir))
+	for _, name := range []string{"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"} {
+		root := strings.TrimSpace(os.Getenv(name))
+		if root == "" {
+			continue
+		}
+		root = strings.ToLower(filepath.Clean(root))
+		if cleaned == root || strings.HasPrefix(cleaned, root+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
+}
+
+func fallbackAccepted(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, fallbackMarkerName))
+	return err == nil
+}
+
+func markFallbackAccepted(dir string) error {
+	return os.WriteFile(filepath.Join(dir, fallbackMarkerName), []byte("accepted\n"), 0o600)
+}
+
+// confirmFallback asks once per trusted fallback directory. The marker contains
+// no secrets and lets subsequent launches reuse the same cache without another
+// prompt, preserving the selected WebView2 profile.
+func confirmFallback(dir string) bool {
+	if fallbackAccepted(dir) {
+		return true
+	}
+	if !showFallbackChoice(dir) {
+		return false
+	}
+	if err := markFallbackAccepted(dir); err != nil {
+		logStation("не удалось сохранить выбор резервного каталога: %v", err)
+	}
+	return true
 }
 
 // initStartupLog routes framework and internal diagnostics to a bounded local log
@@ -168,77 +256,7 @@ func showStartupErrorMessage(title, text string) {
 	_, _ = windows.MessageBox(0, textPtr, titlePtr, windows.MB_OK|windows.MB_ICONERROR)
 }
 
-// handleWebViewDataDirFailure offers an explicit UAC restart when the process
-// cannot write any WebView2 data directory and the failure is a permission error.
-// It never elevates without a user click and never repairs ACLs automatically.
 func handleWebViewDataDirFailure(err error) {
 	logStation("каталог WebView2 недоступен: %v", err)
-	if isPermissionFailure(err) && !processIsElevated() {
-		const (
-			idYes = 6
-			text  = "WinDeploy не удалось записать данные WebView2.\n\n" +
-				"Возможная причина — недостаточные права на пользовательский каталог.\n\n" +
-				"Нажмите «Да», чтобы перезапустить WinDeploy от имени администратора.\n" +
-				"Будет показан запрос UAC; текущее окно закроется.\n" +
-				"«Нет» закроет приложение без изменений.\n\n" +
-				"Существующие данные WebView2 не удаляются. Системные изменения\n" +
-				"не выполнялись.\n\n" +
-				"Журнал запуска: %s"
-		)
-		titlePtr, _ := windows.UTF16PtrFromString("WinDeploy — требуется запуск от имени администратора")
-		message := fmt.Sprintf(text, startupLogPath)
-		textPtr, _ := windows.UTF16PtrFromString(message)
-		result, _ := windows.MessageBox(0, textPtr, titlePtr, windows.MB_YESNO|windows.MB_ICONWARNING|windows.MB_DEFBUTTON2)
-		if result == idYes {
-			if relaunchErr := packages.RelaunchElevated(""); relaunchErr != nil {
-				logStation("не удалось перезапустить с правами администратора: %v", relaunchErr)
-				showStartupErrorMessage("WinDeploy — не удалось перезапустить", "Запрос прав администратора не выполнен или был отменён.\n\nЗакройте окно и запустите WinDeploy вручную от имени администратора.\n\nЖурнал запуска: "+startupLogPath)
-				os.Exit(4)
-			}
-			os.Exit(0)
-		}
-		return
-	}
-	showStartupErrorMessage("WinDeploy — каталог WebView2 недоступен", "Не удалось записать данные WebView2 ни в пользовательский, ни в резервный временный каталог.\n\n"+err.Error()+"\n\nУкажите доступный каталог флагом --webview-data-dir. Существующие данные не удалялись.\n\nЖурнал запуска: "+startupLogPath)
-}
-
-func processIsElevated() bool {
-	token, err := windows.OpenCurrentProcessToken()
-	if err != nil {
-		return false
-	}
-	defer token.Close()
-	return token.IsElevated()
-}
-
-// offerElevatedRecovery is shown only after a fallback cache was selected. The
-// application can continue with the fallback; the user may explicitly choose a
-// UAC restart to try the normal profile again. Nothing is elevated automatically.
-func offerElevatedRecovery(fallbackDir string) {
-	if processIsElevated() {
-		return
-	}
-	const (
-		idYes = 6
-		text  = "WinDeploy запускается с резервным каталогом WebView2:\n%s\n\n" +
-			"Если основной профиль нужен, нажмите «Да», чтобы перезапустить WinDeploy\n" +
-			"от имени администратора. Будет показан запрос UAC.\n\n" +
-			"«Нет» — продолжить с резервным каталогом без повышения прав.\n" +
-			"Существующие данные и системные настройки не изменяются."
-	)
-	titlePtr, _ := windows.UTF16PtrFromString("WinDeploy — резервный каталог WebView2")
-	textPtr, _ := windows.UTF16PtrFromString(fmt.Sprintf(text, fallbackDir))
-	result, _ := windows.MessageBox(0, textPtr, titlePtr, windows.MB_YESNO|windows.MB_ICONWARNING|windows.MB_DEFBUTTON2)
-	if result != idYes {
-		return
-	}
-	if err := packages.RelaunchElevated(""); err != nil {
-		logStation("не удалось перезапустить с правами администратора; продолжаем с резервным каталогом: %v", err)
-		return
-	}
-	os.Exit(0)
-}
-
-func isPermissionFailure(err error) bool {
-	return errors.Is(err, os.ErrPermission) || errors.Is(err, windows.ERROR_ACCESS_DENIED)
+	showStartupErrorMessage("WinDeploy — каталог WebView2 недоступен", "Не удалось подготовить безопасный каталог данных WebView2.\n\n"+err.Error()+"\n\nЗакройте другое окно WinDeploy и проверьте права на %LOCALAPPDATA%\\WinDeploy. При необходимости укажите доверенный локальный каталог флагом --webview-data-dir.\n\nСуществующие данные не удалялись.\n\nЖурнал запуска: "+startupLogPath)
 }

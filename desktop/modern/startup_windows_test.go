@@ -2,15 +2,14 @@ package main
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"golang.org/x/sys/windows"
+	"windeploy/internal/trusttest"
 )
 
 func TestStartupLogPreservesDiagnosticsWhenFileCannotOpen(t *testing.T) {
@@ -79,7 +78,7 @@ type failingWriter struct{}
 func (failingWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
 
 func TestDefaultWebViewDataDirUsesWritablePrimary(t *testing.T) {
-	cache := t.TempDir()
+	cache := trusttest.Dir(t)
 	primary := filepath.Join(cache, "WinDeploy", "WebView2")
 	if err := os.MkdirAll(primary, 0o700); err != nil {
 		t.Fatal(err)
@@ -88,7 +87,7 @@ func TestDefaultWebViewDataDirUsesWritablePrimary(t *testing.T) {
 	if err := os.WriteFile(marker, []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	dir, fallback, err := prepareDefaultWebViewDataDir(cache, t.TempDir(), t.TempDir())
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, trusttest.Dir(t), trusttest.Dir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,14 +103,14 @@ func TestDefaultWebViewDataDirUsesWritablePrimary(t *testing.T) {
 }
 
 func TestDefaultWebViewDataDirFallsBackWhenPrimaryIsBlocked(t *testing.T) {
-	cache := t.TempDir()
+	cache := trusttest.Dir(t)
 	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(cache, "WinDeploy", "WebView2"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	dir, fallback, err := prepareDefaultWebViewDataDir(cache, t.TempDir(), t.TempDir())
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, trusttest.Dir(t), trusttest.Dir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +127,7 @@ func TestDefaultWebViewDataDirFallsBackWhenPrimaryIsBlocked(t *testing.T) {
 }
 
 func TestDefaultWebViewDataDirFallsBackToTemp(t *testing.T) {
-	cache := t.TempDir()
+	cache := trusttest.Dir(t)
 	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -137,8 +136,8 @@ func TestDefaultWebViewDataDirFallsBackToTemp(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	temp := t.TempDir()
-	dir, fallback, err := prepareDefaultWebViewDataDir(cache, temp, t.TempDir())
+	temp := trusttest.Dir(t)
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, temp, trusttest.Dir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,20 +150,45 @@ func TestDefaultWebViewDataDirFallsBackToTemp(t *testing.T) {
 	}
 }
 
-func TestPermissionFailureClassification(t *testing.T) {
-	if !isPermissionFailure(fmt.Errorf("wrapped: %w", windows.ERROR_ACCESS_DENIED)) {
-		t.Fatal("Windows access-denied error was not classified as a permission failure")
+func TestFallbackMarkerIsReusable(t *testing.T) {
+	dir := trusttest.Dir(t)
+	if fallbackAccepted(dir) {
+		t.Fatal("fresh fallback directory was already accepted")
 	}
-	if !isPermissionFailure(fmt.Errorf("wrapped: %w", os.ErrPermission)) {
-		t.Fatal("os.ErrPermission was not classified as a permission failure")
+	if err := markFallbackAccepted(dir); err != nil {
+		t.Fatal(err)
 	}
-	if isPermissionFailure(errors.New("disk full")) {
-		t.Fatal("non-permission error was classified as a permission failure")
+	if !fallbackAccepted(dir) {
+		t.Fatal("fallback acceptance marker was not persisted")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, fallbackMarkerName))
+	if err != nil || strings.Contains(string(data), "password") {
+		t.Fatalf("unexpected marker: %q %v", data, err)
 	}
 }
 
-func TestDefaultWebViewDataDirFallsBackNextToExecutable(t *testing.T) {
-	cache := t.TempDir()
+func TestTrustedFallbackRejectsWritableByUsers(t *testing.T) {
+	if _, err := exec.LookPath("icacls.exe"); err != nil {
+		t.Skip("icacls is unavailable")
+	}
+	dir := trusttest.Dir(t)
+	if output, err := exec.Command("icacls.exe", dir, "/grant", "*S-1-5-32-545:(OI)(CI)(M)").CombinedOutput(); err != nil {
+		t.Skipf("could not add a test ACE: %v %s", err, output)
+	}
+	if _, err := prepareTrustedWebViewDataDir(dir); err == nil {
+		t.Fatal("fallback writable by Users was accepted")
+	}
+}
+
+func TestProgramFilesPortableFallbackIsSkipped(t *testing.T) {
+	programFiles := strings.TrimSpace(os.Getenv("ProgramFiles"))
+	if programFiles == "" {
+		t.Skip("ProgramFiles is unavailable")
+	}
+	if !isProgramFilesPath(filepath.Join(programFiles, "WinDeploy")) {
+		t.Fatal("Program Files path was not recognized")
+	}
+	cache := trusttest.Dir(t)
 	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -173,16 +197,61 @@ func TestDefaultWebViewDataDirFallsBackNextToExecutable(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	blockedTemp := filepath.Join(t.TempDir(), "blocked")
+	blockedTemp := filepath.Join(trusttest.Dir(t), "blocked")
 	if err := os.WriteFile(blockedTemp, []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	executableDir := t.TempDir()
+	if _, _, err := prepareDefaultWebViewDataDir(cache, blockedTemp, programFiles); err == nil {
+		t.Fatal("portable fallback under Program Files was attempted")
+	}
+}
+
+func TestDefaultWebViewDataDirReusesFallback(t *testing.T) {
+	cache := trusttest.Dir(t)
+	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, "WinDeploy", "WebView2"), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	temp := trusttest.Dir(t)
+	exeDir := trusttest.Dir(t)
+	first, fallback, err := prepareDefaultWebViewDataDir(cache, temp, exeDir)
+	if err != nil || !fallback {
+		t.Fatalf("first selection: dir=%q fallback=%v err=%v", first, fallback, err)
+	}
+	if err := os.WriteFile(filepath.Join(first, "keep.txt"), []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, fallback, err := prepareDefaultWebViewDataDir(cache, temp, exeDir)
+	if err != nil || !fallback || first != second {
+		t.Fatalf("fallback was not reused: first=%q second=%q fallback=%v err=%v", first, second, fallback, err)
+	}
+	if data, err := os.ReadFile(filepath.Join(second, "keep.txt")); err != nil || string(data) != "keep" {
+		t.Fatalf("fallback state was not preserved: %q %v", data, err)
+	}
+}
+
+func TestDefaultWebViewDataDirFallsBackNextToExecutable(t *testing.T) {
+	cache := trusttest.Dir(t)
+	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"WebView2", "WebView2-fallback"} {
+		if err := os.WriteFile(filepath.Join(cache, "WinDeploy", name), []byte("not a directory"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	blockedTemp := filepath.Join(trusttest.Dir(t), "blocked")
+	if err := os.WriteFile(blockedTemp, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	executableDir := trusttest.Dir(t)
 	dir, fallback, err := prepareDefaultWebViewDataDir(cache, blockedTemp, executableDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(executableDir, "WinDeploy-WebView2")
+	want := filepath.Join(executableDir, "WinDeploy-WebView2Data")
 	if dir != want {
 		t.Fatalf("unexpected portable fallback directory: %q (want %q)", dir, want)
 	}
@@ -209,5 +278,3 @@ func TestWebViewDataDirectoryProbePreservesExistingData(t *testing.T) {
 		t.Fatal("regular file accepted as data directory")
 	}
 }
-
-
