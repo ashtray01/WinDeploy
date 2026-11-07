@@ -9,7 +9,7 @@
 | Компонент | Статус |
 | --- | --- |
 | `core/` (Go 1.20, Win7-совместимые API) | Inventory, профили, Task Engine, пакеты, сеть, SMB, драйверы, принтеры, браузеры, настройки, выполнение, отчёты |
-| Modern (Wails v3 + React, Windows 10/11 x64) | Все страницы, 38 UI-тестов; GUI EXE DOM/bridge smoke PASS на текущем Win11 с новым WebView2 UDF; visible/default-user запуск и Win10/LTSC ещё требуют проверки |
+| Modern (Wails v3 + React, Windows 10/11 x64) | Все страницы, 41 UI-теста; пользователь сообщил об успешном запуске, GUI EXE DOM/bridge smoke PASS на текущем Win11; Win10/LTSC и изменяющие VM-сценарии ещё требуют проверки |
 | Legacy (Go 1.20, нативный Walk, Windows 7 SP1 x86/x64) | Установка ПО, сеть/SMB, диагностика; реальное окно проверено на Windows 11 x64/x86, Win7 VM — нет |
 | CLI | `windeploy-inspect`, `windeploy-packages`, `windeploy-run` |
 
@@ -43,7 +43,7 @@ scripts/package-release.ps1 -Version 0.1.0-preview.1
 .\scripts\start-modern-diagnostic.ps1 -WebViewDataDir "$PWD\local\webview-user"
 ```
 
-Вывод — `local/modern-diagnostic.log`; stderr сохраняется, даже если `%LOCALAPPDATA%\WinDeploy\logs\startup.log` недоступен. GUI EXE также принимает `--webview-data-dir PATH`. Старый кэш/ACL не изменяются. Перед передачей журнала проверьте его на персональные пути. Сборка EXE не подтверждает запуск окна; реальный reboot/install требуют VM.
+Launcher пишет читаемый UTF-8 в `local/modern-diagnostic.log` и передаёт приложению startup log directory `local/startup` (можно изменить `-StartupLogDir PATH`). GUI EXE поддерживает `--log-dir PATH` и `--webview-data-dir PATH`. Старый AppData log/кэш/ACL не изменяются. Перед передачей журнала проверьте его на персональные пути. Реальные reboot/install требуют VM.
 
 ## Документация
 
@@ -61,3 +61,5 @@ scripts/package-release.ps1 -Version 0.1.0-preview.1
 ## Безопасность
 
 Изменяющие операции требуют подтверждения и обычно прав администратора. Не запускайте установки, драйверы, принтеры, SMB и настройки на рабочей машине: используйте изолированную VM. WinDeploy не обходит лицензирование Windows и не отключает защиту.
+
+Modern/CLI блокируют пользовательские операции при несовпадении SID процесса с владельцем интерактивного рабочего стола или неизвестном контексте. Запускайте их под владельцем рабочего стола; Run as another admin не переносит его HKCU/Desktop/CredMan. Machine-only операции сохраняют собственные проверки прав. Worker с impersonation отсутствует; SID gate не заменяет доверенный каталог сессий и Windows ACL.

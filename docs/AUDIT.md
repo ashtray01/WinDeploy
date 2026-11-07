@@ -1,5 +1,14 @@
 # WinDeploy technical audit — 2026-11-07
 
+## Итерация warnings (P0-04 remainder, частично)
+
+База `bab8e65`; коммиты `e6148c2`, `4a03dd7`, `2fd8799`. Полный аудит не повторялся.
+
+- `engine.TaskResult` получил bounded `warnings`; optional `engine.WarningReporter`, `SanitizeWarnings`, проверка в `Snapshot.Validate`. Warnings копируются executor-ом после Execute и Verify, поэтому попадают в checkpoint, session, JSON/escaped HTML отчёт и Modern `DeployTaskView.warnings`.
+- `deploy.Adapter` передаёт warnings из shares/printers/browsers вместо отбрасывания; browser incomplete effects по-прежнему Failed. Printer default остаётся warning, registry read-back не реализован.
+- Проверки: targeted vet/test PASS, Modern service tests PASS, `scripts/build-modern.ps1` PASS (UI 41/41, strict tsc/Vite, module verify, GUI EXE). Полный `go test ./...` в workspace на OneDrive **нестабилен** (FAIL сохранения checkpoint/rename в `core/state`/`core/deploy`); изолированные прогоны PASS. Причина не установлена; не считать полный прогон зелёным.
+- Реальный install/SMB/printer/reboot/VM не выполнялись; GUI/DOM smoke этой итерации не запускался.
+
 ## Последующая итерация: startup и reboot boundary
 
 Текущая база результатов — `b1b6dac` и `d4c4171`; разделы ниже описывают исторический аудит/предыдущую итерацию и не отменяют эти уточнения. Полный аудит повторно не выполнялся.
@@ -73,9 +82,11 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 
 `core/deploy/adapter.go:Verify` возвращает nil при `rebootPending`. Engine трактует nil как Success и разрешает зависимые задачи (`core/engine/executor.go`). `core/engine/resume.go:retainResult` сохраняет Success, `ValidateForPlan` запрещает status RebootRequired; `deploy.Runner.Resume` отклоняет completed session без retryFailed. Даже retryFailed не перепроверяет Success. Поэтому «после reboot проверим» не реализовано. Требуется согласованная модель deferred verification, зависимостей, persistence и отчёта; локальная замена одного статуса небезопасна. До исправления нельзя обещать reboot continuation.
 
-### P0-04 — неполные результаты компонентов выглядят успешными
+### P0-04 — неполные результаты компонентов выглядят успешными (частично исправлено)
 
-`deploy.Adapter.executeBrowser/executeShare/executePrinter` отбрасывают Result.Warnings. `browsers.Manager.createWebApps` возвращает nil с warning при отсутствии браузера/ошибке ярлыка. `Verify` для browsers/windows возвращает nil без read-back. `precheckShare` завершает задачу AlreadyInstalled при наличии UNC даже если запрошенного ярлыка нет; printer precheck проверяет только имя, driver precheck — Hardware ID/status, а не целевой driver/version. Отчёт может показывать успех недостигнутого состояния. Нужны отдельные критерии результата, перенос предупреждений и негативные тесты.
+`deploy.Adapter.executeBrowser/executeShare/executePrinter` отбрасывали Result.Warnings. `browsers.Manager.createWebApps` возвращает nil с warning при отсутствии браузера/ошибке ярлыка. `Verify` для browsers/windows возвращает nil без read-back. `precheckShare` завершает задачу AlreadyInstalled при наличии UNC даже если запрошенного ярлыка нет; printer precheck проверяет только имя, driver precheck — Hardware ID/status, а не целевой driver/version. Отчёт может показывать успех недостигнутого состояния.
+
+Текущее состояние: required SMB/browser shortcuts имеют read-back и fail closed (`bab8e65`); warnings о неподтверждённых эффектах теперь сохраняются в result/session/report/UI (`e6148c2`, `4a03dd7`, `2fd8799`). Открыто: printer default/target read-back, browser/Windows policy read-back, driver target version/publisher.
 
 ### P0-05 — отсутствует общий контроль изменяющих операций (package/deployment исправлено после аудита)
 
