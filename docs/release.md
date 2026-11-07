@@ -1,51 +1,91 @@
-# Сборка и выпуск
+# Сборка и выпуск Modern beta
 
-## Локальная сборка
+## Единый номер версии
+
+Канонический номер — `VERSION` (сейчас `0.1.0-beta.1`). Он проверяется в
+`desktop/modern/frontend/package.json`, `package-lock.json`, `CHANGELOG.md` и
+release notes. При сборке номер внедряется в Go (`internal/buildinfo`), UI и
+Windows version resource EXE. Не создавайте второй hard-coded номер в коде/UI.
 
 ```powershell
-# Core + Legacy + portable/offline ZIP
-scripts/package-release.ps1 -Version 0.1.0-preview.1
-
-# С Modern (нужен cache/tools/wails-3.1/wails3.exe)
-scripts/package-release.ps1 -Version 0.1.0-preview.1 -BuildModern
+./scripts/verify-version.ps1
 ```
 
-Результат — `dist/`:
+## Локальная Modern-сборка
 
-- `WinDeploy-<version>-portable-x64.zip` — Modern x64, Legacy x64, CLI inspect/packages/run, docs/README.
-- `WinDeploy-<version>-portable-x86.zip` — Legacy x86 и x86 CLI.
-- `WinDeploy-<version>-offline-x64.zip` — portable + `catalog/packages.yaml` + `Packages/` с проверенными установщиками (7-Zip, SumatraPDF, PrinterOne на момент сборки) + offline README.
-- `SHA256SUMS.txt`, `RELEASE-NOTES.md`.
+Нужны закреплённые Wails v3.1.0, Go 1.26.2 и Node.js 24.x.
 
-Offline-файлы ищутся в `cache/Downloads/artifacts` и `local/offline-cache/sha256` по SHA-256 из `catalog/packages.yaml`; скрипт кладёт их под именами, которые ожидает каталог. Остальные программы нужно скачать `windeploy-packages download` на машине с сетью или добавить вручную с совпадающим хешем.
+```powershell
+./scripts/build-modern.ps1 -Diagnostic
+```
+
+Скрипт:
+
+1. генерирует bindings;
+2. запускает 46 UI tests, strict TypeScript и production Vite build;
+3. запускает Modern Go tests/vet и module verification;
+4. генерирует Windows icon/manifest/version resource;
+5. собирает `bin/WinDeploy-Windows-x64.exe` с `-trimpath -buildvcs=false` и
+   внедрённой версией/commit.
+
+`-Diagnostic` дополнительно создаёт console EXE для ранней диагностики. Обычная
+GUI-сборка использует production assets и не требует Go/Node.js на целевой
+машине.
+
+## Артефакты beta
+
+```powershell
+# Собрать и упаковать
+./scripts/package-modern-release.ps1
+
+# Либо упаковать уже собранный EXE
+./scripts/package-modern-release.ps1 -SkipBuild
+```
+
+Результат:
+
+- `dist/WinDeploy-Windows-x64.exe`;
+- `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` (EXE, README, docs, known issues);
+- `dist/SHA256SUMS.txt` — фактические SHA-256;
+- `dist/RELEASE-NOTES.md`.
+
+Скрипт проверяет версию EXE, создаёт portable ZIP и повторно сверяет SHA-256.
+Code signing не настроен: EXE имеет статус `NotSigned`; это должно быть указано в
+release notes и Known Issues. Не заявлять подпись без сертификата.
 
 ## CI
 
-`.github/workflows/ci.yml`:
+`.github/workflows/ci.yml` — Modern-only:
 
-- Core: Go 1.20.14, amd64+386 test/vet/build через `scripts/test-core.ps1`.
-- Legacy: Go 1.20.14, тесты, selftest, сборка x64/x86 с манифестом.
-- Modern: Go 1.26.2, npm ci/typecheck/vitest/build, Go test/vet.
-- Modern Wails EXE: установка pinned `wails3@v3.1.0`, полная сборка `scripts/build-modern.ps1`.
+- Core Go 1.20.14: test/vet/build amd64+386.
+- Modern: Go 1.26.2, Node 24, typecheck/tests/build, service tests/vet.
+- Modern EXE + release dry-run: build, verify version, SHA-256, upload artifacts.
 
-## Release
+`.github/workflows/legacy-ci.yml` — Legacy FROZEN, только `workflow_dispatch`.
+Legacy не входит в Modern CI и не блокирует beta.
 
-`.github/workflows/release.yml` запускается по тегу `v*` или вручную. Собирает core/legacy, Modern Wails, пересобирает ZIP, публикует **pre-release** с SHA256SUMS. Требуется GitHub remote и права `contents: write`; локально публикация не выполнялась.
+## Release workflow
 
-## Критерии v0.1.0
+`.github/workflows/release.yml` запускается по тегу `v*` или вручную:
 
-Сейчас статус **preview, не публиковался**:
+1. проверяет, что тег равен `v$(VERSION)`;
+2. выполняет Core/Modern проверки;
+3. собирает EXE и пакет;
+4. загружает artifacts;
+5. по тегу создаёт **draft pre-release** (`draft: true`, `prerelease: true`).
 
-- [x] Core Go 1.20 amd64/386 test/vet/build.
-- [x] Modern 37 UI-тестов, strict TypeScript, Vite, service tests, Wails EXE собирается.
-- [x] Legacy x64/x86 test/vet/selftest + реальное окно на Windows 11.
-- [x] Portable/offline ZIP и SHA256SUMS.
-- [ ] Modern GUI smoke на машине с работающим WebView2.
-- [ ] Windows 10/11 (включая выбранные LTSC) VM; Windows 7 VM — FROZEN и не gate Modern.
-- [ ] Реальные установки ПО/драйверов/принтеров, SMB, политики и настройки.
-- [ ] GitHub remote/release.
+Workflow не публикует Release автоматически. Владелец проверяет draft, SHA-256,
+release notes и вручную публикует его. До явного подтверждения владельца не
+открывать репозиторий и не создавать публичный Release.
 
-До выполнения этих пунктов выпускать стабильный v0.1.0 нельзя; текущие ZIP — preview-артефакты.
+## Legacy
 
-## Стратегия после аудита 2026-11-07
-Modern — основной продукт. Legacy код и описанные выше исторические bundles сохранены, но дальнейшая Legacy-разработка заморожена. Устранение P0 из AUDIT.md и реальный Modern MVP E2E обязательны до стабильного выпуска. Текущие workflows ещё связаны с Legacy packaging и не обеспечивают эти gates автоматически; разделение Modern release запланировано в TASKS.md.
+Windows 7 Legacy FROZEN. Старый `scripts/package-release.ps1` сохранён для
+исторических bundle-ов, но Modern beta не зависит от Legacy. Не запускайте
+Legacy-сборку как release gate Modern.
+
+## Перед публикацией
+
+См. [PUBLICATION_CHECKLIST.md](PUBLICATION_CHECKLIST.md). Лицензия, публичный
+owner/repository URL, проверка Git-истории и подтверждение владельца — обязательные
+условия. Текущий статус готовности — [BETA_READINESS.md](BETA_READINESS.md).

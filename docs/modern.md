@@ -1,6 +1,6 @@
 # Modern GUI
 
-Первый работающий desktop-срез: Dashboard, Inventory, профили, установка ПО, диагностика сети, сетевые папки, драйверы, принтеры, браузеры, настройка Windows и журнал. Интерфейс на русском, тёмная тема, адаптация к 1366×768 и минимальному окну 1024×640. Все заявленные модули Modern доступны; будущих заглушек «Скоро» больше нет.
+Первый работающий desktop-срез: Dashboard, Inventory, профили, установка ПО, диагностика сети, сетевые папки, драйверы, принтеры, браузеры, настройка Windows и журнал. Интерфейс на русском, тёмная тема, адаптация к 1366×768 и минимальному окну 1024×640. Версия beta — `0.1.0-beta.1`; драйверы, принтеры, политики браузеров и изменение Windows помечены как экспериментальные без VM-приёмки. См. [BETA_READINESS.md](BETA_READINESS.md).
 
 ## Пакеты, сеть и папки
 
@@ -45,13 +45,13 @@ Remove-Item Env:GOBIN
 .\scripts\build-modern.ps1 -InstallDependencies
 ```
 
-Далее достаточно `scripts/build-modern.ps1`: bindings → UI tests → TypeScript/Vite → Go tests/vet → module verification → Windows resources → Windows GUI EXE. На чистом checkout сначала строится UI из закоммиченных bindings, чтобы Go embed нашёл dist для генератора. EXE и dist не коммитятся. Перед пересборкой закройте своё окно WinDeploy.
+Далее достаточно `scripts/build-modern.ps1`: bindings → UI tests → TypeScript/Vite → Go tests/vet → module verification → Windows resources → Windows GUI EXE. На чистом checkout сначала строится UI из закоммиченных bindings, чтобы Go embed нашёл dist для генератора. EXE и dist не коммитятся. Перед пересборкой закройте своё окно WinDeploy. Скрипт проверяет `VERSION`/`package.json`, внедряет версию и commit, обновляет Windows version resource и требует `ProductVersion` EXE равным канонической версии.
 
 Иконка приложения и манифест хранятся в `desktop/modern/assets/`: `appicon.png` — исходник, `windows/icon.ico` — многоразмерный ICO (16–256 px), `windows/windeploy.manifest` — asInvoker, Common Controls v6 и supportedOS. Скрипт перед линковкой вызывает `wails3 generate syso` и создаёт `desktop/modern/rsrc_windows_amd64.syso` (в Git не коммитится): ресурс даёт иконку файла EXE в Explorer/панели задач, а `icon_windows.go` встраивает тот же ICO и назначает его окну через `WM_SETICON` после регистрации класса `WinDeployMainWindow`. Обычный `go build` без шага syso соберёт EXE без иконки в Explorer.
 
 Сборка использует `-tags production`, чтобы EXE использовал production Wails runtime/embedded assets и не зависел от dev-server environment. `scripts/build-modern.ps1 -Diagnostic` дополнительно создаёт console `bin/WinDeploy-Diagnostic-x64.exe`. Запускайте `scripts/start-modern-diagnostic.ps1` из PowerShell для сохранения ранних ошибок в `local/modern-diagnostic.log`; launcher сообщает ненулевой exit, даже если main/startup.log не достигнуты. Диагностический EXE имеет те же bridge/mutation возможности — для диагностики не запускайте изменяющие операции на хосте.
 
-Проверка 2026-11-07: full build PASS, UI 38/38; actual GUI EXE DOM/bridge/native Inventory smoke PASS с новым workspace WebView2 UDF. Старый UDF давал controller 800700aa, startup.log был недоступен; inittrace показал, что main был достигнут, а прежний logger скрывал ошибки. Теперь stderr сохраняется при отказе file log. Точная внутренняя причина отказа старого профиля не установлена; он и ACL не менялись. Запуск был Hidden (MainWindowHandle=0), поэтому visible/default-user окно и Win10/LTSC acceptance не заявляются.
+Проверка 2026-11-08 (beta `0.1.0-beta.1`): full build PASS, UI 46/46; actual GUI EXE DOM/bridge/native Inventory smoke PASS с отдельными workspace WebView2 UDF/log/state, native hostname и app count совпали, два viewport, pageErrors=0. Это не заменяет Windows 10/LTSC, real install, SMB и reboot acceptance. Скриншоты public beta — `docs/images/`; hostname в них заменён.
 
 Запускать **файл**, не вставлять его текст в PowerShell: `.\scripts\start-modern-diagnostic.ps1 -WebViewDataDir "$PWD\local\webview-user"`. В построчном вводе `$PSScriptRoot` пуст. Launcher также принимает `-SmokePort 9223`; GUI EXE — `--webview-data-dir PATH --smoke-port 9223`. Новый каталог не копирует/удаляет старые данные и не меняет storage сессий. Скрипт блокируется до выхода приложения; ошибки/exit пишутся в терминал и local log.
 
@@ -63,7 +63,7 @@ Remove-Item Env:GOBIN
 - Collector выполняется асинхронно, один scan одновременно, deadline 30 секунд. Отмена кооперативная: синхронный Windows API не обрывается принудительно. Ошибки/partial/unknown отображаются отдельно; предыдущий снимок виден до поступления нового.
 - Установленные программы — видимые Uninstall entries HKLM/HKCU, не AppX/MSIX/portable. HKCU зависит от пользователя процесса. CLI и GUI сравниваются в одном пользовательском контексте. Подробнее: [Inventory](inventory.md).
 - Существующие YAML встроены через `profiles/embed.go`. `--profiles` читает внешний каталог, строгий parser ограничивает размер; до 128 файлов. Неправильный YAML отражается ошибкой, ID-дубликаты отклоняют каталог. Неудачная перезагрузка сбрасывает старый registry.
-- Страница показывает разрешённый состав, требования и зависимости. Параметры не экспортируются в bridge. Core BuildPlan включает зависимости выбранных компонентов. Пустой выбор даёт пустой план.
+- Страница показывает разрешённый состав, требования и зависимости. Параметры не экспортируются в bridge. Core BuildPlan включает зависимости выбранных компонентов. Пустой выбор даёт пустой план. Экран «Выполнение» требует сначала построить preview и подтвердить запуск; frozen `legacy` не выбирается по умолчанию.
 - Preview профилей проверяет структуру/DAG и OS applicability по последнему настоящему Inventory. Compatible означает только совпадение требований ОС; установщики профиля не запускаются. Несовместимые зависимости помечаются blocked, неизвестная ОС — unknown. Страница установки ПО отдельно проверяет детекцию, источник, SHA-256 и подпись.
 - Установка ПО выполняется только по явной кнопке и в фоновом режиме; один запуск одновременно, отмена кооперативная, прогресс отдаётся через опрос состояния. Пароли не передаются. Без прав администратора системные пакеты блокируются до первой операции.
 - Диагностика сети и подключение сетевых папок — отдельные страницы; подключение требует подтверждения, dry-run не меняет систему, конфликт Error 1219 разрешается только повторным явным подтверждением.

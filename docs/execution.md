@@ -8,7 +8,7 @@ Retry выполняется только для ошибки, реализую�
 
 Snapshot хранит версию, SHA-256 точного Pending-плана (включая параметры) и результаты. В него не попадают сами Parameters, произвольные diagnostics и команды. Snapshot.Validate проверяет формат, ValidateForPlan — соответствие исходному плану, ID и запущенные зависимости. Данные не аутентифицированы: храните их в доверенном локальном каталоге с Windows ACL и одним процессом-владельцем. Запись в FileStore защищена mutex только внутри экземпляра.
 
-FileStore сохраняет temp-файл в том же каталоге, выполняет Sync/Close и Rename. Ошибки до замены не обнуляют старый checkpoint; временный файл убирается. JSON ограничен 4 MiB, неизвестные поля и дополнительные документы запрещены. Гарантии atomicity/durability при power loss на Windows не заявляются: они зависят от filesystem. Каталог должен заранее создать вызывающий код; mode 0600 не заменяет Windows ACL.
+FileStore сохраняет temp-файл в том же каталоге, выполняет Sync/Close и атомарную замену через `internal/atomicfile`: временные Windows sharing/access-denied конфликты (antivirus/indexer) повторяются ограниченно, другие ошибки возвращаются сразу. Ошибки до замены не обнуляют старый checkpoint; временный файл убирается. JSON ограничен 4 MiB, неизвестные поля и дополнительные документы запрещены. Гарантии atomicity/durability при power loss на Windows не заявляются: они зависят от filesystem. Каталог должен заранее создать вызывающий код; mode 0600 не заменяет Windows ACL.
 
 RunOptions.Store сохраняет состояние до первой операции, Running перед запуском задачи и финальный результат после неё. Ошибка Save возвращает ErrCheckpoint, отменяет активные операции, запрещает новые и дожидается очистки адаптеров. Для сохранения при отмене используется отдельный context с deadline 5 секунд; Store обязан его соблюдать. Неисправный диск может помешать сохранить последние исходы: после восстановления interrupted-задачи проверяются Precheck. Между фазами/отдельными retry attempts checkpoint не делается, поэтому после внезапного завершения счётчик попыток может быть неполным.
 
@@ -40,8 +40,8 @@ deploy.Runner читает fresh boot identity через DI или inventory.Na
 | shares | перечисление WNet: UNC уже подключён → AlreadyInstalled | `shares.Manager.Add` (пароль только из Credential Manager) | подключение подтверждено |
 | drivers | устройство с Hardware ID уже ok → AlreadyInstalled | `drivers.Manager.Install` | устройство ok |
 | printers | очередь с именем существует → AlreadyInstalled | `printers.Manager.Add` | очередь существует |
-| browsers | Pending | политики Chromium/Firefox | nil без read-back; warnings теряются в deploy |
-| windows | Pending | computer-name/timezone/explorer/power-plan | computer-name: active hostname после reboot; остальное без read-back |
+| browsers | Pending | политики Chromium/Firefox + обязательные web-app ярлыки | read-back политик и ярлыков; incomplete effects → warning/Failed |
+| windows | Pending | computer-name/timezone/explorer/power-plan | computer-name/timezone/explorer/power-plan read-back; неподтверждённый эффект → warning/Failed |
 | diagnostics | Pending | DNS/DHCP/gateway/TCP/ICMP/HTTP/SMB | Execute |
 
 Пароли никогда не читаются из параметров профиля; для shares используется Windows Credential Manager. Параметры компонентов в отчёт не попадают.
@@ -56,6 +56,6 @@ Pending reboot session получает Completed=false; Summarize не счит
 
 После завершения/прерывания `reporting.Build` создаёт JSON и автономный HTML (`reports/windeploy-<session>-<time>.html`): профиль, система, итог по статусам, таблица задач с временем/попытками/ошибками, флаг перезагрузки. HTML экранирует все значения; параметры компонентов не включаются. Повторная запись в тот же файл запрещена.
 
-CLI `windeploy-run`: `plan`, `run --yes`, `resume --session ID [--retry-failed] --yes`, `sessions`, `report`. Modern GUI: страница «Выполнение» — выбор профиля и компонентов, подтверждение запуска, живой прогресс через опрос сессии, отмена, список сессий, просмотр и продолжение, пути отчётов.
+Modal GUI: страница «Выполнение» — выбор профиля и компонентов, обязательный предварительный план, подтверждение запуска, живой прогресс через опрос сессии, отмена, список сессий, просмотр и продолжение, пути отчётов. Frozen Legacy-профиль не выбирается по умолчанию.
 
 Проверено на текущей Windows: реальная сессия `selftest` с diagnostics-компонентом выполнена через CLI и через service-тест; созданы session JSON, HTML/JSON отчёты; повторный запуск после отмены продолжает задачи; завершённая сессия без `retryFailed` не перезапускается. Изменяющие компоненты (packages/drivers/printers/shares/browsers/windows) в этой сессии не выполнялись — нужна VM с правами администратора.

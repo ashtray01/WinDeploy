@@ -97,7 +97,7 @@ export default function PrintersPage() {
         <Panel title="Добавить принтер">
           <div className="driver-form">
             <label><span>Имя</span><input value={form.name} onChange={event => update('name', event.target.value)} placeholder="Принтер отдела" aria-label="Имя принтера" /></label>
-            <label><span>IP-адрес</span><input value={form.ip_address} onChange={event => update('ip_address', event.target.value)} placeholder="192.168.1.50" aria-label="IP-адрес принтера" /></label>
+            <label><span>IP-адрес</span><input value={form.ip_address} onChange={event => update('ip_address', event.target.value)} placeholder="192.0.2.50" aria-label="IP-адрес принтера" /></label>
             <label><span>INF-драйвер</span><input value={form.inf_path} onChange={event => update('inf_path', event.target.value)} placeholder="C:\Drivers\printer\driver.inf" aria-label="INF-драйвер принтера" /></label>
             <label className="share-check"><input type="checkbox" checked={kyocera} onChange={event => { setKyocera(event.target.checked); update('model', event.target.checked ? (models[0] ?? '') : ''); }} />Kyocera 2460</label>
             {kyocera ? <label><span>Точная модель</span><select value={form.model} onChange={event => update('model', event.target.value)} aria-label="Модель Kyocera">{models.map(model => <option key={model} value={model}>{model}</option>)}</select></label>

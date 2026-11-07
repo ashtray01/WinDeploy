@@ -1,5 +1,23 @@
 # WinDeploy technical audit — 2026-11-07
 
+## Public beta preparation — 2026-11-08
+
+Полный аудит не повторялся. База — `master` `9010d95`; проверялись только
+release-blockers. Сессии/ACL, SID gate и обязательные read-back эффекты уже были
+исправлены в `ddc806f`/`9010d95`; текущая итерация добавила единый `VERSION`,
+Modern-only CI/release, SHA-256/portable packaging, публичные документы и явный
+preview-before-execute.
+
+Фактически: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go 1.26.2
+tests/vet PASS; frontend 46/46, strict TypeScript/Vite PASS; production EXE
+собран, version resource `0.1.0-beta.1`; actual GUI EXE smoke PASS с native
+Inventory, двумя viewport и pageErrors=0. Реальные установка пакета, SMB-сервер,
+reboot, драйверы/принтеры и VM не выполнялись. Windows 10/LTSC не заявляются;
+Legacy FROZEN.
+
+Актуальная матрица и блокеры — [BETA_READINESS.md](BETA_READINESS.md); известные
+ограничения — [KNOWN_ISSUES.md](KNOWN_ISSUES.md). Следующие действия — TASKS.md.
+
 ## Итерация warnings (P0-04 remainder, частично)
 
 База `bab8e65`; коммиты `e6148c2`, `4a03dd7`, `2fd8799`. Полный аудит не повторялся.

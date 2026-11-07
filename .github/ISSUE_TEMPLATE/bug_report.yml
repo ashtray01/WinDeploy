@@ -1,0 +1,83 @@
+name: Bug report
+description: Сообщить о воспроизводимой ошибке WinDeploy beta
+title: "[bug] "
+labels: ["bug", "beta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Не публикуйте пароли, токены, приватные ключи, IP-адреса, имена
+        пользователей, корпоративные пути и конфиденциальные данные.**
+        Перед вложением журнала/скриншота удалите или замаскируйте их.
+        Уязвимости не отправляйте сюда: используйте private vulnerability
+        reporting (SECURITY.md).
+  - type: input
+    id: windeploy-version
+    attributes:
+      label: Версия WinDeploy
+      description: Версия из футера приложения или Release, например 0.1.0-beta.1
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Версия и сборка Windows
+      description: Например Windows 11 24H2, 26100.xxxx; укажите x64/ARM64
+      placeholder: Windows 11 24H2 26100.xxxx x64
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Описание ошибки
+      description: Что произошло и почему это проблема?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Минимальная последовательность действий
+      placeholder: |
+        1. Открыть ...
+        2. Нажать ...
+        3. Увидеть ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи без секретов
+      description: Обезличенный startup.log/отчёт; не вставляйте пароли, токены и приватные адреса
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты при необходимости
+      description: Перетащите изображение; замаскируйте hostname, IP, имена и пути
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Проверка безопасности
+      options:
+        - label: Я удалил пароли, токены, приватные адреса и персональные данные
+          required: true
+        - label: Я не сообщаю здесь об уязвимости; для неё есть SECURITY.md
+          required: true

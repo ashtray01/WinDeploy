@@ -1,0 +1,58 @@
+name: Feature request
+description: Предложить возможность для будущей версии WinDeploy
+title: "[feature] "
+labels: ["enhancement", "beta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        WinDeploy находится в public beta. Приоритет — безопасность и основной
+        сценарий, а не количество функций. Не вставляйте пароли, токены,
+        приватные адреса и персональные данные.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую задачу нужно решить?
+      description: Опишите рабочий сценарий, а не только желаемую кнопку
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предлагаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы и текущий обход
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options:
+        - Inventory
+        - Профили
+        - Установка ПО
+        - Сеть/диагностика
+        - SMB
+        - Драйверы
+        - Принтеры
+        - Браузеры
+        - Windows settings
+        - Отчёты/сессии
+        - Документация/сборка
+        - Другое
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Границы
+      options:
+        - label: Предложение не требует обхода SID/session/ACL security gate
+          required: true
+        - label: Я понимаю, что Legacy Windows 7 заморожен
+          required: true
