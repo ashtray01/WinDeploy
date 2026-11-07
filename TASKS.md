@@ -6,8 +6,9 @@
 LTSC не заявляются без проверки. Windows 7 Legacy FROZEN. Одна итерация — 2–4
 задачи с тестами и коммитами.
 
-Текущий срез — beta candidate, **публикация ещё запрещена**: остаются B1/B2/B3/B6
-из [BETA_READINESS](docs/BETA_READINESS.md) и требуется решение владельца B8.
+Текущий срез — beta candidate. Владелец выбрал MIT и разрешил отправить исходный
+код в `ashtray01/WinDeploy`. Публикация binary Release не разрешена: остаются
+B1/B2/B6 из [BETA_READINESS](docs/BETA_READINESS.md).
 Release workflow создаёт только draft. VM acceptance больше не является
 обязательным общим критерием, но конкретные изменяющие сценарии без проверки не
 заявляются.
@@ -31,13 +32,17 @@ Release workflow создаёт только draft. VM acceptance больше �
   Modern release workflow (draft pre-release), SHA256SUMS/portable ZIP,
   `verify-version.ps1`, `package-modern-release.ps1`, production EXE без
   remote-debug flag (`2e7dbc6`, `5ca5dbf`).
-- [x] **Public docs**: README со screenshots, LICENSE-заглушка, CHANGELOG,
+- [x] **Public docs**: README со screenshots, MIT LICENSE, CHANGELOG,
   CONTRIBUTING, SECURITY, KNOWN_ISSUES, release notes, issue templates,
   publication checklist (`b032eb8`).
 - [x] **Secret preflight**: tracked files + Git history проверены; blocking
   findings 0, manual items — тестовые/документационные примеры. Повторить после
   финального docs commit.
-- [ ] B1/B2/B3/B6 ещё не закрыты. Не считать документацию их заменой.
+- [x] **Startup ACL regression**: составная `FILE_GENERIC_WRITE` больше не
+  принимает общие read/synchronize-биты за право записи; `(RX)` разрешён,
+  реальные write/delete/ACL-права посторонних по-прежнему fail closed. Свежий
+  default-path diagnostic startup и GUI bridge smoke PASS (`740a3e4`).
+- [ ] B1/B2/B6 ещё не закрыты. Не считать документацию их заменой.
 
 ## BETA BLOCKER
 
@@ -45,12 +50,12 @@ Release workflow создаёт только draft. VM acceptance больше �
 |---|---|---|---|
 | B1 | Реальная установка одного безопасного пакета не выполнена | Есть unit/service/UI, EXE собран; install не запускался | С разрешения владельца: 7-Zip или другой согласованный пакет; detection до/после, повтор, update, failure/cancel, отчёт |
 | B2 | SMB-сервер и credentials context не проверены | Native list/.lnk read-back PASS; сервера нет | Тестовый SMB: connect, shortcut, repeat, 1219, no secret in report |
-| B3 | Лицензия не выбрана, owner/repo URL не зафиксированы | `LICENSE` — заглушка, remote отсутствует | Владелец выбирает лицензию и URL; README заменяет `OWNER` |
+| B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый public source push после финального preflight |
 | B4 | ~~Git-история не проверена на секреты/данные~~ | **Закрыт для среза:** secret-scan + history — 0 blocking; manual items — test/doc примеры | Повторить после финального docs commit; владелец проверяет findings |
 | B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual diagnostic/smoke GUI DOM/bridge/native smoke PASS, pageErrors=0, два viewport; production EXE без remote-debug; screenshots обезличены | Повторять при UI/EXE изменениях |
-| B6 | Нет GitHub-hosted CI и draft Release | Workflows готовы, remote нет | Remote, CI PASS, draft Release проверен |
+| B6 | Нет GitHub-hosted CI и draft Release | Workflows готовы; публичный пустой remote настроен | Source push, CI PASS; draft Release проверяется отдельно |
 | B7 | Windows 10/LTSC scope | Не проверялись | **Решено:** beta только Windows 11 x64; не расширять без проверки |
-| B8 | Нет явного разрешения владельца на публикацию | Подготовка разрешена, публичный Release/репозиторий — нет | Явное решение владельца после B1/B2/B3/B6 |
+| B8 | Разрешение разделено для source и Release | **Source push явно разрешён 2026-11-08**; binary Release не разрешён | Release — отдельное решение после B1/B2/B6 |
 
 Примечание: Windows 10/LTSC не является блокером, если beta явно поддерживает
 только Windows 11 x64. Не расширять supported scope без проверки.
@@ -65,7 +70,7 @@ Release workflow создаёт только draft. VM acceptance больше �
 - [ ] Release notes отражают реальные проверки и отсутствие code signing.
 - [ ] README screenshots обезличены; hostname/IP/имена не публикуются.
 - [ ] Run `scripts/check-release-secrets.ps1 -IncludeHistory`, review findings.
-- [ ] Owner selects license and replaces placeholder before public source access.
+- [x] Owner selected MIT and replaced the placeholder before public source access.
 - [ ] GitHub Actions run on disposable runner; draft release assets verified.
 - [ ] Visible/manual desktop smoke владельцем (текущий automated DOM/bridge smoke
   не заменяет ручное подтверждение окна и UAC-сценария).
@@ -101,8 +106,8 @@ Windows 7 Legacy: `legacy/`, `profiles/legacy.yaml`, tests/docs сохранен
    отчёт.
 2. **B2**: поднять/получить тестовый SMB-сервер и проверить connect/credentials/
    shortcut/1219 без секретов в отчёте.
-3. **B3/B4/B6**: завершить secret-scan, license/owner URL, remote CI и draft
-   Release; только затем просить подтверждение публикации.
+3. **B4/B6**: завершить secret-scan, отправить source в настроенный remote и
+   проверить CI; draft Release оставить отдельным этапом.
 
 Не начинать новые крупные модули, Legacy или VM-wide roadmap. После задач —
 тесты, отдельные коммиты, TASKS/HANDOFF/BETA_READINESS и git status.

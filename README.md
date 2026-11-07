@@ -43,8 +43,8 @@
 ## Установка
 
 Релиз `v0.1.0-beta.1` готовится. После публикации файлы будут доступны в
-[Releases](https://github.com/OWNER/WinDeploy/releases); `OWNER` заменяется
-владельцем репозитория до открытия исходников.
+[Releases](https://github.com/ashtray01/WinDeploy/releases). Публичный Release
+ещё не создан; текущая команда публикации относится только к исходному коду.
 
 1. Скачайте `WinDeploy-Windows-x64.exe` из Assets.
 2. Проверьте SHA-256 по `SHA256SUMS.txt`.
@@ -70,7 +70,8 @@ EXE **не подписан** сертификатом code signing; SmartScreen
 Если Windows не позволяет записать данные WebView2 в `%LOCALAPPDATA%`, WinDeploy
 проверяет резервный каталог, `%TEMP%` и портативный `WinDeploy-WebView2Data` рядом
 с EXE. Автоматически выбираются только каталоги, принадлежащие текущему
-пользователю, без записи для посторонних и без символических ссылок. Каталог
+пользователю, без записи для посторонних и без символических ссылок. Чужой
+read-only `(RX)` ACE допустим и не считается правом записи. Каталог
 рядом с EXE не используется из Program Files. При переходе на резервный каталог
 появляется нативное окно с кнопками **«Продолжить с резервным каталогом»** и
 **«Выход»**; UAC для этого не запрашивается. Выбор запоминается в самом каталоге,
@@ -134,9 +135,9 @@ Windows 7 FROZEN; не запускайте Legacy-сборку как част�
 
 ## Обратная связь
 
-- [Issues](https://github.com/OWNER/WinDeploy/issues) — шаблоны Bug report и
+- [Issues](https://github.com/ashtray01/WinDeploy/issues) — шаблоны Bug report и
   Feature request.
-- [Releases](https://github.com/OWNER/WinDeploy/releases) — артефакты и
+- [Releases](https://github.com/ashtray01/WinDeploy/releases) — артефакты и
   SHA256SUMS после публикации.
 - [BETA_READINESS](docs/BETA_READINESS.md) — что проверено, что отключено и какие
   блокеры остаются.
@@ -157,5 +158,4 @@ Windows 7 FROZEN; не запускайте Legacy-сборку как част�
 
 ## Лицензия
 
-Лицензия не выбрана. `LICENSE` — осознанная заглушка; публичное открытие
-исходников и распространение исходного кода заблокированы до решения владельца.
+Исходный код распространяется по [MIT License](LICENSE).

@@ -6,22 +6,22 @@
 
 ## Итог
 
-**Статус: beta candidate, публиковать пока нельзя.** Инфраструктура Modern-only
-сборки и release gate подготовлены, но остаются блокеры B1, B2, B3, B6 и
-требуется явное решение B8.
+**Статус: beta candidate; source push разрешён, binary Release пока нельзя.**
+MIT/URL/source-разрешение зафиксированы; остаются B1, B2 и B6, а публикация
+binary Release требует отдельного решения владельца.
 
 | # | Блокер | Доказательство | Что нужно |
 |---|---|---|---|
 | B1 | Основной сценарий установки не подтверждён реальной установкой | Есть unit/service/UI-тесты и собранный EXE; в этой итерации не запускался ни один установщик. Нет clean-install acceptance и проверки обновления/отмены | На Win11 x64 установить один согласованный безопасный пакет (например, 7-Zip) с разрешения владельца; detection до/после, повтор, update, failure/cancel, отчёт |
 | B2 | SMB-подключение и обязательный ярлык не проверены с реальным сервером | Native list и временный `.lnk` read-back PASS; сервер/credentials/конфликт 1219 не проверялись | Тестовый SMB-сервер и отдельная учётная запись; подключение, ярлык, повтор, отказ, отсутствие секретов в отчёте |
-| B3 | Лицензия не выбрана, публичный URL/владелец не зафиксированы | `LICENSE` — осознанная заглушка; remote отсутствует | Владелец выбирает лицензию и публичный репозиторий; не открывать исходники до этого |
+| B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт 2026-11-08:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый source push после финального secret preflight |
 | B4 | ~~Git-история не проверена на секреты и персональные данные~~ | **Закрыт для текущего среза:** `check-release-secrets.ps1 -IncludeHistory` — 0 blocking findings; manual-review items — тестовые/документационные примеры. Повторить после финального docs commit | Владелец проверяет findings; повторный прогон перед открытием repo |
 | B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; production EXE не содержит remote-debug strings. Screenshots обезличены | Повторять при изменении UI/EXE |
-| B6 | Нет GitHub-hosted run и draft Release | Remote отсутствует; workflow подготовлены | Создать remote только с разрешения владельца, выполнить CI, затем draft release |
+| B6 | Нет GitHub-hosted run и draft Release | Публичный пустой remote настроен с разрешения владельца; workflow подготовлены | Source push, CI PASS; затем отдельно проверить draft release |
 | B7 | Windows 10/LTSC не проверены | Нет VM; текущий хост — Windows 11 | **Решено:** beta scope — только Windows 11 x64; Win10/LTSC не заявляются |
-| B8 | Нет явного подтверждения владельца на публикацию | Пользователь разрешил подготовку, но не публичный Release/репозиторий | Владелец проверяет draft/документы и отдельно разрешает открытие repo/Release |
+| B8 | Разрешение на source и Release разделено | Владелец явно разрешил source push 2026-11-08; binary Release не разрешён | Release требует отдельного подтверждения после B1/B2/B6 |
 
-B3 и B6 — release-процессные блокеры. B1–B2 — функциональные. B4 закрыт для
+B3 закрыт; B6 — release-процессный блокер. B1–B2 — функциональные. B4 закрыт для
 текущего среза, B5 закрыт фактическим smoke, B7 закрыт сужением supported scope.
 B8 нельзя закрыть технической проверкой.
 
@@ -109,6 +109,13 @@ unit/integration/UI без реального системного эффект�
   пропускается. Unit-тесты дополнительно отклоняют каталог с записью для Users и
   проверяют переиспользование. Реальный запуск из Program Files/USB не
   выполнялся.
+- Исправлена ложная классификация ACL: `FILE_GENERIC_WRITE` содержал общие
+  `READ_CONTROL`/`SYNCHRONIZE`, из-за чего наследуемый `(RX)` ошибочно считался
+  записью. Теперь read-only ACE разрешён, а write/delete/change-ACL права
+  посторонних по-прежнему отклоняются. На текущем ограниченном хосте primary
+  прошёл ACL gate, затем ожидаемо не прошёл write probe; доверенный portable
+  fallback создал WebView2 Environment. Actual DOM/bridge smoke PASS,
+  `pageErrors=0` (`740a3e4`).
 - Screenshots `docs/images/` сняты с этой сборки; hostname заменён на
   `DEMO-WORKSTATION`.
 

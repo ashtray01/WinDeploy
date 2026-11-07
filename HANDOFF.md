@@ -2,10 +2,11 @@
 
 ## Текущий этап и факты
 
-2026-11-08: первая итерация подготовки **v0.1.0-beta.1** завершена. Это public
-beta candidate, **не опубликован и не готов к публикации**: B1 (real install),
-B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты, B8
-(явное разрешение владельца) не выдано. Windows 11 x64 — единственная заявленная
+2026-11-08: исправлен фактический startup blocker **v0.1.0-beta.1**. Владелец
+выбрал MIT и явно разрешил первый source push в публичный
+`https://github.com/ashtray01/WinDeploy`; `origin` настроен. Binary Release не
+разрешён и не готов: B1 (real install), B2 (SMB server) и B6 (GitHub CI/draft)
+открыты. Windows 11 x64 — единственная заявленная
 платформа; Win10/LTSC не проверялись. Windows 7 Legacy FROZEN. Root Go 1.20
 сохранён, Modern Go 1.26/Wails v3.1.0. Полный аудит не повторялся.
 
@@ -38,10 +39,20 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
    срезе: 0 blocking findings; manual-review items — тестовые/документационные
    примеры private IP и fake `C:\Users\Test`. Значения не печатались. Повторить
    после финального docs commit и перед открытием репозитория.
+6. **Фактический startup fix.** Ошибка из `%LOCALAPPDATA%\WinDeploy\logs\startup.log`
+   воспроизведена: read-only `(RX)` ACE ошибочно попадал под составную
+   `FILE_GENERIC_WRITE`. ACL gate теперь проверяет только реальные write/append/
+   delete/change-ACL права; read-only ACE разрешён. Write probe и reparse/owner
+   gates сохранены. Каждый отклонённый WebView2 candidate пишет причину в startup
+   log. Default-path diagnostic startup создал WebView2 Environment через
+   доверенный portable fallback, actual DOM/bridge smoke PASS (`740a3e4`).
+7. **Source publication preparation.** MIT выбран владельцем; README links
+   заменены на `ashtray01/WinDeploy`; публичный пустой remote настроен. Release
+   не создаётся и не публикуется в этой итерации.
 
 ## Коммиты
 
-Ветка `master`; remote отсутствует; тегов нет. Runtime/code коммиты этой
+Ветка `master`; `origin` настроен на `ashtray01/WinDeploy`; тегов нет. Runtime/code коммиты этой
 итерации:
 
 - `ba09bc6` — fix(stability): retry transient state replacement and isolate test temp.
@@ -57,8 +68,9 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `95b1b77` — fix(modern): harden WebView fallback and remove startup UAC.
 - `ea7caef` — docs: secure WebView fallback/без startup UAC.
 - `2f63524` — test(modern): pin TaskDialog packed layout.
+- `740a3e4` — fix(modern): accept read-only ACLs for WebView cache.
 - Текущий HEAD после docs/test-коммитов — `git log -1 --oneline`; runtime EXE
-  собран из `95b1b77`. Release workflow пересоберёт EXE из тега.
+  пересобран из `740a3e4`. Release workflow пересоберёт EXE из тега.
 
 ## Фактические проверки
 
@@ -100,6 +112,14 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   journal, viewports 1366×768/1024×640, `pageErrors=0`. UI/service code тот же;
   production EXE дополнительно проверен запуском/окном, но не CDP. Это не ручное
   подтверждение окна владельцем.
+- **Startup ACL regression:** реальные Windows ACL tests PASS: чужой `(RX)`
+  принимается, `(W)/(M)` отклоняется. Ограниченный агентный token не может писать
+  в `%LOCALAPPDATA%`, поэтому default-path smoke ожидаемо выбрал доверенный
+  `bin\WinDeploy-WebView2Data`; WebView2 Environment создан, GUI smoke повторно
+  PASS, `pageErrors=0`. Это доказывает recovery/ACL fix, но не ручной видимый
+  запуск владельцем нового EXE. Полный root script test/vet/build amd64+386
+  выполнен текущим Go 1.26.2; Go 1.20.14 на этом runtime-коммите отдельно не
+  повторялся (изменение использует только существующие константы/синтаксис).
 - **Packaging:** `scripts/package-modern-release.ps1 -SkipBuild` — PASS. Артефакты
   (candidate, не публиковать):
   - `dist/WinDeploy-Windows-x64.exe` SHA-256 `f9021f9bdb52b50e7141cebd75a3e39f5ad6c3d074f9c7cf360e168894e38ba2`
@@ -120,11 +140,10 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   detection/repeat/update/failure/cancel и отчёт.
 - **B2** — нет SMB-сервера/учётной записи для проверки connect/credentials/
   required shortcut/1219.
-- **B3** — лицензия не выбрана; `LICENSE` — заглушка. Нет публичного owner/repo
-  URL; README использует `OWNER` placeholder.
-- **B6** — нет remote и GitHub CI/draft Release. Workflows не запускались на
-  GitHub.
-- **B8** — нет явного разрешения владельца на публичный repo/Release.
+- **B3 закрыт** — владелец выбрал MIT, URL/README/origin зафиксированы.
+- **B6** — source ещё не отправлен, GitHub CI/draft Release не запускались.
+- **B8 частично закрыт** — source push явно разрешён; binary Release требует
+  отдельного разрешения после B1/B2/B6.
 - B5 закрыт для этого EXE; UI-изменения требуют нового smoke. B7 закрыт scope-
   решением (только Win11 x64), а не проверкой Win10.
 
@@ -149,6 +168,9 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   заменяет ACL и не гарантирует power-loss durability.
 - `core/deploy.Store` — bounded strict JSON, ID binding, owner/ACL trust перед
   mutation; session resume не получает elevated worker/impersonation.
+- `core/trust` отличает реальные write/delete/change-ACL права от общих
+  `READ_CONTROL`/`SYNCHRONIZE`; read-only ACE не снижает доверие, write ACE
+  постороннего по-прежнему fail closed.
 - `deploy.Adapter`/engine — preview не заменяет runtime gate; warnings
   сохраняются; required effect fail closed.
 - Modern release workflows separated from Legacy; release creates draft only.
@@ -156,7 +178,8 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
 
 ## Git и артефакты
 
-`master`, remote отсутствует, тегов нет. Runtime artifacts/logs/EXE/ZIP/caches не
+`master`, `origin=https://github.com/ashtray01/WinDeploy.git`, тегов нет. Remote
+публичный и пустой до финального push. Runtime artifacts/logs/EXE/ZIP/caches не
 коммитились. `dist/` и `bin/` ignored. Пользовательский untracked
 `temp/windeploy-icon.png` не изменялся/не добавлялся/не удалялся. Скриншоты
 `docs/images/` — из настоящего GUI, hostname заменён на `DEMO-WORKSTATION`.
@@ -170,10 +193,10 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
    существующие программы.
 2. **B2**: тестовый SMB-сервер/учётная запись; connect, required shortcut,
    повтор, 1219, отсутствие пароля в report/log.
-3. **B3/B6/B8**: license + owner/repo URL, remote, GitHub CI, draft Release,
-   затем явное решение владельца о публикации.
-4. Повторить `check-release-secrets.ps1 -IncludeHistory` на финальном дереве;
-   пересобрать candidate после каждого runtime-коммита и обновить хеши.
+3. **B6**: проверить GitHub CI после source push; draft Release не публиковать,
+   пока B1/B2 и отдельное разрешение владельца не закрыты.
+4. После следующего runtime-коммита снова собрать candidate, выполнить actual
+   GUI smoke и обновить SHA-256.
 
 ## Точные команды
 
@@ -208,14 +231,14 @@ Read-only Inventory/диагностика допустимы. Реальная 
 драйверы, принтеры, policies/settings/reboot — только VM или отдельное разрешение
 владельца. Не отключать Defender/UAC/Firewall, не менять чужие ACL/профили, не
 убивать пользовательские процессы. EXE не подписан; SmartScreen предупреждение
-ожидаемо. Не публиковать repo/Release: лицензия, secret scan, CI и B1/B2/B8 не
-закрыты.
+ожидаемо. Source push разрешён после MIT/preflight; binary Release не публиковать:
+CI, B1/B2 и отдельное разрешение владельца не закрыты.
 
 ## Условия разрешения публикации
 
 Публичный Release/repository разрешается только когда одновременно выполнено:
 
-1. Владелец выбрал лицензию и заменил `LICENSE`; зафиксирован owner/repo URL,
+1. **Выполнено:** владелец выбрал MIT, заменил `LICENSE`, зафиксирован URL,
    README больше не содержит `OWNER`.
 2. B1 и B2 закрыты воспроизводимыми логами/тестами; все открытые blockers
    перечислены в release notes.

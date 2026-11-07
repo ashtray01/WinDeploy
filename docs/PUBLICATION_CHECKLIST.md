@@ -1,16 +1,18 @@
 # Публикация WinDeploy beta — чеклист владельца
 
-Этот чеклист не даёт разрешения на публикацию. Публичный репозиторий и Release
-создаются только после явного подтверждения владельца.
+Владелец разрешил первый source push в публичный репозиторий 2026-11-08 и выбрал
+MIT. Это разрешение не распространяется на binary Release: он создаётся только
+после отдельного подтверждения владельца и закрытия release gates.
 
 ## 1. До открытия исходников
 
-- [ ] Выбрана лицензия и заменён `LICENSE` (сейчас осознанная заглушка).
-- [ ] Зафиксирован публичный owner/repository URL; заменены ссылки Releases/Issues
-      в `README.md` и release notes.
+- [x] Владелец выбрал MIT; `LICENSE` заменён до первого source push.
+- [x] Зафиксирован публичный owner/repository URL
+      `https://github.com/ashtray01/WinDeploy`; ссылки README заменены.
 - [ ] Владелец проверил, что в репозитории нет приватных конфигураций, внутренних
       URL, имён коллег/клиентов, inventory и скриншотов с персональными данными.
-- [ ] Выполнен `scripts/check-release-secrets.ps1`; все находки разобраны.
+- [x] Выполнен `scripts/check-release-secrets.ps1 -IncludeHistory`; blocking
+      findings 0, manual-review findings — только ранее описанные test/docs примеры.
 - [ ] При находке секрета: репозиторий не публикуется, ключ ротирован, история
       очищена только согласованным способом. Force-push без разрешения запрещён.
 - [ ] Проверено, что `temp/windeploy-icon.png`, локальные каталоги, EXE, ZIP,
@@ -60,7 +62,8 @@ Get-AuthenticodeSignature dist/WinDeploy-Windows-x64.exe
 
 ## 4. GitHub
 
-- [ ] Remote создан только с разрешения владельца; backup/теги не переписаны.
+- [x] Remote создан только с разрешения владельца; `origin` указывает на
+      `https://github.com/ashtray01/WinDeploy.git`; backup/теги не переписаны.
 - [ ] Modern CI (`ci.yml`) PASS на GitHub-hosted runner.
 - [ ] Legacy CI не требуется для beta release.
 - [ ] Release workflow запускается по тегу `v0.1.0-beta.1`; tag совпадает с

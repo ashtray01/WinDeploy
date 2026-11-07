@@ -1,5 +1,22 @@
 # WinDeploy technical audit — 2026-11-07
 
+## Startup ACL correction — 2026-11-08
+
+Полный аудит не повторялся. По фактическому startup log исправлен regression
+`740a3e4`: проверка `mask & FILE_GENERIC_WRITE != 0` ошибочно считала общие
+`READ_CONTROL`/`SYNCHRONIZE` из read-only `(RX)` правом записи и отклоняла
+WebView2 cache. Теперь учитываются только write/append/attributes/delete/
+change-ACL права. Тесты на реальных Windows ACL подтверждают: чужой `(RX)`
+разрешён, `(W)/(M)` по-прежнему fail closed. Owner, non-null DACL, reparse check
+и write probe не ослаблены.
+
+Root test/vet/build amd64+386, Modern tests/vet, frontend 46/46, strict
+TypeScript/Vite и сборка EXE — PASS. В ограниченном agent token `%LOCALAPPDATA%`
+прошёл ACL gate, но ожидаемо не прошёл write probe; trusted portable fallback
+создал WebView2 Environment. Actual diagnostic DOM/bridge/native Inventory
+smoke PASS, два viewport, `pageErrors=0`. Ручной видимый запуск владельцем
+нового EXE и Windows 10/LTSC этим не подтверждены.
+
 ## Public beta preparation — 2026-11-08
 
 Полный аудит не повторялся. База — `master` `9010d95`; проверялись только
