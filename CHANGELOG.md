@@ -5,7 +5,7 @@ SemVer. Проект находится в стадии public beta.
 
 ## [0.1.0-beta.1] — 2026-11-08
 
-Опубликован [GitHub Pre-release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1),
+Опубликован [GitHub Release (Latest, Public Beta)](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1),
 commit `56fe16351720b4a74a5e773a7a26e270fe4bbf84`.
 [Release workflow](https://github.com/ashtray01/WinDeploy/actions/runs/42421767518) PASS;
 публичные downloads и SHA-256 проверены. [Доказательства и хеши](docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md).
@@ -20,7 +20,8 @@ commit `56fe16351720b4a74a5e773a7a26e270fe4bbf84`.
 - Установка ПО требует явного выбора программ и отдельного подтверждения;
   каталог больше не выбирает устанавливаемые пакеты автоматически.
 - SHA-256 и portable-архив для beta-релиза, Modern-only CI и workflow, который
-  создаёт только **draft** pre-release после проверки тега.
+  создаёт только **draft** release после проверки тега; публикация/повышение —
+  отдельное явное действие владельца.
 - Публичные документы: Known Issues, Security, Contributing, BETA_READINESS,
   release notes, issue templates.
 - Ограниченные повторы атомарной замены файлов для OneDrive/antivirus-конфликтов

@@ -42,7 +42,7 @@
 
 ## Установка
 
-Опубликован [v0.1.0-beta.1 — Pre-release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1).
+Опубликован [v0.1.0-beta.1 — GitHub Release (Latest, Public Beta)](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1).
 EXE, portable ZIP, SHA256SUMS.txt и Release Notes доступны в Assets.
 [Проверки выпуска и SHA-256](docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md).
 

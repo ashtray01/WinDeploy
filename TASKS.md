@@ -3,10 +3,11 @@
 ## Текущий этап
 
 2026-11-08: [v0.1.0-beta.1](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1)
-опубликован как **Pre-release**, не Stable. Release commit:
+опубликован как **GitHub Release (Latest)**, не Stable. Release commit:
 `56fe16351720b4a74a5e773a7a26e270fe4bbf84`. Windows 11 x64 — проверенная платформа;
 Win10/LTSC не подтверждены, Windows 7 Legacy FROZEN и исключён из Modern release.
-Владелец явно разрешил выпуск с честно раскрытыми B1/B2; сами проверки не выполнены.
+Владелец явно разрешил выпуск после проверки EXE; B1/B2 честно раскрыты, но не
+выполнены.
 
 ## Сделано в этой итерации — 3 задачи
 
@@ -16,7 +17,8 @@ Win10/LTSC не подтверждены, Windows 7 Legacy FROZEN и исклю�
       устаревшие packaged docs (`56fe163`); runtime/UI/Legacy не менялись.
 - [x] Modern CI `42421280314` и release workflow `42421767518` PASS на release
       commit. Annotated tag создан без подписи (не настроена). Draft проверен,
-      assets скачаны и сверены до публикации; опубликован Pre-release.
+      assets скачаны и сверены до публикации; Release опубликован и переведён в
+      Latest после проверки EXE владельцем.
 - [x] Публичная HTML/API страница и все 4 downloads проверены без авторизации;
       SHA-256 совпадают с draft, manifest и GitHub digest. Итоговые документы
       обновлены отдельным коммитом без изменения release tag/assets.
@@ -32,7 +34,7 @@ Win10/LTSC не подтверждены, Windows 7 Legacy FROZEN и исклю�
 | B5 | Исторический Windows 11 actual GUI smoke PASS | Runtime/UI в этой итерации не менялись; скачанный EXE заново не запускался |
 | B6 | Закрыт | CI/release PASS, draft/assets/public downloads проверены |
 | B7 | Scope ограничен | Windows 11 x64; Win10/LTSC не подтверждены |
-| B8 | Закрыт | Явное разрешение владельца на публичный v0.1.0-beta.1 Pre-release |
+| B8 | Закрыт | Явное разрешение владельца на публичный v0.1.0-beta.1 Release после проверки EXE |
 
 B1/B2 не объявлены PASS и не перенесены в POST-BETA как решённые security-проблемы.
 Runtime SID/session/ACL/installer gates сохранены. Полный security audit не выполнялся.
@@ -46,7 +48,8 @@ Runtime SID/session/ACL/installer gates сохранены. Полный securit
       проверены; EXE NotSigned, production debug flags отсутствуют.
 - [x] Release Notes раскрывают beta, Win11 scope, Win10/LTSC/Win7 ограничения,
       отсутствие подписи, экспериментальные функции и невыполненные B1/B2.
-- [x] Draft проверен и опубликован как Pre-release по разрешению владельца.
+- [x] Draft проверен, опубликован как Release и переведён в Latest по разрешению
+      владельца после проверки EXE.
 - [ ] Новый visible/manual desktop smoke опубликованного EXE не выполнялся;
       предыдущий actual diagnostic DOM/bridge smoke не заменяет его.
 

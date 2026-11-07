@@ -2,11 +2,11 @@
 
 ## Текущий этап и факты
 
-2026-11-08: первый публичный **Pre-release v0.1.0-beta.1** опубликован:
+2026-11-08: первый публичный **GitHub Release (Latest) v0.1.0-beta.1** опубликован:
 https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1
 Это beta, не Stable. Windows 11 x64 — проверенная платформа; Win10/LTSC не
 проверены. Windows 7 Legacy FROZEN и в Modern-артефакты не входит.
-Владелец явно разрешил публикацию в этой задаче. B1/B2 остаются открытыми
+Владелец явно разрешил публикацию после проверки EXE. B1/B2 остаются открытыми
 непроверенными сценариями, но по решению владельца не являются общим запретом
 выпуска. Security/runtime gates не ослаблялись; полного аудита не было.
 
@@ -16,7 +16,9 @@ https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1
    MIT, существующий CI и build/package scripts. В release workflow добавлен
    отсутствовавший secret preflight с Git history; остальная pipeline сохранена.
 2. CI PASS → annotated tag → release workflow → проверка draft/downloads →
-   публичный Pre-release. Подпись Git-тегов не настроена, тег annotated unsigned.
+   публичный Release; после проверки EXE владельцем Pre-release переведён в
+   Latest без перезаписи tag/assets. Подпись Git-тегов не настроена, тег
+   annotated unsigned.
 3. Документация обновлена отдельным коммитом после выпуска; release tag не менялся.
 
 ## Коммиты
@@ -46,9 +48,9 @@ https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1
 - ZIP: EXE совпадает с отдельным asset; BUILD-INFO содержит правильные commit,
   version, windows/amd64; MIT и release notes на месте; diagnostic/Legacy EXE
   и runtime logs не включены. Release body совпадает с RELEASE-NOTES.md.
-- После публикации: публичный API подтверждает draft=false, prerelease=true;
-  HTML release page доступна, все 4 assets скачаны без авторизации и повторно
-  сверены. Хеши — в docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md.
+- После публикации: публичный API подтверждает draft=false, prerelease=false;
+  release является Latest; HTML release page доступна, все 4 assets скачаны без
+  авторизации и повторно сверены. Хеши — в docs/RELEASE_VERIFICATION_v0.1.0-beta.1.md.
 - Исторический Windows 11 GUI smoke (до этой итерации): actual diagnostic
   DOM/bridge/native Inventory PASS, pageErrors=0, два viewport; production
   window/startup log и безопасный WebView2 fallback проверены. В этой итерации
@@ -69,7 +71,7 @@ https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1
 - **B5:** предыдущий actual Windows 11 GUI smoke сохранён; нового smoke нет.
 - **B6 закрыт:** CI/release PASS, draft и публичные downloads проверены.
 - **B7:** scope только Windows 11 x64, не подтверждение Win10/LTSC.
-- **B8 закрыт:** явное разрешение владельца на этот публичный Pre-release.
+- **B8 закрыт:** явное разрешение владельца на этот публичный Release/Latest.
 - Критических сбоев безопасности/сборки/артефактов/лицензирования в рамках
   проверок выпуска не обнаружено; это не полный security audit.
 
@@ -148,7 +150,7 @@ Session storage требует trusted local storage и Windows ACL; 0600 нед
 
 Для v0.1.0-beta.1 выполнены: MIT/URL, история secret preflight, CI PASS,
 release workflow PASS, draft и скачанные checksums, явное разрешение владельца,
-публичный prerelease и downloads. B1/B2 честно раскрыты, не объявлены закрытыми.
-Разрешение относилось к этому релизу; второй релиз не создан. Исходный тег и
-опубликованные assets не переписывать. Для последующих релизов — отдельная
-задача и актуальная проверка gates.
+публичный Release/Latest и downloads. B1/B2 честно раскрыты, не объявлены
+закрытыми. Разрешение относилось к этому релизу; второй релиз не создан.
+Исходный тег и опубликованные assets не переписывать. Для последующих релизов —
+отдельная задача и актуальная проверка gates.

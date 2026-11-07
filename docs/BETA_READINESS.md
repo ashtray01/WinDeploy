@@ -6,10 +6,11 @@
 
 ## Итог
 
-**Статус: публичный Pre-release v0.1.0-beta.1 опубликован 2026-11-08.**
+**Статус: публичный GitHub Release (Latest) v0.1.0-beta.1 опубликован 2026-11-08.**
 [Release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1),
 [проверки и SHA-256](RELEASE_VERIFICATION_v0.1.0-beta.1.md).
-Владелец явно разрешил выпуск после CI/draft/assets checks. B1/B2 остаются
+Владелец явно разрешил выпуск после CI/draft/assets checks и проверки EXE;
+Pre-release переведён в Latest без изменения tag/assets. B1/B2 остаются
 непроверенными beta-сценариями, а не общим release gate; они не объявлены PASS.
 Security gates не ослаблялись. CI/release прошли на commit
 `56fe16351720b4a74a5e773a7a26e270fe4bbf84`, публичные downloads проверены.
@@ -23,7 +24,7 @@ Security gates не ослаблялись. CI/release прошли на commit
 | B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; production EXE не содержит remote-debug strings. Screenshots обезличены | Повторять при изменении UI/EXE |
 | B6 | GitHub CI / draft / public Release | **Закрыт:** CI 42421280314 и release 42421767518 PASS; draft и public downloads/SHA-256 проверены | Тег и assets не переписывать |
 | B7 | Windows 10/LTSC не проверены | Нет VM; текущий хост — Windows 11 | **Решено:** beta scope — только Windows 11 x64; Win10/LTSC не заявляются |
-| B8 | Разрешение на Release | **Закрыт:** владелец явно разрешил публичный v0.1.0-beta.1 Pre-release | Не распространяется автоматически на следующий релиз |
+| B8 | Разрешение на Release | **Закрыт:** владелец явно разрешил публичный v0.1.0-beta.1 Release после проверки EXE | Не распространяется автоматически на следующий релиз |
 
 B3/B4/B6/B8 закрыты для выпуска. B1–B2 открыты как неподтверждённые сценарии.
 B5 опирается на предыдущий actual GUI smoke, нового запуска release EXE нет.
@@ -52,7 +53,7 @@ unit/integration/UI без реального системного эффект�
 | Принтеры | Enumeration, default/read-back, INF install | Да | Read-only; install нет | TCP/IP port не создаётся (P1-01), печать/VM нет | **Эксперимент** | Добавление принтера не обещать | Нет |
 | Политики браузеров | Registry write + read-back, webapps | Да | Fake-store + negative tests; VM нет | Полная VM-проверка и восстановление старых значений не закрыты | **Эксперимент** | Нет | Нет |
 | Windows settings | Rename/timezone/Explorer/power, preview/read-back | Да | Read-only API + fake-store; VM нет | Rename/reboot/домен, restore, VM | **Эксперимент** | Нет | Нет |
-| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | GitHub CI/package dry-run PASS | Draft/public assets проверены; EXE NotSigned | Опубликован Pre-release | Нет | Нет |
+| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | GitHub CI/package dry-run PASS | Draft/public assets проверены; EXE NotSigned | Опубликован Release/Latest | Нет | Нет |
 | Windows 7 Legacy | Отдельный frozen-модуль | Нет в beta | Не проверялась | FROZEN | Нет | Да, не включать | Нет |
 
 ## Что включается в beta

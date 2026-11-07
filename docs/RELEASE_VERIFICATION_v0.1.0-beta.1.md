@@ -2,12 +2,12 @@
 
 Дата: 2026-11-08 (Europe/Samara). GitHub published_at: 2026-11-07T22:46:17Z.
 
-- [Публичный Pre-release](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1)
+- [Публичный GitHub Release (Latest)](https://github.com/ashtray01/WinDeploy/releases/tag/v0.1.0-beta.1)
 - [Modern CI — PASS, все 3 jobs](https://github.com/ashtray01/WinDeploy/actions/runs/42421280314)
 - [Release workflow — PASS](https://github.com/ashtray01/WinDeploy/actions/runs/42421767518)
 - Release commit: `56fe16351720b4a74a5e773a7a26e270fe4bbf84`.
 - Annotated unsigned tag object: `9a90f754d75ac616d0a27f37e4903ed4839bcd60`.
-- GitHub Release ID: `437891980`; `draft=false`, `prerelease=true`.
+- GitHub Release ID: `437891980`; `draft=false`, `prerelease=false` (Latest).
 
 ## Проверки
 
@@ -20,8 +20,10 @@ Release workflow дополнительно проверил Git history secret 
 Все четыре asset сначала скачаны из draft через authenticated GitHub API.
 SHA-256 совпали с SHA256SUMS и GitHub asset digest. После публикации повторно
 скачаны без авторизации по browser_download_url; хеши не изменились.
-Публичная HTML-страница вернула HTTP 200 и содержит Pre-release; публичный API
-подтвердил draft=false/prerelease=true. Тег после публикации не перемещался.
+Публичная HTML-страница вернула HTTP 200; публичный API подтвердил
+draft=false. После проверки EXE владельцем Pre-release был переведён в
+Release/Latest (`prerelease=false`, `make_latest=true`) без перезаписи
+tag/assets. Тег после публикации не перемещался.
 
 EXE ProductVersion/FileVersion = 0.1.0-beta.1, содержит ожидаемый embedded commit,
 Authenticode = NotSigned, production debug flags smoke-port/remote-debugging-port
@@ -43,8 +45,9 @@ SHA256SUMS содержит первые три файла; хеш самого 
 
 ## Повторная проверка при завершении документации — 2026-11-08
 
-- Публичный API: Release ID `437891980`, `draft=false`, `prerelease=true`,
-  `tag_name=v0.1.0-beta.1`, `target_commitish=main`; HTML страница HTTP 200.
+- Публичный API: Release ID `437891980`, `draft=false`, `prerelease=false`
+  (Latest), `tag_name=v0.1.0-beta.1`, `target_commitish=main`; HTML страница
+  HTTP 200.
 - Annotated tag `9a90f754d75ac616d0a27f37e4903ed4839bcd60` указывает на
   `56fe16351720b4a74a5e773a7a26e270fe4bbf84`; tag не перемещался.
 - Все четыре asset повторно скачаны без авторизации. Фактические SHA-256 совпали
@@ -68,7 +71,7 @@ Windows 7 не поддерживается Modern release. Package-install/SMB 
 real reboot не выполнены; drivers/printers/policies/Windows settings остаются
 экспериментальными. Отмена не гарантирует остановку дочерних installer processes.
 
-Владелец явно разрешил этот публичный Pre-release с раскрытыми ограничениями.
+Владелец явно разрешил этот публичный Release/Latest с раскрытыми ограничениями.
 B1/B2 не закрыты фиктивным PASS. Подпись EXE и Git-тега не настроена. MIT выбран.
 Полный security/license dependency audit и reproducible double-build comparison
 не выполнялись. После публикации обновлены документы в main; исходный tag и
