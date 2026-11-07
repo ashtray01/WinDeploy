@@ -53,6 +53,8 @@ Release workflow создаёт только draft. VM acceptance больше �
 
 ## BETA REQUIRED
 
+- [x] Production EXE не регистрирует `--smoke-port`/DevTools; remote debugging
+  вынесен в непакетируемую diagnostic-сборку с тегом `smoke`.
 - [ ] Повторная production-сборка после финального коммита; SHA-256 и
   `SHA256SUMS.txt` совпадают, версия EXE `0.1.0-beta.1`.
 - [ ] Portable ZIP содержит EXE/docs/Known Issues, без debug/test EXE и секретов.
@@ -81,8 +83,6 @@ Release workflow создаёт только draft. VM acceptance больше �
 - [ ] Semantic profile validation (`check_ref`, parameters, dependency closure).
 - [ ] Persistent safe diagnostics with error codes/correlation.
 - [ ] Frontend lint, accessibility/performance, dependency CVE review.
-- [ ] Remove or production-gate the optional `--smoke-port` debug flag if release
-  policy requires it.
 
 ## FROZEN
 

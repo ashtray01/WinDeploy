@@ -1,7 +1,8 @@
-// Captures public, anonymized screenshots from the actual running WinDeploy EXE.
-// The app must be started separately with --smoke-port 9223 and an isolated
-// WINDEPLOY_STATE_DIR. The real hostname is replaced only for the screenshot;
-// no backend result is fabricated.
+// Captures public, anonymized screenshots from the actual running WinDeploy
+// diagnostic/smoke EXE. It must be started separately with --smoke-port 9223 and
+// an isolated WINDEPLOY_STATE_DIR; the production EXE does not expose that flag.
+// The real hostname is replaced only for the screenshot; no backend result is
+// fabricated.
 import { chromium } from '../desktop/modern/frontend/node_modules/playwright-core/index.mjs';
 import { mkdir } from 'node:fs/promises';
 for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) delete process.env[key];

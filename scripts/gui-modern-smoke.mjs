@@ -1,4 +1,5 @@
-// Connects to the actual Windows EXE launched with --smoke-port 9223.
+// Connects to the actual Windows WinDeploy diagnostic/smoke EXE launched with
+// --smoke-port 9223. The production EXE does not register that flag.
 // No test server, fixture backend, downloaded browser or system mutation.
 import { chromium } from '../desktop/modern/frontend/node_modules/playwright-core/index.mjs';
 import { execFileSync } from 'node:child_process';

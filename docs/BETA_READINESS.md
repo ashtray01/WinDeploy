@@ -16,7 +16,7 @@
 | B2 | SMB-подключение и обязательный ярлык не проверены с реальным сервером | Native list и временный `.lnk` read-back PASS; сервер/credentials/конфликт 1219 не проверялись | Тестовый SMB-сервер и отдельная учётная запись; подключение, ярлык, повтор, отказ, отсутствие секретов в отчёте |
 | B3 | Лицензия не выбрана, публичный URL/владелец не зафиксированы | `LICENSE` — осознанная заглушка; remote отсутствует | Владелец выбирает лицензию и публичный репозиторий; не открывать исходники до этого |
 | B4 | ~~Git-история не проверена на секреты и персональные данные~~ | **Закрыт для текущего среза:** `check-release-secrets.ps1 -IncludeHistory` — 0 blocking findings; manual-review items — тестовые/документационные примеры. Повторить после финального docs commit | Владелец проверяет findings; повторный прогон перед открытием repo |
-| B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual GUI EXE DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; screenshots обезличены | Повторять при изменении UI/EXE |
+| B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; production EXE не содержит remote-debug strings. Screenshots обезличены | Повторять при изменении UI/EXE |
 | B6 | Нет GitHub-hosted run и draft Release | Remote отсутствует; workflow подготовлены | Создать remote только с разрешения владельца, выполнить CI, затем draft release |
 | B7 | Windows 10/LTSC не проверены | Нет VM; текущий хост — Windows 11 | **Решено:** beta scope — только Windows 11 x64; Win10/LTSC не заявляются |
 | B8 | Нет явного подтверждения владельца на публикацию | Пользователь разрешил подготовку, но не публичный Release/репозиторий | Владелец проверяет draft/документы и отдельно разрешает открытие repo/Release |
@@ -38,7 +38,7 @@ unit/integration/UI без реального системного эффект�
 | Установка/обновление пакетов | Pipeline: elevation, download, trust, install, detect | Да | Тесты; реальной установки нет | Target version/update, child processes, cancel — не VM-accepted | Да, как **beta** | Нет | B1 |
 | Прогресс/отмена/результат установки | Polling, события, cooperative cancel, честный failed; пустой экран не выдаётся за завершённый | Да | UI 6 tests; backend tests | Polling fail показывает stale; child installer tree не гарантирован | Да | Нет | B1 |
 | Профили и DAG | Strict YAML, inheritance, BuildPlan, read-only preview | Да | Тесты + предыдущий DAG smoke | Semantic parameters/check_ref не проверяются полностью | Да | Нет | Нет |
-| Основной маршрут выполнения | Preview → confirm → progress → result → report; Legacy не выбирается по умолчанию | Да | UI 7 tests + actual GUI smoke | Реальный install внутри профиля не проверен | Да | Нет | B1 |
+| Основной маршрут выполнения | Preview → confirm → progress → result → report; Legacy не выбирается по умолчанию | Да | UI 7 tests + actual diagnostic/smoke GUI | Реальный install внутри профиля не проверен | Да | Нет | B1 |
 | Network diagnostics | DNS/TCP/ICMP/HTTP/SMB read-only | Да | Предыдущий native/GUI smoke | Нет ручной отмены; Win10/LTSC нет | Да | Нет | Нет |
 | SMB-подключение и ярлыки | WNet/CredMan/IShellLink, required shortcut read-back | Да | Тесты + native `.lnk`; реального сервера нет | 1219 требует подтверждения; credential context не VM-accepted | Условно | Нет | B2 |
 | Отчёт HTML/JSON | Escaped HTML, JSON, warnings, без parameters | Да | File tests | Точность зависит от операций; ACL отчётов не отдельная граница | Да | Нет | Нет |
@@ -94,8 +94,10 @@ unit/integration/UI без реального системного эффект�
 
 ## Проверено в этой итерации
 
-- **B5 закрыт:** actual GUI EXE DOM/bridge/native Inventory smoke PASS
-  (`actualDesktop`, hostname/app count matched, 2 viewport, pageErrors=0).
+- **B5 закрыт:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke
+  PASS (`actualDesktop`, hostname/app count matched, 2 viewport, pageErrors=0);
+  production EXE не содержит `smoke-port`/`remote-debugging-port` strings, DevTools
+  выключен. Remote debugging остаётся только в непакетируемой diagnostic-сборке.
 - Screenshots `docs/images/` сняты с этой сборки; hostname заменён на
   `DEMO-WORKSTATION`.
 

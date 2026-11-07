@@ -51,6 +51,7 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `a307147` — docs: record beta readiness handoff and open blockers.
 - `9e36f03` — fix(release): avoid false positive in secret preflight.
 - `662acb9` — fix(modern): label experimental beta surfaces explicitly.
+- `5ca5dbf` — fix(release): compile remote debugging out of production EXE.
 - Финальный docs commit с обновлёнными хешами — `git log -1 --oneline`; runtime
   не меняет. Release workflow пересоберёт EXE из тега.
 
@@ -68,20 +69,25 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   build — PASS.
 - **EXE:** `scripts/build-modern.ps1 -Diagnostic` — PASS. `bin/WinDeploy-Windows-x64.exe`,
   ProductVersion/FileVersion `0.1.0-beta.1`, company/product `WinDeploy`,
-  commit `662acb98f533077005d0965ddc543a0d1455c666`, icon/manifest/production
-  assets. `Get-AuthenticodeSignature` — **NotSigned** (сертификата нет; не
-  заявлять подпись).
-- **Actual GUI EXE smoke:** запуск с отдельными `--webview-data-dir`, `--log-dir`,
-  `WINDEPLOY_STATE_DIR`, `--smoke-port 9223`; `node scripts/gui-modern-smoke.mjs`
-  — PASS: `actualDesktop=true`, native hostname/app count matched, rescan,
-  inventory tables, DAG, catalog, diagnostics, shares/drivers/printers/browsers/
-  windows pages, execution page, journal, viewports 1366×768/1024×640,
-  `pageErrors=0`. Это automated DOM/bridge smoke, не ручное подтверждение окна.
+  commit `5ca5dbf3d69921ea6ddc7f65fd3ecf1a0d2242aa`, icon/manifest/production
+  assets. Production EXE не содержит строк/флага `smoke-port` и
+  `remote-debugging-port` (проверено поиском по PE); DevTools выключен. Remote
+  debugging есть только в непакетируемой диагностической сборке с тегом `smoke`.
+  `Get-AuthenticodeSignature` — **NotSigned** (сертификата нет; не заявлять
+  подпись).
+- **Actual GUI smoke:** запуск `bin/WinDeploy-Diagnostic-x64.exe` (console + `smoke`
+  tag) с отдельными `--webview-data-dir`, `--log-dir`, `WINDEPLOY_STATE_DIR`,
+  `--smoke-port 9223`; `node scripts/gui-modern-smoke.mjs` — PASS: `actualDesktop=true`,
+  native hostname/app count matched, rescan, inventory tables, DAG, catalog,
+  diagnostics, shares/drivers/printers/browsers/windows pages, execution page,
+  journal, viewports 1366×768/1024×640, `pageErrors=0`. UI/service code тот же;
+  production EXE дополнительно проверен запуском/окном, но не CDP. Это не ручное
+  подтверждение окна владельцем.
 - **Packaging:** `scripts/package-modern-release.ps1 -SkipBuild` — PASS. Артефакты
   (candidate, не публиковать):
-  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `938eba700d75adddb90c392dd36a007c8e569520bba7e1dccde2d8b3d0322ec2`
-  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `1853bbbe62a08b8d5a6dccf02f85b0c28520142736318aae3a9ca2150ffea3e8`
-  - `dist/RELEASE-NOTES.md` SHA-256 `debe5ad112b95b42b9cb2c4e88c6360e962163537097602522c956777528346e`
+  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `760e8847405abfe6f206bf9a252e1f1f836bcf9b60d0207daf3d690e085b6a47`
+  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `1de53ff088a9fb741de77878d8c4b43abbb2c3be2edf02b02040e069f2a1acc7`
+  - `dist/RELEASE-NOTES.md` SHA-256 `3f3db7984a6678ad039b428f7c34bb8030abef6e26bca4b5884309e945610280`
   - `dist/SHA256SUMS.txt` с этими хешами; повторная проверка скриптом PASS.
 - **Version gate:** `scripts/verify-version.ps1` — PASS.
 - **Secret scan:** 0 blocking; manual items review. См. выше.
@@ -167,7 +173,8 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
 Get-Content dist/SHA256SUMS.txt
 Get-AuthenticodeSignature dist/WinDeploy-Windows-x64.exe
 
-# Actual GUI smoke (запускать GUI отдельно с --smoke-port 9223)
+# Actual GUI smoke: сначала build-modern -Diagnostic, затем diagnostic EXE
+# с --smoke-port 9223; production EXE этот флаг не принимает.
 # node scripts/gui-modern-smoke.mjs
 
 # Secret preflight

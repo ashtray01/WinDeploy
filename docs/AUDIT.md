@@ -10,10 +10,11 @@ preview-before-execute.
 
 Фактически: root Go 1.20.14 test/vet/build amd64+386 PASS; Modern Go 1.26.2
 tests/vet PASS; frontend 46/46, strict TypeScript/Vite PASS; production EXE
-собран, version resource `0.1.0-beta.1`; actual GUI EXE smoke PASS с native
-Inventory, двумя viewport и pageErrors=0. Реальные установка пакета, SMB-сервер,
-reboot, драйверы/принтеры и VM не выполнялись. Windows 10/LTSC не заявляются;
-Legacy FROZEN.
+собран, version resource `0.1.0-beta.1`; actual diagnostic/smoke GUI DOM/bridge/
+native Inventory smoke PASS с native Inventory, двумя viewport и pageErrors=0.
+Production EXE не содержит remote-debug строк/флага; DevTools выключен.
+Реальные установка пакета, SMB-сервер, reboot, драйверы/принтеры и VM не
+выполнялись. Windows 10/LTSC не заявляются; Legacy FROZEN.
 
 Актуальная матрица и блокеры — [BETA_READINESS.md](BETA_READINESS.md); известные
 ограничения — [KNOWN_ISSUES.md](KNOWN_ISSUES.md). Следующие действия — TASKS.md.
