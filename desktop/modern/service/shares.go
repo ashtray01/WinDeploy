@@ -85,6 +85,10 @@ func (s *Service) AddShare(request ShareRequest) (ShareResultView, error) {
 		Password: request.Password, DryRun: request.DryRun,
 		ResolveConflict: request.ResolveConflict, ShortcutDir: desktop,
 	})
+	return shareOutcome(result, err, request.DryRun)
+}
+
+func shareOutcome(result shares.Result, err error, dryRun bool) (ShareResultView, error) {
 	view := ShareResultView{Share: result.Share, UNC: result.UNC, Connected: result.Connected, CredentialSaved: result.CredentialSaved, ShortcutPath: result.ShortcutPath, Warnings: result.Warnings}
 	if view.Warnings == nil {
 		view.Warnings = []string{}
@@ -96,13 +100,20 @@ func (s *Service) AddShare(request ShareRequest) (ShareResultView, error) {
 		return view, nil
 	}
 	if err != nil {
+		if errors.Is(err, shares.ErrShortcutRequired) {
+			if result.Connected {
+				view.Message = "Сетевой ресурс подключён, но обязательный ярлык не подтверждён. Операция завершена частично."
+				return view, nil
+			}
+			return view, errors.New("Обязательный ярлык сетевого ресурса не подтверждён.")
+		}
 		if errors.Is(err, context.DeadlineExceeded) {
 			return view, errors.New("Операция с сетевым ресурсом не завершилась по времени.")
 		}
 		return view, errors.New("Не удалось подключить сетевой ресурс. Проверьте путь, доступность сервера и учётные данные.")
 	}
 	switch {
-	case request.DryRun:
+	case dryRun:
 		view.Message = "Пробный режим: система не изменялась."
 	case result.Connected && result.ShortcutPath != "":
 		view.Message = "Сетевой ресурс подключён, ярлык создан на рабочем столе."

@@ -41,4 +41,16 @@ describe('browser policies page', () => {
     expect(mocks.applyBrowserPolicy.mock.calls[0][0].scope).toBe('machine');
     expect(mocks.applyBrowserPolicy.mock.calls[0][1]).toBe(false);
   });
+
+  it('removes the previous success when a required effect fails on the next request', async () => {
+    mocks.applyBrowserPolicy.mockResolvedValueOnce({ ...result, dry_run: false }).mockRejectedValueOnce('Обязательные ярлыки не созданы.');
+    render(<BrowsersPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Применить политику' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить' }));
+    expect(await screen.findByText('Политика применена.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Применить политику' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Обязательные ярлыки не созданы.');
+    expect(screen.queryByText('Политика применена.')).not.toBeInTheDocument();
+  });
 });

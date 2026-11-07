@@ -185,7 +185,15 @@ func (WindowsLocator) Executable(ctx context.Context, browser Browser) (string, 
 type WindowsShortcut struct{}
 
 func (WindowsShortcut) Create(ctx context.Context, path, target, arguments, description string) error {
-	return (shares.WindowsShortcut{}).Create(ctx, shares.ShortcutSpec{Path: path, Target: target, Arguments: arguments, Description: description})
+	spec := shares.ShortcutSpec{Path: path, Target: target, Arguments: arguments, Description: description}
+	adapter := shares.WindowsShortcut{}
+	if err := adapter.Create(ctx, spec); err != nil {
+		return err
+	}
+	if matches, err := adapter.Matches(ctx, spec); err != nil || !matches {
+		return ErrWebAppsRequired
+	}
+	return nil
 }
 
 // DesktopDirectory returns the real desktop folder.

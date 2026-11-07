@@ -35,9 +35,20 @@ func (fakeShareStore) Read(context.Context, string) (shares.Credential, bool, er
 }
 func (fakeShareStore) Delete(context.Context, string) error { return nil }
 
-type fakeShortcut struct{}
+type fakeShortcut struct{ specs []shares.ShortcutSpec }
 
-func (fakeShortcut) Create(context.Context, shares.ShortcutSpec) error { return nil }
+func (s *fakeShortcut) Create(_ context.Context, spec shares.ShortcutSpec) error {
+	s.specs = append(s.specs, spec)
+	return nil
+}
+func (s *fakeShortcut) Matches(_ context.Context, spec shares.ShortcutSpec) (bool, error) {
+	for _, saved := range s.specs {
+		if saved.Path == spec.Path && saved.Target == spec.Target && saved.Arguments == spec.Arguments {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 type fakeResolver struct{ err error }
 
@@ -54,7 +65,7 @@ func (fakePinger) Ping(context.Context, string) (time.Duration, error) { return 
 
 func shareAdapter() (*Adapter, *fakeConnector) {
 	connector := &fakeConnector{}
-	manager := &shares.Manager{Store: fakeShareStore{}, Connector: connector, Shortcuts: fakeShortcut{}}
+	manager := &shares.Manager{Store: fakeShareStore{}, Connector: connector, Shortcuts: &fakeShortcut{}}
 	return &Adapter{Shares: manager, ShortcutDir: `C:\Desktop`, CheckUserContext: func(context.Context) error { return nil }}, connector
 }
 

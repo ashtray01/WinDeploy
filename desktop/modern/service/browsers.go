@@ -61,6 +61,8 @@ func (s *Service) ApplyBrowserPolicy(policy browsers.Policy, dryRun bool) (brows
 	result, err := manager.Apply(ctx, policy, dryRun)
 	if err != nil {
 		switch {
+		case errors.Is(err, browsers.ErrWebAppsRequired):
+			return result, errors.New("Не удалось создать обязательные ярлыки веб-приложений. Часть политик могла уже примениться; проверьте результат.")
 		case errors.Is(err, browsers.ErrElevationRequired):
 			return result, errors.New("Для политик уровня компьютера нужны права администратора.")
 		default:

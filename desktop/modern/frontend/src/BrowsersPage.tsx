@@ -24,6 +24,7 @@ export default function BrowsersPage() {
   async function apply(dryRun: boolean) {
     setBusy(true);
     setError('');
+    setResult(null);
     const policy: BrowserPolicy = {
       browser, scope, homepage: homepage.trim() || undefined,
       startup_urls: startup.split('\n').map(line => line.trim()).filter(Boolean),

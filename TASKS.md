@@ -6,6 +6,8 @@
 
 ## Завершено в этой итерации
 
+- [x] P0-04 required shortcuts: UNC без правильного .lnk не AlreadyInstalled, repair без reconnect/credentials, target+arguments COM read-back; required browser webapps failure не Success, deploy browser warnings fail closed. Service/UI сохраняют partial connection и убирают прошлый Success при новой ошибке. Native temp-link/negative tests и full Modern build PASS, UI 40/40. Printer/policy read-back и structured warning propagation ещё открыты.
+
 - [x] P0-06 software gate: native TokenUser SID сравнивается с владельцем shell текущего desktop; unknown/mismatch отклоняют user-scoped Modern/CLI/deploy операции. Whole-plan start/resume gate и recheck перед installer EXE. Negative core/CLI/service tests + native read-only same-SID PASS; two-account VM/worker остаются открытыми.
 
 - [x] Пользователь подтвердил запуск. Launcher исправляет UTF-8, сохраняет startup log в явном workspace каталоге (--log-dir), ACL/старый AppData log не меняет. Реальный launcher/DOM/bridge smoke PASS, UTF-8 русский текст подтверждён, Access denied в новом логе нет. Smoke ждёт асинхронное появление страницы CDP.

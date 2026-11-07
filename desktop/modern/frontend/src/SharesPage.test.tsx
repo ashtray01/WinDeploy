@@ -57,4 +57,15 @@ describe('network shares page', () => {
     expect(mocks.addShare.mock.calls[0][0].dry_run).toBe(true);
     expect(await screen.findByText('Пробный режим: система не изменялась.')).toBeInTheDocument();
   });
+
+  it('shows a partial connection and its missing shortcut warning', async () => {
+    mocks.addShare.mockResolvedValueOnce({ ...connected, shortcut_path: '', message: 'Операция завершена частично.', warnings: ['Обязательный ярлык не подтверждён.'] });
+    render(<SharesPage />);
+    fireEvent.change(screen.getByLabelText('UNC-путь'), { target: { value: '\\\\fileserver\\finance' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Подключить' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить' }));
+    expect(await screen.findByText('Обязательный ярлык не подтверждён.')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Операция завершена частично.');
+    expect(screen.queryByText(/ярлык создан на рабочем столе/)).not.toBeInTheDocument();
+  });
 });

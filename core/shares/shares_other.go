@@ -29,6 +29,9 @@ func (WindowsConnector) Disconnect(context.Context, string, bool) error {
 type WindowsShortcut struct{}
 
 func (WindowsShortcut) Create(context.Context, ShortcutSpec) error { return ErrUnsupported }
+func (WindowsShortcut) Matches(context.Context, ShortcutSpec) (bool, error) {
+	return false, ErrUnsupported
+}
 
 // DesktopDirectory is unavailable outside Windows.
 func DesktopDirectory() (string, error) { return "", ErrUnsupported }

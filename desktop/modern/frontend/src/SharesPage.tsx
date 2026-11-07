@@ -31,6 +31,7 @@ export default function SharesPage() {
   async function submit(dryRun: boolean, resolveConflict: boolean) {
     setBusy(true);
     setError('');
+    setResult(null);
     try {
       const view = await api.addShare({ ...form, id: form.id.trim(), unc: form.unc.trim(), dry_run: dryRun, resolve_conflict: resolveConflict });
       setResult(view);

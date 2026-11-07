@@ -109,6 +109,24 @@ type ShortcutCreator interface {
 	Create(ctx context.Context, spec ShortcutSpec) error
 }
 
+// ShortcutInspector reads the saved target/arguments without resolving or opening it.
+type ShortcutInspector interface {
+	Matches(context.Context, ShortcutSpec) (bool, error)
+}
+
+var ErrShortcutRequired = errors.New("required share shortcut was not confirmed")
+
+func (m *Manager) ShortcutMatches(ctx context.Context, share Share, directory string) (bool, error) {
+	if !share.Shortcut {
+		return true, nil
+	}
+	inspector, ok := m.Shortcuts.(ShortcutInspector)
+	if !ok || directory == "" {
+		return false, ErrShortcutRequired
+	}
+	return inspector.Matches(ctx, ShortcutSpec{Path: plannedShortcutPath(share, directory), Target: share.UNC})
+}
+
 // ErrCredentialConflict wraps Windows Error 1219: an existing connection to the
 // same server uses different credentials.
 var ErrCredentialConflict = errors.New("server already has a connection with different credentials")
@@ -172,6 +190,25 @@ func (m *Manager) Add(ctx context.Context, share Share, options Options) (Result
 		}
 		return result, nil
 	}
+	if share.Shortcut {
+		if _, ok := m.Shortcuts.(ShortcutInspector); !ok {
+			return result, ErrShortcutRequired
+		}
+	}
+	// Repair a missing shortcut without reconnecting an already confirmed UNC or
+	// touching credentials. Explicit credential/conflict requests retain their path.
+	if options.Password == "" && share.Username == "" && !options.ResolveConflict {
+		connections, err := m.Connector.List(ctx)
+		if err != nil {
+			return result, fmt.Errorf("existing connections are unavailable")
+		}
+		for _, connection := range connections {
+			if strings.EqualFold(strings.TrimRight(connection.RemoteName, `\`), strings.TrimRight(share.UNC, `\`)) {
+				result.Connected = true
+				return m.finishShortcut(ctx, share, options, result)
+			}
+		}
+	}
 	if credential.Password != "" {
 		if strings.TrimSpace(credential.Username) == "" {
 			return result, fmt.Errorf("user name is required together with a password")
@@ -208,14 +245,25 @@ func (m *Manager) Add(ctx context.Context, share Share, options Options) (Result
 		return result, err
 	}
 	result.Connected = true
+	return m.finishShortcut(ctx, share, options, result)
+}
+
+func (m *Manager) finishShortcut(ctx context.Context, share Share, options Options, result Result) (Result, error) {
 	if share.Shortcut {
 		if m.Shortcuts == nil {
 			result.Warnings = append(result.Warnings, "Ярлык не создан: компонент ярлыков недоступен")
+			return result, ErrShortcutRequired
 		} else {
 			path := plannedShortcutPath(share, options.ShortcutDir)
 			if err := m.Shortcuts.Create(ctx, ShortcutSpec{Path: path, Target: share.UNC, Description: shortcutLabel(share)}); err != nil {
 				result.Warnings = append(result.Warnings, "Не удалось создать ярлык на рабочем столе")
+				return result, ErrShortcutRequired
 			} else {
+				matches, err := m.ShortcutMatches(ctx, share, options.ShortcutDir)
+				if err != nil || !matches {
+					result.Warnings = append(result.Warnings, "Сохранённый ярлык не прошёл проверку назначения")
+					return result, ErrShortcutRequired
+				}
 				result.ShortcutPath = path
 			}
 		}

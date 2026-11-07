@@ -264,6 +264,15 @@ func (a *Adapter) precheckShare(ctx context.Context, task engine.Task) (engine.T
 	}
 	for _, connection := range connections {
 		if strings.EqualFold(strings.TrimRight(connection.RemoteName, `\`), strings.TrimRight(share.UNC, `\`)) {
+			if share.Shortcut {
+				matches, err := a.Shares.ShortcutMatches(ctx, share, a.ShortcutDir)
+				if err != nil {
+					return engine.Pending, err
+				}
+				if !matches {
+					return engine.Pending, nil
+				}
+			}
 			return engine.AlreadyInstalled, nil
 		}
 	}
@@ -299,6 +308,10 @@ func (a *Adapter) verifyShare(ctx context.Context, task engine.Task) error {
 	}
 	for _, connection := range connections {
 		if strings.EqualFold(strings.TrimRight(connection.RemoteName, `\`), strings.TrimRight(share.UNC, `\`)) {
+			matches, err := a.Shares.ShortcutMatches(ctx, share, a.ShortcutDir)
+			if err != nil || !matches {
+				return shares.ErrShortcutRequired
+			}
 			return nil
 		}
 	}
@@ -490,8 +503,14 @@ func (a *Adapter) executeBrowser(ctx context.Context, task engine.Task) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.Browsers.Apply(ctx, policy, false)
-	return err
+	result, err := a.Browsers.Apply(ctx, policy, false)
+	if err != nil {
+		return err
+	}
+	if len(result.Warnings) > 0 {
+		return fmt.Errorf("browser requested effects were not fully confirmed")
+	}
+	return nil
 }
 
 // --- windows settings ---

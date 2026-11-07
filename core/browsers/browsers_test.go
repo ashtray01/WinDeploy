@@ -41,12 +41,13 @@ func (s *fakeStore) DeleteValue(context.Context, Scope, Browser, string) error {
 type fakeShortcut struct {
 	paths []string
 	args  []string
+	err   error
 }
 
 func (s *fakeShortcut) Create(_ context.Context, path, _ string, arguments, _ string) error {
 	s.paths = append(s.paths, path)
 	s.args = append(s.args, arguments)
-	return nil
+	return s.err
 }
 
 type fakeLocator struct{ path string }
@@ -181,15 +182,28 @@ func TestWebAppShortcuts(t *testing.T) {
 	}
 }
 
-func TestShortcutMissingBrowserIsWarning(t *testing.T) {
+func TestRequiredShortcutMissingBrowserFailsBeforePolicyWrites(t *testing.T) {
 	manager := &Manager{Store: &fakeStore{}, Locator: fakeLocator{}, Shortcuts: &fakeShortcut{}, DesktopDir: `C:\Desktop`}
 	policy := chromePolicy()
 	policy.WebApps = []WebApp{{Name: "App", URL: "https://example.test/"}}
 	result, err := manager.Apply(context.Background(), policy, false)
-	if err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, ErrWebAppsRequired) {
+		t.Fatalf("missing required browser accepted: %v", err)
+	}
+	if manager.Store.(*fakeStore).writes != 0 {
+		t.Fatal("known missing browser caused partial policy writes")
 	}
 	if len(result.Warnings) == 0 {
 		t.Fatal("missing browser must be reported as a warning")
+	}
+}
+
+func TestRequiredWebAppCreationFailureIsNotSuccess(t *testing.T) {
+	policy := chromePolicy()
+	policy.WebApps = []WebApp{{Name: "App", URL: "https://example.test/"}}
+	manager := &Manager{Store: &fakeStore{}, Locator: fakeLocator{path: `C:\Browser\browser.exe`}, Shortcuts: &fakeShortcut{err: errors.New("denied")}, DesktopDir: `C:\Desktop`}
+	result, err := manager.Apply(context.Background(), policy, false)
+	if !errors.Is(err, ErrWebAppsRequired) || len(result.Shortcuts) != 0 || len(result.Warnings) == 0 {
+		t.Fatalf("false webapp success: %+v %v", result, err)
 	}
 }

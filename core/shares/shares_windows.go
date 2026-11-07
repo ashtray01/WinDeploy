@@ -290,6 +290,8 @@ const (
 
 // Create implements ShortcutCreator.
 func (WindowsShortcut) Create(ctx context.Context, spec ShortcutSpec) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -301,13 +303,11 @@ func (WindowsShortcut) Create(ctx context.Context, spec ShortcutSpec) error {
 			return fmt.Errorf("shortcut directory is unavailable")
 		}
 	}
-	initialized := false
-	if err := windows.CoInitializeEx(0, coinitApartment); err == nil {
-		initialized = true
+	uninit, err := initializeShortcutCOM()
+	if err != nil {
+		return err
 	}
-	if initialized {
-		defer windows.CoUninitialize()
-	}
+	defer uninit()
 	var link unsafe.Pointer
 	hr, _, _ := procCoCreate.Call(
 		uintptr(unsafe.Pointer(&clsidShellLink)), 0, clsctxInprocServer,
@@ -324,8 +324,9 @@ func (WindowsShortcut) Create(ctx context.Context, spec ShortcutSpec) error {
 		return fmt.Errorf("shortcut target could not be set")
 	}
 	if spec.Arguments != "" {
-		if argsPtr, argsErr := windows.UTF16PtrFromString(spec.Arguments); argsErr == nil {
-			_ = comCall(link, 11, uintptr(unsafe.Pointer(argsPtr)))
+		argsPtr, argsErr := windows.UTF16PtrFromString(spec.Arguments)
+		if argsErr != nil || failedHR(comCall(link, 11, uintptr(unsafe.Pointer(argsPtr)))) {
+			return fmt.Errorf("shortcut arguments could not be set")
 		}
 	}
 	if description := spec.Description; description != "" {

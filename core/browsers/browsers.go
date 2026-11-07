@@ -93,6 +93,7 @@ type Elevation interface {
 
 // ErrElevationRequired is returned for machine scope without elevation.
 var ErrElevationRequired = errors.New("administrator privileges are required for machine policy")
+var ErrWebAppsRequired = errors.New("required web-app shortcuts were not created")
 
 // Manager applies validated browser policies.
 type Manager struct {
@@ -176,6 +177,16 @@ func (m *Manager) Apply(ctx context.Context, policy Policy, dryRun bool) (Result
 			return result, ErrElevationRequired
 		}
 	}
+	if len(policy.WebApps) > 0 && !dryRun {
+		if m.Locator == nil || m.Shortcuts == nil || m.DesktopDir == "" {
+			result.Warnings = append(result.Warnings, "Ярлыки веб-приложений обязательны, но компонент недоступен.")
+			return result, ErrWebAppsRequired
+		}
+		if executable, err := m.Locator.Executable(ctx, policy.Browser); err != nil || executable == "" {
+			result.Warnings = append(result.Warnings, "Браузер не найден; обязательные ярлыки не созданы.")
+			return result, ErrWebAppsRequired
+		}
+	}
 	writeString := func(name, value string) error {
 		result.Applied = append(result.Applied, Change{Browser: policy.Browser, Scope: policy.Scope, Name: name, Action: actionFor(dryRun)})
 		if dryRun {
@@ -241,6 +252,9 @@ func (m *Manager) Apply(ctx context.Context, policy Policy, dryRun bool) (Result
 func (m *Manager) createWebApps(ctx context.Context, policy Policy, result *Result) error {
 	if m.Locator == nil || m.Shortcuts == nil || m.DesktopDir == "" {
 		result.Warnings = append(result.Warnings, "Ярлыки веб-приложений не созданы: компонент недоступен.")
+		if !result.DryRun {
+			return ErrWebAppsRequired
+		}
 		return nil
 	}
 	if policy.Browser != Chrome && policy.Browser != Edge {
@@ -250,6 +264,9 @@ func (m *Manager) createWebApps(ctx context.Context, policy Policy, result *Resu
 	executable, err := m.Locator.Executable(ctx, policy.Browser)
 	if err != nil || executable == "" {
 		result.Warnings = append(result.Warnings, "Браузер не найден; ярлыки веб-приложений не созданы.")
+		if !result.DryRun {
+			return ErrWebAppsRequired
+		}
 		return nil
 	}
 	for _, app := range policy.WebApps {
@@ -263,6 +280,9 @@ func (m *Manager) createWebApps(ctx context.Context, policy Policy, result *Resu
 			continue
 		}
 		result.Shortcuts = append(result.Shortcuts, path)
+	}
+	if !result.DryRun && len(result.Shortcuts) != len(policy.WebApps) {
+		return ErrWebAppsRequired
 	}
 	return nil
 }

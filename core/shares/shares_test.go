@@ -83,6 +83,14 @@ func (s *fakeShortcut) Create(_ context.Context, spec ShortcutSpec) error {
 	s.specs = append(s.specs, spec)
 	return s.err
 }
+func (s *fakeShortcut) Matches(_ context.Context, spec ShortcutSpec) (bool, error) {
+	for _, saved := range s.specs {
+		if saved.Path == spec.Path && saved.Target == spec.Target && saved.Arguments == spec.Arguments {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 func validShare() Share {
 	return Share{ID: "finance", UNC: `\\fileserver\finance`, Name: "Финансы", Username: `OFFICE\user`, Shortcut: true}
@@ -240,14 +248,14 @@ func TestAddCredentialStoreFailureStopsConnection(t *testing.T) {
 	}
 }
 
-func TestAddShortcutFailureIsWarningOnly(t *testing.T) {
+func TestAddRequiredShortcutFailurePreservesPartialConnection(t *testing.T) {
 	connector := &fakeConnector{}
 	manager := &Manager{Connector: connector, Shortcuts: &fakeShortcut{err: errors.New("denied")}}
 	share := validShare()
 	share.Username = ""
 	result, err := manager.Add(context.Background(), share, Options{ShortcutDir: t.TempDir()})
-	if err != nil {
-		t.Fatalf("shortcut failure should not fail the connection: %v", err)
+	if !errors.Is(err, ErrShortcutRequired) {
+		t.Fatalf("required shortcut failure accepted: %v", err)
 	}
 	if !result.Connected || len(result.Warnings) == 0 {
 		t.Fatalf("unexpected result: %+v", result)
