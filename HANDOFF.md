@@ -49,8 +49,10 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `2e7dbc6` — feat(release): unify beta identity and add Modern-only pipeline.
 - `b032eb8` — docs: prepare public beta materials and anonymized screenshots.
 - `a307147` — docs: record beta readiness handoff and open blockers.
-- Последующие release/secret-scan fixes (включая self-match fix) — `git log -3 --oneline`;
-  они не меняют runtime EXE. Release workflow пересоберёт EXE из тега.
+- `9e36f03` — fix(release): avoid false positive in secret preflight.
+- `662acb9` — fix(modern): label experimental beta surfaces explicitly.
+- Финальный docs commit с обновлёнными хешами — `git log -1 --oneline`; runtime
+  не меняет. Release workflow пересоберёт EXE из тега.
 
 ## Фактические проверки
 
@@ -66,7 +68,7 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   build — PASS.
 - **EXE:** `scripts/build-modern.ps1 -Diagnostic` — PASS. `bin/WinDeploy-Windows-x64.exe`,
   ProductVersion/FileVersion `0.1.0-beta.1`, company/product `WinDeploy`,
-  commit `b032eb839206f9e6600c74ec8a7682fae2674a91`, icon/manifest/production
+  commit `662acb98f533077005d0965ddc543a0d1455c666`, icon/manifest/production
   assets. `Get-AuthenticodeSignature` — **NotSigned** (сертификата нет; не
   заявлять подпись).
 - **Actual GUI EXE smoke:** запуск с отдельными `--webview-data-dir`, `--log-dir`,
@@ -77,8 +79,8 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   `pageErrors=0`. Это automated DOM/bridge smoke, не ручное подтверждение окна.
 - **Packaging:** `scripts/package-modern-release.ps1 -SkipBuild` — PASS. Артефакты
   (candidate, не публиковать):
-  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `f2ff116618c11e3a18081102fffde1571fc9becabc55234a29ac703dc9770f31`
-  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `1107cd9460faddf8d4532ba074da7df755828c4d27d7a79e1cb643383bba3366`
+  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `938eba700d75adddb90c392dd36a007c8e569520bba7e1dccde2d8b3d0322ec2`
+  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `1853bbbe62a08b8d5a6dccf02f85b0c28520142736318aae3a9ca2150ffea3e8`
   - `dist/RELEASE-NOTES.md` SHA-256 `debe5ad112b95b42b9cb2c4e88c6360e962163537097602522c956777528346e`
   - `dist/SHA256SUMS.txt` с этими хешами; повторная проверка скриптом PASS.
 - **Version gate:** `scripts/verify-version.ps1` — PASS.
