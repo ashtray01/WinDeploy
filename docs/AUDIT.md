@@ -1,0 +1,130 @@
+# WinDeploy technical audit — 2026-11-07
+
+## Project Status
+
+База аудита: `master`, `b990439`; рабочее дерево в начале чистое, remote отсутствует. Изучены последние 20 коммитов, три Go-модуля, production-пути core/CLI/Modern, тесты, конфигурации и workflows. Это выборочный технический анализ всех подсистем, а не доказательство отсутствия ошибок во всех строках. Исправление этой сессии: `972e44e`.
+
+Версия упаковки — `0.1.0-preview.1`, frontend — `0.1.0`; единого источника версии нет (HTTP User-Agent в `core/packages/fetch.go` содержит 0.2). Рабочий MVP для массового применения **не подтверждён**. Основная цель теперь Windows 11 x64 и Windows 10 x64, включая совместимые LTSC. Конкретные LTSC builds/WebView2 нужно проверить; широкий OS token не доказывает совместимость.
+
+Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, Wails v3.1.0, React/TypeScript; `replace windeploy => ../..`. `legacy`: отдельный Go 1.20/Walk, **FROZEN**, исходники и тесты сохранены. Версии зависимостей зафиксированы, актуальность/CVE не подтверждалась онлайн; автоматического обновления зависимостей не было.
+
+На текущей Windows x64 реально проходят безопасные native reads и локальные тесты; root и Modern собираются. Установка стороннего ПО, драйверов, принтеров, SMB с реальным сервером, политики и изменения Windows не проверялись в этой сессии. Исторические результаты HANDOFF не считаются новым запуском. Windows 10/LTSC VM и Win7 VM не доступны; Win7 не блокирует Modern.
+
+Для локальной диагностики пригодны Inventory и read-only CLI. Для изменяющего развёртывания остаются P0 ниже. Наличие страниц GUI и fake-тестов не означает готовность операций.
+
+## Component Matrix
+
+«GUI: да» означает найденный маршрут page → bridge → service → core, а не подтверждённый desktop E2E. READY здесь не присваивается подсистемам, проверенным только fake-тестами.
+
+| Компонент | Backend | GUI | Тесты | Реальная проверка | Статус |
+|---|---|---|---|---|---|
+| Task Engine | DAG, precheck/execute/verify, retry, cancel, resources | Выполнение | executor/parallel/retry/checkpoint/resume | read-only deploy service/CLI tests | PARTIAL: интеграционные контракты нарушены адаптером |
+| Persistent State | state.FileStore + deploy.Store, разные форматы | Сессии/resume | file/session/deploy tests | локальные файлы и отчёты | PARTIAL: ACL, reboot, конкурентные writers |
+| Profile Manager | strict YAML, inheritance, selection closure | Профили + Выполнение | profiles/*, service/profiles_test | unit и service | PARTIAL: нет семантической проверки всех параметров |
+| Inventory | Windows API/registry, partial errors | Обзор, таблицы | native/collector/applicability | реальные read-only Windows tests | READY для проверенного текущего хоста; VM-матрица открыта |
+| Package Manager | detection, plan, fetch, trust, install | Установка ПО, Выполнение | packages/* + CLI/service/UI | native trust/probes; установок нет | PARTIAL: P0-01 исправлен, остались gaps |
+| Network | DNS/TCP/HTTP/ICMP/DHCP/gateway/445 | Диагностика | native + fake + UI | native diagnostics на текущем хосте | PARTIAL: profile parsing, GUI cancel |
+| SMB | WNet, CredMan, IShellLink | Сетевые папки | fake + native list/link | list и временный .lnk; без SMB server | PARTIAL |
+| Drivers | SetupAPI/CM, INF verification, pnputil | Драйверы | fake + native enumeration | read-only devices | UNVERIFIED для установки |
+| Printers | EnumPrinters, PrintUI, default/GDI | Принтеры | fake + native enumeration | read-only queues | BROKEN для создания отсутствующего TCP/IP port |
+| Browsers | Chromium/Firefox registry policies, webapp links | Браузеры | fake-store + UI | запись политик исключена | PARTIAL: warnings теряются в deploy |
+| Windows Settings | rename/tzutil/Explorer/powercfg; update/licensing reads | Windows | fake + native reads + UI | диагностика; без изменений | PARTIAL: нет read-back/rollback |
+| Logging | bounded in-memory journals, startup file | Журнал + журналы страниц | service/UI | service tests | PARTIAL: нет общего durable operation log |
+| Reporting | escaped HTML/JSON, exclusive files | Пути отчётов выполнения | reporting/deploy/CLI | реальные временные отчёты | PARTIAL: наследует неверные статусы |
+| Modern/Wails bridge | generated typed bindings, реальные adapters | Все основные страницы подключены | 37 UI tests + Go service | сборка; desktop отдельно ниже | UNVERIFIED для полного E2E |
+| GitHub Actions/release | CI, ZIP/offline/checksums | нет | исторический actionlint | GitHub runs отсутствуют | PARTIAL |
+| Configuration | embedded YAML catalog/profiles, CLI overrides | выбор; нет полного редактора | strict parsing/DAG/catalog | локальные tests | PARTIAL |
+| Legacy Windows 7 | сохранён отдельный модуль | Walk | исторические проверки | в этой сессии не запускался | FROZEN |
+
+## Critical Findings
+
+### P0-01 — ложный успешный результат после ошибки detection (исправлено)
+
+`core/packages/install.go`, `Manager.runItem`: после exit 0 проверка `err == nil && !after.Installed` пропускала ошибку Detect и оставляла StatusSuccess. `TestInstallDetectionFailureCannotReportSuccess` переключает fake registry в ошибку после запуска установщика: до исправления получен `Status:success`, после — Failed/CodeVerifyFailed. Коммит `972e44e`. Реальный установщик не запускался. Reboot-ветка этим исправлением не меняется.
+
+### P0-02 — требования профиля не применяются при выполнении
+
+`core/inventory/applicability.go:GuardAdapter` реализован и тестируется, preview использует applicability. Однако `core/deploy/adapter.go:Precheck` не проверяет `Task.Requirements`; `deploy.Runner.Start/Resume`, Modern `deploymentAdapter` и CLI execution передают незавёрнутый Adapter. Проверка package catalog не заменяет ограничения профиля. Воспроизводимый по коду сценарий: windows-компонент с несовместимыми requirements всё равно достигает Execute. Нужна единая проверка свежего system snapshot на start/resume и тест, запрещающий вызов изменяющего адаптера. Это runtime safety gate, а не Legacy-only задача.
+
+### P0-03 — reboot превращается в проверенный Success
+
+`core/deploy/adapter.go:Verify` возвращает nil при `rebootPending`. Engine трактует nil как Success и разрешает зависимые задачи (`core/engine/executor.go`). `core/engine/resume.go:retainResult` сохраняет Success, `ValidateForPlan` запрещает status RebootRequired; `deploy.Runner.Resume` отклоняет completed session без retryFailed. Даже retryFailed не перепроверяет Success. Поэтому «после reboot проверим» не реализовано. Требуется согласованная модель deferred verification, зависимостей, persistence и отчёта; локальная замена одного статуса небезопасна. До исправления нельзя обещать reboot continuation.
+
+### P0-04 — неполные результаты компонентов выглядят успешными
+
+`deploy.Adapter.executeBrowser/executeShare/executePrinter` отбрасывают Result.Warnings. `browsers.Manager.createWebApps` возвращает nil с warning при отсутствии браузера/ошибке ярлыка. `Verify` для browsers/windows возвращает nil без read-back. `precheckShare` завершает задачу AlreadyInstalled при наличии UNC даже если запрошенного ярлыка нет; printer precheck проверяет только имя, driver precheck — Hardware ID/status, а не целевой driver/version. Отчёт может показывать успех недостигнутого состояния. Нужны отдельные критерии результата, перенос предупреждений и негативные тесты.
+
+### P0-05 — отсутствует общий контроль изменяющих операций
+
+`service/packages.go:StartPackageInstall` блокирует только packageState; `service/deployment.go:StartDeployment` — только deploymentState. Можно одновременно запустить установку через две страницы; engine resource keys действуют внутри одного run. `ResumeDeployment` проверяет running до Load/создания adapter и не перепроверяет под второй блокировкой: два конкурентных запроса могут запустить два writer одной сессии. Start также не перепроверяет closed после подготовки. Нужны единый operation coordinator, повторная атомарная проверка и тест конкурентных вызовов; не считать MaxParallel=1 глобальным mutex.
+
+### P1-01 — TCP/IP printer port не создаётся
+
+`core/printers/printers_windows.go:WindowsInstaller.AddPrinter` вызывает PrintUIEntry `/r IP_<address>`, но не создаёт TCP/IP port. В production-пути нет AddPort/XcvData или другого шага создания. Комментарий обещает создание порта; на чистой машине prerequisite отсутствует. Нужны создание/проверка порта, driver trust и VM-тест. После P0/MVP, функциональный приоритет принтеров P2.
+
+## Technical Debt
+
+- `core/profiles/profile.go` проверяет структуру, secret keys и OS tokens, но не параметры по категориям. `profiles/base.yaml` использует `check_ref: network-basic`, который `executeDiagnostics` не читает; вместо него выполняются дефолтные DHCP/gateway checks. Некорректный tcp endpoint там молча пропускается. Нужен семантический preflight до любой операции.
+- `core/packages/install.go:runItem` подтверждает наличие приложения, но не достижение целевой версии после update. Старое приложение после exit 0 может считаться обновлённым. Нужен target-version/evidence контракт и regression test.
+- `core/packages/runner_windows.go` использует CommandContext без Job Object/process-tree lifecycle. UI в `service/packages.go` заявляет, что запущенные установщики остановлены: для дочерних процессов это не доказано. Отмена не равна rollback.
+- `deploy.Store.Load` читает весь файл до проверки 16 MiB, не проверяет EOF после JSON и равенство filename ID внутреннему ID. Список молча пропускает повреждённые файлы. `core/state/file.go` имеет более строгий bounded decoder, но deploy им не пользуется.
+- Дублируется wiring managers в CLI, services и deploy; результаты standalone страниц богаче deployment task result. Перенос логики — только точечно по подтверждённым дефектам.
+- `Service.GetJournal` и package/deploy events — отдельные ограниченные журналы в памяти. Engine скрывает raw error и сохраняет фазу; это защищает секреты, но недостаточно для диагностики. Нужны безопасные error codes/correlation, без raw stdout/password.
+- `ExecutionPage.tsx` подавляет ошибки polling/list sessions; пользователь может не понять, что прогресс устарел. `Shell.tsx` settings button явно disabled: это известная отсутствующая возможность, не скрытая фиктивная кнопка.
+- Поиск TODO/FIXME/HACK/NotImplemented/mock в production core/service/UI не выявил маркеров фиктивных реализаций; найденные placeholder относятся к HTML input. Отсутствие маркеров не отменяет конкретные дефекты выше. Полный dead-code/reachability анализ не выполнен; `GuardAdapter` — конкретный пример реализованного, но не подключённого execution gate.
+- Frontend не имеет lint script/config; typecheck не заменяет lint. `go.mod` isolation сохранена; root dependency pin x/sys старее Modern осознанно, это само по себе не доказанная уязвимость.
+- CI PowerShell multi-command steps не везде проверяют каждый LASTEXITCODE; успешная последняя команда может скрыть ранний сбой. `release.yml` не зависит от CI job и не обеспечивает документированные VM gates. Упаковка по-прежнему требует Legacy; это нужно развязать для Modern, сохранив Legacy workflow/artifacts.
+
+## Missing Functionality
+
+Относительно запрошенных сценариев отсутствуют или не закончены: безопасный отдельный elevated worker с сохранением пользователя; общий координатор операций; реальная VM-матрица установки/обновления/отмены; post-reboot verification; semantic profile preflight; полный результат ярлыков/default printer; persistent подробный безопасный журнал; конфигуратор профилей; гарантированное read-back настроек; TCP/IP port provisioning; доказанное offline E2E. Сетевой модуль диагностирует конфигурацию, но не меняет IP/DNS — это не реализованная настройка сети.
+
+| Сценарий | Доказательство и предел |
+|---|---|
+| A Первый запуск | native Inventory tests реальны; frontend и bridge unit/service tests проходят; desktop smoke отдельно в Test Coverage |
+| B Профили | YAML/наследование/DAG и UI tests; список задач структурный, семантика параметров и execution OS gate неполны |
+| C Программы | GUI вызывает StartPackageInstall; unit/fake подтверждают pipeline; реальная установка через окно не проверена |
+| D SMB | GUI → AddShare → CredMan/WNet/link; fake tests и native list/temp link; сервер/доступ к содержимому/credentials roundtrip этой сессией не подтверждены |
+| E Принтеры | native enumeration подтверждена; чистая установка не готова из-за отсутствующего port creation; печать не выполнялась |
+| F Диагностика | native DNS/local TCP/HTTP tests и error-path unit tests; GUI transport E2E ещё не подтверждён |
+| G Восстановление | cancellation/checkpoint/resume unit и локальные file tests; реальная reboot boundary не реализована корректно |
+| H Отчёт | HTML escaping/JSON/file output проверены; точность зависит от входных результатов, P0-03/04 остаются |
+
+## Test Coverage
+
+Среда: текущая Windows x64, установленный Go 1.26.2. Не устанавливались зависимости/toolchains. Полная Legacy-матрица намеренно не запускалась. Логи только в игнорируемом `local/audit-*.log`, не коммитятся.
+
+- `go test ./... -count=1 -skip 'TestWindowsCredentialStoreRoundTrip|TestRegistryStoreRoundTrip'` — PASS; `go vet ./...`, `go build ./...` — PASS. Исключены реальные записи в Credential Manager/registry, остальные native read-only и временные file tests выполнялись. Это не pristine VM.
+- Новый `TestInstallDetectionFailureCannotReportSuccess`: FAIL до исправления (ложный Success); после исправления `go test ./core/packages ./core/deploy ./cmd/windeploy-packages -count=1` и соответствующий vet — PASS. gofmt и diff check выполнены.
+- `npm test` — 37/37, 16 файлов; `npm run build` (strict tsc + Vite) — PASS. Lint НЕ запускался: script отсутствует.
+- `scripts/build-modern.ps1` — итоговый PASS: bindings, 37 UI tests, frontend build, Modern Go tests/vet, module verification, EXE. Первый sandbox запуск упал при user32 init; второй — TEMP Access denied. Успех получен с TEMP/TMP/GOTMPDIR=`<repo>/local/audit-temp` и разрешённым запуском вне sandbox. Прямой ранний service test также падал на checkpoint в системном TEMP; полная сборка с workspace TEMP прошла. Не скрывать эту зависимость среды.
+- Desktop: запуск собранного EXE с `--smoke-port 9223` и `node scripts/gui-modern-smoke.mjs` выполняется отдельно; окончательный результат записан в HANDOFF. Сам факт EXE build не доказывает UI runtime.
+- Native установки, SMB server, print job, policies/settings, Windows 10/LTSC VM, reboot, race detector и GitHub-hosted CI не подтверждены этой сессией. Test coverage измеряет выполняемые ветки, не production readiness.
+
+## Security Findings
+
+Подтверждённые меры: elevated token prechecks для требующих прав managers; bounded transfer/temporary cleanup и SHA-256; Authenticode; schema secret-key/URL-userinfo rejection; пароль SMB передаётся CredMan/WNet в памяти, не argv; HTML escaping и исключение task parameters из отчёта; localhost debug только opt-in. Это не полная security certification.
+
+| Риск | Доказательство | Мера |
+|---|---|---|
+| Высокий: другой пользователь после Run as administrator | service/packages предлагает перезапуск; browsers RegistryStore использует HKCU, DesktopDirectory/CredMan — текущий процесс; исходный SID не передаётся | elevated worker и явный user/machine context; VM two-account test до production |
+| Высокий: обход profile applicability/одновременные mutations | P0-02/P0-05 | gate всех start/resume и общий coordinator |
+| Высокий при недоверенном каталоге сессий | deploy.Store хранит полный план; 0600 не является Windows ACL, hash связывает план, но не аутентифицирует автора; CLI позволяет выбрать storage | trusted per-user ACL, owner/context validation перед elevated resume; bounded parsing |
+| Средний: trust не одинаков для всех источников | verifySignature пропускает Signer=nil при sha256 policy; publisher проверяется substring; WinGet policy отдельно; WindowsSigner отключает revocation | определить явные политики доверия, точное publisher matching, tests missing verifier; не заявлять универсальное SHA+signature |
+| Средний: изменяемый artifact между verify/run | resolveArtifact проверяет файл по пути, runner открывает его позже; кэш не закреплён handle/ACL | trusted cache/ACL и защита от замены, проверить в VM |
+| Средний: HTTPS redirect downgrade | HTTPFetcher проверяет исходный scheme, NewHTTPFetcher не задаёт CheckRedirect для scheme конечного URL | запрет downgrade/userinfo redirects с HTTP тестом; hash снижает integrity risk, но не transport gap |
+| Средний: command resolution/отмена | WindowsRunner использует LookPath/cmd fallback, settings/printers вызывают системные exe по имени; нет process tree control | absolute trusted system paths, строгие args и lifecycle tests; exploit не демонстрировался |
+| Средний: SMB disconnect и сохранение credentials | Manager.Add сохраняет password до успешного connect; ResolveConflict принудительно отключает соединения сервера | preview списка/подтверждение и восстановление credentials при ошибке; VM server tests |
+| Средний: driver/printer verify недостаточен | driver success по Hardware ID/status; printer route не использует drivers.INFVerifier | verify target driver/version, trust и port, затем VM |
+
+По выборочному анализу подтверждённой утечки пароля в production logs не обнаружено. Это не гарантия: строковые credentials остаются в памяти Go/React, task parameters могут содержать нераспознанные секреты, startup logger пишет runtime error. Shell injection не объявляется доказанной: аргументы передаются массивами, catalog фильтрует метасимволы; cmd fallback требует отдельного негативного теста. Session IDs ограничены regexp, имена shortcut sanitised; arbitrary trusted local source paths являются функцией, а не автоматически path traversal.
+
+## Recommended Roadmap
+
+1. P0: runtime applicability, честные pending/reboot/results, единый mutation lifecycle и user-context gate. Сначала unit/service regression, затем ограниченный read-only desktop smoke.
+2. P1: установка/обновление одного разрешённого пакета в чистой Windows 11 VM; detection target version, UI выбор/прогресс/отмена, логи и отчёт с фактическим состоянием. Затем Windows 10/LTSC.
+3. P1: semantic profiles и SMB shortcut/credentials с тестовым сервером; диагностика, safe persisted error codes и отчёт. До окончания этих сценариев не расширять сложные функции.
+4. P2: printer ports/trust, driver target verification, browser/settings read-back, reboot/offline end-to-end. Уже имеющийся код сохраняется, но не считается готовым.
+5. P3: UX, performance, дополнительные профили, редактор и документация. Legacy — отдельное FROZEN; возвращение только по решению владельца.
+
+Конкретная следующая итерация с критериями и командами — в `TASKS.md` и `HANDOFF.md`.
