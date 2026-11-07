@@ -74,7 +74,7 @@ export default function WindowsSettingsPage() {
   const powerPreview = () => preview(() => api.applyPowerPlan(power, true));
 
   return <>
-    <PageHeading eyebrow="Система" title="Настройка Windows" detail="Имя компьютера, часовой пояс, Проводник, электропитание и диагностика Windows Update. Каждое изменение сначала проверяется, затем подтверждается." action={<Button onClick={() => void load()} disabled={loading || busy}>Обновить</Button>} />
+    <PageHeading eyebrow="Система" title="Настройка Windows" detail="Имя компьютера, часовой пояс, Проводник, электропитание и диагностика Windows Update. Каждое изменение сначала проверяется, затем подтверждается. Экспериментально в public beta: VM-приёмка изменений не выполнена." action={<Button onClick={() => void load()} disabled={loading || busy}>Обновить</Button>} />
     {error && <div className="callout red" role="alert">{error}</div>}
     {result && <div className={`callout ${result.applied ? 'blue' : ''}`} role="status">{result.message}{result.warnings?.length ? <ul>{result.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul> : null}{result.changes?.length ? <ul>{result.changes.map((change, index) => <li key={index}>{change.name}: {change.old_value || '—'} → {change.new_value} ({change.action})</li>)}</ul> : null}</div>}
     {loading ? <Spinner label="Чтение параметров Windows" /> : view && <div className="settings-layout">

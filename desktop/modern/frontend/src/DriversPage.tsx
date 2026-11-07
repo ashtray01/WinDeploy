@@ -102,7 +102,7 @@ export default function DriversPage({ query }: { query: string }) {
   }
 
   return <>
-    <PageHeading eyebrow="Устройства" title="Драйверы" detail="Неизвестные устройства, Hardware ID и установка проверенных INF с обязательной подписью и подтверждением." action={<div className="heading-actions"><Button onClick={() => void load()} disabled={loading || busy}><RefreshCw size={15} />Обновить</Button>{!scanConfirm ? <Button variant="primary" disabled={busy} onClick={() => setScanConfirm(true)}>Найти драйверы</Button> : <Button variant="danger" disabled={busy} onClick={() => void scanUpdates()}>Подтвердить поиск</Button>}</div>} />
+    <PageHeading eyebrow="Устройства" title="Драйверы" detail="Неизвестные устройства, Hardware ID и установка проверенных INF с обязательной подписью и подтверждением. Экспериментально в public beta: VM-приёмка установки драйверов не выполнена." action={<div className="heading-actions"><Button onClick={() => void load()} disabled={loading || busy}><RefreshCw size={15} />Обновить</Button>{!scanConfirm ? <Button variant="primary" disabled={busy} onClick={() => setScanConfirm(true)}>Найти драйверы</Button> : <Button variant="danger" disabled={busy} onClick={() => void scanUpdates()}>Подтвердить поиск</Button>}</div>} />
     {error && <div className="callout red" role="alert">{error}</div>}
     {notice && <div className="callout blue" role="status">{notice}</div>}
     {result && <div className={`callout ${result.installed ? 'blue' : ''}`} role="status"><strong>{result.message}</strong>{result.signature?.signer && <p>Издатель: {result.signature.signer}</p>}{result.reboot_required && <p>Требуется перезагрузка Windows.</p>}</div>}

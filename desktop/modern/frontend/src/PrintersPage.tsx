@@ -77,7 +77,7 @@ export default function PrintersPage() {
   }
 
   return <>
-    <PageHeading eyebrow="Печать" title="Принтеры" detail="Сетевые принтеры с TCP/IP-портом, общие Windows-принтеры, выбор по умолчанию и реальная тестовая страница. Изменения выполняются только после подтверждения." action={<Button onClick={() => void load()} disabled={busy}><RefreshCw size={15} />Обновить</Button>} />
+    <PageHeading eyebrow="Печать" title="Принтеры" detail="Сетевые принтеры, общие Windows-принтеры, выбор по умолчанию и тестовая страница. Экспериментально в public beta: TCP/IP-порт может не создаваться, VM-приёмка не выполнена." action={<Button onClick={() => void load()} disabled={busy}><RefreshCw size={15} />Обновить</Button>} />
     {error && <div className="callout red" role="alert">{error}</div>}
     {message && <div className="callout blue" role="status">{message}</div>}
     <div className="devices-layout">
