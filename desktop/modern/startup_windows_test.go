@@ -88,12 +88,15 @@ func TestDefaultWebViewDataDirUsesWritablePrimary(t *testing.T) {
 	if err := os.WriteFile(marker, []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	dir, err := prepareDefaultWebViewDataDir(cache, t.TempDir())
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if dir != primary {
 		t.Fatalf("primary profile was not used: %q", dir)
+	}
+	if fallback {
+		t.Fatal("primary profile was incorrectly marked as fallback")
 	}
 	if data, err := os.ReadFile(marker); err != nil || string(data) != "keep" {
 		t.Fatalf("existing profile data was disturbed: %q %v", data, err)
@@ -108,13 +111,16 @@ func TestDefaultWebViewDataDirFallsBackWhenPrimaryIsBlocked(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cache, "WinDeploy", "WebView2"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	dir, err := prepareDefaultWebViewDataDir(cache, t.TempDir())
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(cache, "WinDeploy", "WebView2-fallback")
 	if dir != want {
 		t.Fatalf("unexpected fallback directory: %q (want %q)", dir, want)
+	}
+	if !fallback {
+		t.Fatal("fallback directory was not marked as fallback")
 	}
 	if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
 		t.Fatalf("fallback directory is unavailable: %v", statErr)
@@ -132,13 +138,16 @@ func TestDefaultWebViewDataDirFallsBackToTemp(t *testing.T) {
 		}
 	}
 	temp := t.TempDir()
-	dir, err := prepareDefaultWebViewDataDir(cache, temp)
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, temp, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(temp, "WinDeploy", "WebView2")
 	if dir != want {
 		t.Fatalf("unexpected temp fallback directory: %q (want %q)", dir, want)
+	}
+	if !fallback {
+		t.Fatal("temp fallback directory was not marked as fallback")
 	}
 }
 
@@ -151,6 +160,34 @@ func TestPermissionFailureClassification(t *testing.T) {
 	}
 	if isPermissionFailure(errors.New("disk full")) {
 		t.Fatal("non-permission error was classified as a permission failure")
+	}
+}
+
+func TestDefaultWebViewDataDirFallsBackNextToExecutable(t *testing.T) {
+	cache := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cache, "WinDeploy"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"WebView2", "WebView2-fallback"} {
+		if err := os.WriteFile(filepath.Join(cache, "WinDeploy", name), []byte("not a directory"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	blockedTemp := filepath.Join(t.TempDir(), "blocked")
+	if err := os.WriteFile(blockedTemp, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	executableDir := t.TempDir()
+	dir, fallback, err := prepareDefaultWebViewDataDir(cache, blockedTemp, executableDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(executableDir, "WinDeploy-WebView2")
+	if dir != want {
+		t.Fatalf("unexpected portable fallback directory: %q (want %q)", dir, want)
+	}
+	if !fallback {
+		t.Fatal("portable fallback directory was not marked as fallback")
 	}
 }
 
@@ -172,3 +209,5 @@ func TestWebViewDataDirectoryProbePreservesExistingData(t *testing.T) {
 		t.Fatal("regular file accepted as data directory")
 	}
 }
+
+

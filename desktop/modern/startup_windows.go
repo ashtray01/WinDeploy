@@ -43,10 +43,10 @@ func prepareWebViewDataDir(dir string) (string, error) {
 
 // prepareDefaultWebViewDataDir keeps an existing user profile when it is
 // writable. A stale ACL, sandbox principal or antivirus lock must not prevent the
-// application from starting: a fresh directory under the same user cache and
-// finally under the user temp root are safe fallbacks. No existing directory is
-// deleted or repaired.
-func prepareDefaultWebViewDataDir(cache, temp string) (string, error) {
+// application from starting: a fresh directory under the same user cache, the
+// user temp root, and finally the portable executable directory are tried. No
+// existing directory is deleted or repaired.
+func prepareDefaultWebViewDataDir(cache, temp, executableDir string) (string, bool, error) {
 	candidates := []string{
 		filepath.Join(cache, "WinDeploy", "WebView2"),
 		filepath.Join(cache, "WinDeploy", "WebView2-fallback"),
@@ -54,21 +54,25 @@ func prepareDefaultWebViewDataDir(cache, temp string) (string, error) {
 	if temp != "" {
 		candidates = append(candidates, filepath.Join(temp, "WinDeploy", "WebView2"))
 	}
+	if executableDir != "" {
+		candidates = append(candidates, filepath.Join(executableDir, "WinDeploy-WebView2"))
+	}
 	var firstErr, lastErr error
 	for index, candidate := range candidates {
 		dir, err := prepareWebViewDataDir(candidate)
 		if err == nil {
 			if index > 0 {
 				logStation("каталог WebView2 по умолчанию недоступен; используется резервный каталог: %s", dir)
+				return dir, true, nil
 			}
-			return dir, nil
+			return dir, false, nil
 		}
 		if firstErr == nil {
 			firstErr = err
 		}
 		lastErr = err
 	}
-	return "", fmt.Errorf("каталог WebView2 недоступен (primary: %v): %w", firstErr, lastErr)
+	return "", false, fmt.Errorf("каталог WebView2 недоступен (primary: %v): %w", firstErr, lastErr)
 }
 
 // initStartupLog routes framework and internal diagnostics to a bounded local log
@@ -205,6 +209,34 @@ func processIsElevated() bool {
 	}
 	defer token.Close()
 	return token.IsElevated()
+}
+
+// offerElevatedRecovery is shown only after a fallback cache was selected. The
+// application can continue with the fallback; the user may explicitly choose a
+// UAC restart to try the normal profile again. Nothing is elevated automatically.
+func offerElevatedRecovery(fallbackDir string) {
+	if processIsElevated() {
+		return
+	}
+	const (
+		idYes = 6
+		text  = "WinDeploy запускается с резервным каталогом WebView2:\n%s\n\n" +
+			"Если основной профиль нужен, нажмите «Да», чтобы перезапустить WinDeploy\n" +
+			"от имени администратора. Будет показан запрос UAC.\n\n" +
+			"«Нет» — продолжить с резервным каталогом без повышения прав.\n" +
+			"Существующие данные и системные настройки не изменяются."
+	)
+	titlePtr, _ := windows.UTF16PtrFromString("WinDeploy — резервный каталог WebView2")
+	textPtr, _ := windows.UTF16PtrFromString(fmt.Sprintf(text, fallbackDir))
+	result, _ := windows.MessageBox(0, textPtr, titlePtr, windows.MB_YESNO|windows.MB_ICONWARNING|windows.MB_DEFBUTTON2)
+	if result != idYes {
+		return
+	}
+	if err := packages.RelaunchElevated(""); err != nil {
+		logStation("не удалось перезапустить с правами администратора; продолжаем с резервным каталогом: %v", err)
+		return
+	}
+	os.Exit(0)
 }
 
 func isPermissionFailure(err error) bool {

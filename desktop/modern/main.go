@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"windeploy/core/inventory"
@@ -47,14 +48,22 @@ func main() {
 		os.Exit(4)
 	}
 	dataDir := *webviewDir
+	fallbackCache := false
 	if dataDir == "" {
-		dataDir, err = prepareDefaultWebViewDataDir(cache, os.TempDir())
+		executableDir := ""
+		if executable, executableErr := os.Executable(); executableErr == nil {
+			executableDir = filepath.Dir(executable)
+		}
+		dataDir, fallbackCache, err = prepareDefaultWebViewDataDir(cache, os.TempDir(), executableDir)
 	} else {
 		dataDir, err = prepareWebViewDataDir(dataDir)
 	}
 	if err != nil {
 		handleWebViewDataDirFailure(err)
 		os.Exit(4)
+	}
+	if fallbackCache {
+		offerElevatedRecovery(dataDir)
 	}
 	logStation("каталог WebView2: %s", dataDir)
 	options := application.WindowsOptions{WebviewUserDataPath: dataDir, WndClass: mainWindowClass}
