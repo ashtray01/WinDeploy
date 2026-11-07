@@ -154,6 +154,7 @@ func TestUnavailableBootEvidenceCannotMutate(t *testing.T) {
 		t.Fatalf("unknown boot mutated: calls=%d err=%v", adapter.calls, err)
 	}
 	runner.ReadBootID = func(context.Context) (string, error) { return "one", nil }
+	runner.SessionID = "d20260101-000000-boot"
 	session, err := runner.Start(ctx, sampleTasks())
 	if err != nil {
 		t.Fatal(err)

@@ -44,6 +44,9 @@ func newRunner(t *testing.T, adapter engine.Adapter) (Runner, string) {
 	return Runner{
 		Adapter: adapter, Store: Store{Dir: dir}, ProfileID: "office", ProfileName: "Офис",
 		System: inventory.SystemInfo{Hostname: "PC-01"}, ReportDir: reportDir,
+		// Session IDs derive from the wall clock; a fixed ID keeps parallel test
+		// packages from colliding on the same second.
+		SessionID:        "d20260101-000000-test",
 		ReadBootID:       func(context.Context) (string, error) { return "boot-one", nil },
 		CheckUserContext: func(context.Context) error { return nil },
 		ReadSystem: func(context.Context) (inventory.SystemInfo, error) {

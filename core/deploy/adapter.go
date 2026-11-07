@@ -36,6 +36,30 @@ type Adapter struct {
 
 	rebootMu sync.Mutex
 	reboot   map[string]bool
+	// warnings holds short, translated notices for effects that were applied but
+	// not confirmed. They are copied by the engine after Execute/Verify.
+	warningsMu sync.Mutex
+	warnings   map[string][]string
+}
+
+func (a *Adapter) noteWarning(taskID, message string) {
+	if strings.TrimSpace(taskID) == "" || strings.TrimSpace(message) == "" {
+		return
+	}
+	a.warningsMu.Lock()
+	defer a.warningsMu.Unlock()
+	if a.warnings == nil {
+		a.warnings = map[string][]string{}
+	}
+	a.warnings[taskID] = append(a.warnings[taskID], message)
+}
+
+// TaskWarnings implements engine.WarningReporter. It returns a copy and never
+// exposes raw adapter errors.
+func (a *Adapter) TaskWarnings(task engine.Task) []string {
+	a.warningsMu.Lock()
+	defer a.warningsMu.Unlock()
+	return append([]string{}, a.warnings[task.ID]...)
 }
 
 func (a *Adapter) markReboot(taskID string) {
@@ -287,7 +311,10 @@ func (a *Adapter) executeShare(ctx context.Context, task engine.Task) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.Shares.Add(ctx, share, shares.Options{ShortcutDir: a.ShortcutDir})
+	result, err := a.Shares.Add(ctx, share, shares.Options{ShortcutDir: a.ShortcutDir})
+	for _, warning := range result.Warnings {
+		a.noteWarning(task.ID, warning)
+	}
 	if err != nil {
 		return err
 	}
@@ -439,7 +466,10 @@ func (a *Adapter) executePrinter(ctx context.Context, task engine.Task) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.Printers.Add(ctx, request)
+	result, err := a.Printers.Add(ctx, request)
+	for _, warning := range result.Warnings {
+		a.noteWarning(task.ID, warning)
+	}
 	return err
 }
 
@@ -504,6 +534,9 @@ func (a *Adapter) executeBrowser(ctx context.Context, task engine.Task) error {
 		return err
 	}
 	result, err := a.Browsers.Apply(ctx, policy, false)
+	for _, warning := range result.Warnings {
+		a.noteWarning(task.ID, warning)
+	}
 	if err != nil {
 		return err
 	}
