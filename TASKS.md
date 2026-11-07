@@ -1,70 +1,104 @@
-# WinDeploy — controlled development
+# WinDeploy — controlled development (Public Beta)
 
 ## Текущий этап
 
-2026-11-07: пользователь сообщил об успешном запуске; исправлены diagnostic log/UTF-8, добавлен user-context gate, обязательные ярлыки больше не дают ложный Success; в этой итерации warnings о неподтверждённых эффектах сохраняются в session/report/UI. Root/Modern checks и actual GUI smoke PASS на текущем Win11 (warnings-итерация: build/tests, без нового GUI smoke); VM/Win10/LTSC не подтверждены. Полный `go test ./...` в workspace нестабилен — см. HANDOFF. Источники — AUDIT/HANDOFF.
+Цель — **v0.1.0-beta.1**, Modern Windows 11 x64. Public Beta, не stable. Windows 10/
+LTSC не заявляются без проверки. Windows 7 Legacy FROZEN. Одна итерация — 2–4
+задачи с тестами и коммитами.
 
-## Завершено в этой итерации
+Текущий срез — beta candidate, **публикация ещё запрещена**: остаются B1/B2/B3/B6
+из [BETA_READINESS](docs/BETA_READINESS.md) и требуется решение владельца B8.
+Release workflow создаёт только draft. VM acceptance больше не является
+обязательным общим критерием, но конкретные изменяющие сценарии без проверки не
+заявляются.
 
-- [x] P0-04 structured warnings: `engine.TaskResult.Warnings` + optional `WarningReporter`, sanitize/bounds/Validate, перенос warnings из shares/printers/browsers, JSON+escaped HTML отчёт, Modern DeployTaskView.warnings и UI (`e6148c2`, `4a03dd7`, `2fd8799`). Negative tests PASS; UI 41/41; Modern build PASS. Пакет остановлен после этой задачи по решению владельца.
+## Сделано в этой итерации
 
-Ранее в текущем этапе: diagnostic launcher (`a82f11e`), P0-06 user-context gate (`c9e1839`), обязательные SMB/browser shortcuts (`bab8e65`). Исторические результаты не заменяют текущую VM acceptance.
-## P0 — блокирующие ошибки
+- [x] **Beta Readiness**: матрица, scope, blockers, отказ от полного аудита;
+  TASKS переклассифицирован; AGENTS закрепляет Public Beta.
+- [x] **Security release gates**: session trust/bounded JSON/owner ACL и SID gate
+  подтверждены тестами; добавлены bounded atomic rename, безопасная работа с
+  temp и negative tests. Elevated worker/impersonation нет; unknown/mismatch
+  fail closed (`ba09bc6`).
+- [x] **Core journey**: preview-before-execute, explicit package selection and
+  confirmation, честные failed/empty статусы, потеря polling видна, Legacy не
+  выбирается по умолчанию, version в UI/EXE. Actual GUI EXE smoke PASS (native
+  hostname/app count, два viewport, pageErrors=0) (`96e9fb1`).
+- [x] **Release infrastructure**: `VERSION`, version gate, Modern-only CI,
+  Modern release workflow (draft pre-release), SHA256SUMS/portable ZIP,
+  `verify-version.ps1`, `package-modern-release.ps1` (`2e7dbc6`).
+- [x] **Public docs**: README со screenshots, LICENSE-заглушка, CHANGELOG,
+  CONTRIBUTING, SECURITY, KNOWN_ISSUES, release notes, issue templates,
+  publication checklist (`b032eb8`).
+- [x] **Secret preflight**: tracked files + Git history проверены; blocking
+  findings 0, manual items — тестовые/документационные примеры. Повторить после
+  финального docs commit.
+- [ ] B1/B2/B3/B6 ещё не закрыты. Не считать документацию их заменой.
 
-- [ ] Modern startup matrix: пользователь подтвердил запуск, agent actual GUI/DOM/bridge smoke PASS с explicit UDF/log-dir. Default UDF и Windows 10/LTSC отдельно, старый профиль/ACL не сбрасывались.
+## BETA BLOCKER
 
-- [x] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
-- [ ] P0-03 VM acceptance: программный контракт исправлен (`d4c4171`), pending не Success/Completed; Verify-only после смены kernel BootID. Unit/file/CLI/service/UI tests PASS. Осталось: реальный reboot/fast startup + native readiness/dependencies/report в Win11 VM, затем Win10/LTSC.
-- [ ] P0-04 remainder: SMB/browser required shortcuts исправлены (`bab8e65`), structured warnings сохраняются (`e6148c2`/`4a03dd7`/`2fd8799`); нужны printer default/target read-back и browser/Windows registry read-back. Исторические Success не перепроверяются автоматически.
-- [x] P0-05: единое исключение изменяющих операций и атомарный start/resume/shutdown. Готово: package page и deployment не запускают конкурирующие установки; два resume не пишут одну сессию; barrier-based concurrent service tests.
-- [ ] P0-06 VM acceptance: software fail-closed process/shell SID gate реализован (`c9e1839`). Two-account/Run as another admin/RDP/headless, same-user UAC и scope tests в VM ещё нужны. Worker/исходный SID в IPC и session owner authentication отсутствуют.
+| ID | Блокер | Доказательство | Критерий закрытия |
+|---|---|---|---|
+| B1 | Реальная установка одного безопасного пакета не выполнена | Есть unit/service/UI, EXE собран; install не запускался | С разрешения владельца: 7-Zip или другой согласованный пакет; detection до/после, повтор, update, failure/cancel, отчёт |
+| B2 | SMB-сервер и credentials context не проверены | Native list/.lnk read-back PASS; сервера нет | Тестовый SMB: connect, shortcut, repeat, 1219, no secret in report |
+| B3 | Лицензия не выбрана, owner/repo URL не зафиксированы | `LICENSE` — заглушка, remote отсутствует | Владелец выбирает лицензию и URL; README заменяет `OWNER` |
+| B4 | ~~Git-история не проверена на секреты/данные~~ | **Закрыт для среза:** secret-scan + history — 0 blocking; manual items — test/doc примеры | Повторить после финального docs commit; владелец проверяет findings |
+| B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual GUI EXE DOM/bridge/native smoke PASS, pageErrors=0, два viewport; screenshots обезличены | Повторять при UI/EXE изменениях |
+| B6 | Нет GitHub-hosted CI и draft Release | Workflows готовы, remote нет | Remote, CI PASS, draft Release проверен |
+| B7 | Windows 10/LTSC scope | Не проверялись | **Решено:** beta только Windows 11 x64; не расширять без проверки |
+| B8 | Нет явного разрешения владельца на публикацию | Подготовка разрешена, публичный Release/репозиторий — нет | Явное решение владельца после B1/B2/B3/B6 |
 
-## P1 — рабочий MVP
+Примечание: Windows 10/LTSC не является блокером, если beta явно поддерживает
+только Windows 11 x64. Не расширять supported scope без проверки.
 
-- [ ] Подтверждать target version после update, отличать unknown/absent/outdated; fail/cancel detection tests. Каталог и detection уже реализованы, переписывать их не требуется.
-- [ ] Semantic profile preflight: category parameters, package refs, check_ref/diagnostic targets, dependency closure; ошибочный профиль отклоняется до первой мутации. Preview и execution используют одинаковые правила.
-- [ ] Modern desktop acceptance: actual EXE DOM/bridge/native Inventory smoke PASS с explicit UDF; проверка запускалась Hidden, MainWindowHandle=0. Нужна visible/default-user проверка, Windows 10/LTSC отдельно.
-- [ ] Win11 VM: один одобренный пакет (7-Zip), clean install → detection → повтор без установки → update/failure/cancel; UI progress, exit codes и отчёт совпадают с системой. Затем остальные пакеты каталога и Windows 10/LTSC.
-- [ ] SMB VM/server: UNC access, credential storage в правильном контексте, conflict preview/consent, shortcut existence, повтор и ошибки. Native WNet/list/link код уже есть; полный сценарий не подтверждён.
-- [ ] Persistent безопасный журнал с error codes и связью task/session; не включать secrets/raw installer output. UI сообщает об ошибках polling; отчёт сохраняет warnings/partial outcomes (warnings уже сохраняются, журнал — нет).
-- [ ] Защитить sessions/cache Windows ACL, проверять владельца и bounded JSON перед elevated resume; отрицательные parser/path tests и VM ACL verification.
-- [ ] CI/Modern release: fail-fast для каждой native команды, отдельные Modern gates без Legacy dependency; GitHub run после появления remote. Публикация только после выполнения критериев и явного задания владельца.
+## BETA REQUIRED
 
-## P2 — расширенные возможности
+- [ ] Повторная production-сборка после финального коммита; SHA-256 и
+  `SHA256SUMS.txt` совпадают, версия EXE `0.1.0-beta.1`.
+- [ ] Portable ZIP содержит EXE/docs/Known Issues, без debug/test EXE и секретов.
+- [ ] Release notes отражают реальные проверки и отсутствие code signing.
+- [ ] README screenshots обезличены; hostname/IP/имена не публикуются.
+- [ ] Run `scripts/check-release-secrets.ps1 -IncludeHistory`, review findings.
+- [ ] Owner selects license and replaces placeholder before public source access.
+- [ ] GitHub Actions run on disposable runner; draft release assets verified.
+- [ ] Visible/manual desktop smoke владельцем (текущий automated DOM/bridge smoke
+  не заменяет ручное подтверждение окна и UAC-сценария).
 
-- [ ] Drivers: подтвердить целевую INF/version/publisher вместо одного status=ok; VM install/reboot verification.
-- [ ] Printers: создание TCP/IP port, INF trust, queue/port/model/default read-back, контролируемая тестовая страница в VM/тестовом принтере.
-- [ ] Browsers/Windows: read-back, сохранение старых значений и контролируемое восстановление после частичного сбоя; user/machine scope в VM.
-- [ ] Offline bundle: автоматизировать проверку файлов, trust, отсутствие сети и реальную установку в чистой VM; существующие ZIP не доказательство.
-- [ ] Полное reboot continuation/boot identity и opt-in запуск после входа — после устранения P0-03, без ложных обещаний текущей реализации.
-- [ ] Process-tree cancellation и безопасное ожидание installer children; не обещать rollback после kill.
-- [ ] Trust hardening: HTTPS redirects, exact signer policy, missing verifier, trusted system executable paths и защита artifact от подмены между verify/run.
+## POST-BETA
 
-## P3 — улучшения
+- [ ] Real install/update/cancel/clean-install VM matrix, update target version.
+- [ ] SMB server/credentials/ACL acceptance; conflict restore.
+- [ ] Real reboot/fast startup Verify-only acceptance.
+- [ ] Windows 10/LTSC matrix; отдельные builds/WebView2.
+- [ ] Drivers: target INF/version/publisher, VM install/reboot.
+- [ ] Printers: TCP/IP port creation, driver trust, queue/default/test read-back.
+- [ ] Browser/Windows settings: full read-back, restore, GPO coexistence.
+- [ ] Elevated worker with original SID or explicit removal of any elevated path;
+  session authentication beyond owner/write-ACE.
+- [ ] Installer process tree/cancellation; no rollback claims.
+- [ ] Code signing certificate, signed release, SmartScreen reputation.
+- [ ] Auto-update and offline bundle E2E (только после явного решения).
+- [ ] Semantic profile validation (`check_ref`, parameters, dependency closure).
+- [ ] Persistent safe diagnostics with error codes/correlation.
+- [ ] Frontend lint, accessibility/performance, dependency CVE review.
+- [ ] Remove or production-gate the optional `--smoke-port` debug flag if release
+  policy requires it.
 
-- [ ] Frontend lint с минимальной конфигурацией и отдельным CI gate (сейчас lint script отсутствует).
-- [ ] Единый источник версии (bundle/frontend/User-Agent), документация deployment profiles и package sources.
-- [ ] Редактор профилей, дополнительные рабочие места и конфигурации после semantic schema.
-- [ ] UX, accessibility, производительность по измерениям; расширенная диагностика после основного MVP.
-- [ ] Проверка актуальности/CVE dependencies без автоматического массового обновления; root Go version не повышать автоматически.
+## FROZEN
 
-## FROZEN / DEFERRED — Windows 7
+Windows 7 Legacy: `legacy/`, `profiles/legacy.yaml`, tests/docs сохранены. Не
+добавлять Legacy features/fixes/tests, не включать Legacy в Modern CI/release.
+Возврат — только отдельное решение владельца.
 
-Существующие `legacy/`, `profiles/legacy.yaml`, tests, scripts и docs сохранены. Возвращение только по отдельному решению владельца. Ни один пункт ниже не является gate Modern MVP.
+## Следующая итерация — 3 задачи
 
-- [ ] Windows 7 SP1 x86/x64 VM, Legacy selftest/smoke/установки/SMB.
-- [ ] Новые функции Legacy GUI, Legacy-only fixes/tests и адаптация драйверов для Win7.
-- [ ] Legacy-specific релизы, расширенная матрица старых toolchains/ОС.
+1. **B1**: согласовать и выполнить один безопасный install на Win11 x64 (с
+   разрешения владельца); зафиксировать detection/repeat/update/failure/cancel и
+   отчёт.
+2. **B2**: поднять/получить тестовый SMB-сервер и проверить connect/credentials/
+   shortcut/1219 без секретов в отчёте.
+3. **B3/B4/B6**: завершить secret-scan, license/owner URL, remote CI и draft
+   Release; только затем просить подтверждение публикации.
 
-Исторически Legacy Walk x86/x64 собиралась и окно проверялось на Windows 11; root проверялся Go 1.20.14. Это не Win7 runtime и не новый результат этой сессии. Сохранять достигнутую совместимость, если она не мешает Modern; новые несовместимые зависимости изолировать в Modern module.
-
-## Следующая итерация — 4 задачи
-
-| Задача | Приоритет / компоненты | Критерий готовности / проверка |
-|---|---|---|
-| 1. Session trust/parsing | P1 security | bounded decoder до allocation, trailing JSON/ID equality, затем Windows ACL/owner перед elevated resume; tests и VM ACL verification отдельно |
-| 2. Read-back остаточных эффектов | P0-04 remainder | printer default/target и browser/Windows policy читаются обратно; warnings уже сохраняются — нужен именно read-back; отрицательные tests; без новых printer features |
-| 3. Стабильность полного test-прогона | P1 quality | воспроизвести FAIL `core/state`/`core/deploy` при `go test ./...` (workspace TEMP на OneDrive), проверить реальный TEMP/Defender; не маскировать flake retry-логикой |
-| 4. Win11 VM acceptance | P0-06/P0-03/MVP | two-account deny-before-effects + same-user UAC; SMB shortcut/credentials, approved package install/detection/repeat/update/failure/cancel; real reboot Verify-only; затем Win10/LTSC |
-
-Текущий пакет завершён тремя runtime commits (warnings) и остановлен после задачи 1 по решению владельца; точные проверки/команды и известный flake — HANDOFF. Без VM заканчивать независимые задачи 1–3, acceptance передать открытой. Новые features/Legacy не начинать. После документов и git status остановиться. Пользовательский untracked temp/windeploy-icon.png сохранять вне коммитов пакета.
+Не начинать новые крупные модули, Legacy или VM-wide roadmap. После задач —
+тесты, отдельные коммиты, TASKS/HANDOFF/BETA_READINESS и git status.
