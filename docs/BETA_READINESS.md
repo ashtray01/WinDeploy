@@ -101,9 +101,14 @@ unit/integration/UI без реального системного эффект�
 - Production EXE запущен без debug flags: окно создано, `startup.log` непустой;
   startup/Wails evidence сохраняются даже при недоступном stderr.
 - WebView2 cache recovery: при недоступном `%LOCALAPPDATA%\WinDeploy\WebView2`
-  production EXE показал нативное окно с admin-relaunch и fallback; «Нет»
-  продолжил запуск с `WinDeploy-WebView2` рядом с EXE, окно WinDeploy создано.
-  «Да» использует UAC и не тестировался без интерактивного UAC.
+  production EXE показал нативное окно с кнопками «Продолжить с резервным
+  каталогом»/«Выход» (без UAC); «Продолжить» запустило приложение с
+  `WinDeploy-WebView2Data` рядом с EXE, окно WinDeploy создано; повторный запуск
+  использовал тот же каталог без окна. Автоматический fallback требует owner/ACL
+  текущего пользователя, отсутствия reparse-точки и write probe; Program Files
+  пропускается. Unit-тесты дополнительно отклоняют каталог с записью для Users и
+  проверяют переиспользование. Реальный запуск из Program Files/USB не
+  выполнялся.
 - Screenshots `docs/images/` сняты с этой сборки; hostname заменён на
   `DEMO-WORKSTATION`.
 

@@ -15,8 +15,11 @@ native Inventory smoke PASS с native Inventory, двумя viewport и pageErro
 Production EXE не содержит remote-debug строк/флага; DevTools выключен.
 Production startup с отдельными UDF/log: окно создано, `startup.log` непустой;
 Startup logger пишет файл первым и не теряет evidence при недоступном GUI stderr.
-WebView2 fallback: при недоступном default cache показано нативное окно admin-
-relaunch; продолжение без прав запустило EXE с портативным cache рядом с EXE.
+WebView2 fallback: при недоступном default cache показано нативное окно
+«Продолжить с резервным каталогом»/«Выход» без UAC; продолжение запустило EXE с
+портативным cache рядом с EXE, повторный запуск использовал его без окна.
+Automatic fallback проверяется через owner/ACL, reparse check и write probe;
+Program Files не используется. Реальный запуск из Program Files/USB не выполнялся.
 Реальные установка пакета, SMB-сервер, reboot, драйверы/принтеры и VM не
 выполнялись. Windows 10/LTSC не заявляются; Legacy FROZEN.
 

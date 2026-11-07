@@ -54,6 +54,7 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `5ca5dbf` — fix(release): compile remote debugging out of production EXE.
 - `f90b7bf` — fix(modern): keep startup log when stderr is unavailable.
 - `603919c` — fix(modern): offer admin relaunch when WebView2 cache is limited.
+- `95b1b77` — fix(modern): harden WebView fallback and remove startup UAC.
 - Финальный docs commit с обновлёнными хешами — `git log -1 --oneline`; runtime
   не меняет. Release workflow пересоберёт EXE из тега.
 
@@ -71,18 +72,23 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   build — PASS.
 - **EXE:** `scripts/build-modern.ps1 -Diagnostic` — PASS. `bin/WinDeploy-Windows-x64.exe`,
   ProductVersion/FileVersion `0.1.0-beta.1`, company/product `WinDeploy`,
-  commit `603919c193ad5ddacf3a365430fc457cc954592e`, icon/manifest/production
+  commit `95b1b77b6f8c56491c7d4e0a4dcd7e57136009b8`, icon/manifest/production
   assets. Production EXE не содержит строк/флага `smoke-port` и
   `remote-debugging-port` (проверено поиском по PE); DevTools выключен. Remote
   debugging есть только в непакетируемой диагностической сборке с тегом `smoke`.
   `Get-AuthenticodeSignature` — **NotSigned** (сертификата нет; не заявлять
   подпись). Startup log production EXE проверен: файл непустой, startup/Wails
   evidence записаны.
-- **WebView2 recovery:** в среде, где `%LOCALAPPDATA%\WinDeploy\WebView2`
-  недоступен, production EXE показал нативное окно «WinDeploy — резервный
-  каталог WebView2»; выбор «Нет» продолжил запуск с
-  `bin\WinDeploy-WebView2`, окно WinDeploy создалось, startup log записан.
-  «Да» использует UAC/перезапуск, не тестировался без интерактивного UAC.
+- **WebView2 recovery:** при недоступном `%LOCALAPPDATA%\WinDeploy\WebView2`
+  production EXE показал TaskDialog «WinDeploy — WebView2» с кнопками
+  «Продолжить с резервным каталогом» и «Выход» (без UAC). «Продолжить» запустило
+  приложение с `bin\WinDeploy-WebView2Data`, создало окно и startup log, записало
+  marker; повторный запуск использовал тот же каталог без диалога. Автоматический
+  fallback проверяет owner/ACL (без записи для посторонних), отсутствие reparse
+  точки и write probe. Unit-тесты отклоняют каталог с записью для Users,
+  пропускают Program Files и проверяют повторное использование/сохранение файла.
+  Реальный запуск из Program Files и с USB/FAT не выполнялся: при недоступном
+  ACL такой fallback должен быть отклонён, а LocalAppData/Temp использованы.
   Fallback-порядок покрыт Go-тестами; существующий каталог не удаляется.
 - **Actual GUI smoke:** запуск `bin/WinDeploy-Diagnostic-x64.exe` (console + `smoke`
   tag) с отдельными `--webview-data-dir`, `--log-dir`, `WINDEPLOY_STATE_DIR`,
@@ -94,9 +100,9 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   подтверждение окна владельцем.
 - **Packaging:** `scripts/package-modern-release.ps1 -SkipBuild` — PASS. Артефакты
   (candidate, не публиковать):
-  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `a7c46ece3e9bcf3a95bf2fc1acf7d656f5248b0d22156ad05d540aff3c723d60`
-  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `e5612ab6c49f2a7e0d18027b1971d91335cff432a1e006ac77b22900cf068fe0`
-  - `dist/RELEASE-NOTES.md` SHA-256 `95923ec2904ca3506f72630aa83b953c0594a5b69895a7fc8ea83f176bda28f9`
+  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `f9021f9bdb52b50e7141cebd75a3e39f5ad6c3d074f9c7cf360e168894e38ba2`
+  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `c4dca86220d2a871121e16d3c252573d946396cbda034ec5e26f05339af5efdf`
+  - `dist/RELEASE-NOTES.md` SHA-256 `33a14171b6e848f9db6392664a7b03b602aa971a5f9f451dc90b646c3f567f00`
   - `dist/SHA256SUMS.txt` с этими хешами; повторная проверка скриптом PASS.
 - **Version gate:** `scripts/verify-version.ps1` — PASS.
 - **Secret scan:** 0 blocking; manual items review. См. выше.
