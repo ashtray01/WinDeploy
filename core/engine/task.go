@@ -102,8 +102,8 @@ func (t Task) Validate() error {
 
 // TaskResult records an execution outcome. Error is a sanitized diagnostic,
 // not a raw command output; callers must remove credentials before storing it.
-// RebootRequired can accompany a successful result without losing its status.
-// This model does not yet implement persistence, retries or execution.
+// A RebootRequired status is unverified and never satisfies dependencies.
+// A reboot flag on Success is allowed only if Verify confirmed readiness.
 type TaskResult struct {
 	TaskID         string     `json:"task_id"`
 	Status         TaskStatus `json:"status"`

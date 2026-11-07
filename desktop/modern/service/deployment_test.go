@@ -7,8 +7,39 @@ import (
 	"testing"
 	"time"
 
+	"windeploy/core/engine"
 	"windeploy/core/inventory"
 )
+
+func TestResumeDeploymentShowsUnverifiedRebootInsteadOfCompleted(t *testing.T) {
+	s := newDeploymentTestService(t)
+	id := pendingSession(t, s)
+	session, err := s.deployment.store.Load(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	boot, err := (inventory.Native{}).BootID(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	session.Snapshot, err = engine.NewSnapshot(session.Tasks, []engine.TaskResult{{TaskID: "dns", Status: engine.RebootRequired, RebootRequired: true, StartedAt: now, FinishedAt: now, Attempts: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.BootID = boot
+	session.RebootRequired = true
+	if err := s.deployment.store.Save(context.Background(), session); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ResumeDeployment(id, false); err != nil {
+		t.Fatal(err)
+	}
+	view := waitDeployment(t, s)
+	if view.Completed || !view.RebootRequired || view.Tasks[0].Status != "RebootRequired" || view.Message != "Ожидается перезагрузка Windows. Продолжение в текущей загрузке заблокировано." {
+		t.Fatalf("false completion: %+v", view)
+	}
+}
 
 type unknownExecutionProvider struct{ fixtureProvider }
 

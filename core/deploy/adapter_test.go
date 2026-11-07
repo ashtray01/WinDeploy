@@ -58,6 +58,23 @@ func shareAdapter() (*Adapter, *fakeConnector) {
 	return &Adapter{Shares: manager, ShortcutDir: `C:\Desktop`}, connector
 }
 
+func TestRebootVerifyAndComputerNameReadback(t *testing.T) {
+	task := engine.Task{ID: "rename", Name: "Rename", Category: "windows", Parameters: map[string]string{"setting": "computer-name", "name": "PC-NEW"}}
+	adapter := &Adapter{System: inventory.SystemInfo{Hostname: "PC-OLD"}}
+	adapter.markReboot(task.ID)
+	if err := adapter.Verify(context.Background(), task); !errors.Is(err, engine.ErrRebootPending) {
+		t.Fatalf("false verified reboot: %v", err)
+	}
+	fresh := &Adapter{System: inventory.SystemInfo{Hostname: "PC-OLD"}}
+	if err := fresh.Verify(context.Background(), task); err == nil {
+		t.Fatal("rename verified with old hostname")
+	}
+	fresh.System.Hostname = "pc-new"
+	if err := fresh.Verify(context.Background(), task); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestShareComponentLifecycle(t *testing.T) {
 	adapter, connector := shareAdapter()
 	task := engine.Task{ID: "finance", Name: "Финансы", Category: "shares", Status: engine.Pending, Parameters: map[string]string{"unc": `\\fileserver\finance`, "shortcut": "true"}}

@@ -337,6 +337,9 @@ func (d *deploymentState) finish(session deploy.Session, runErr error) {
 		}
 	}
 	switch {
+	case errors.Is(runErr, engine.ErrRebootPending):
+		d.view.Message = "Ожидается перезагрузка Windows. Продолжение в текущей загрузке заблокировано."
+		d.appendEventLocked("warning", d.view.Message)
 	case errors.Is(runErr, context.Canceled), errors.Is(runErr, context.DeadlineExceeded):
 		d.view.Cancelled = true
 		d.view.Message = "Выполнение отменено. Завершённые задачи сохранены."
@@ -344,6 +347,9 @@ func (d *deploymentState) finish(session deploy.Session, runErr error) {
 	case runErr != nil:
 		d.view.Message = "Выполнение прервано. Проверьте журнал и отчёт."
 		d.appendEventLocked("error", d.view.Message)
+	case session.RebootRequired && !session.Completed:
+		d.view.Message = "Результат ещё не проверен. Перезагрузите Windows и продолжите сессию для проверки."
+		d.appendEventLocked("warning", d.view.Message)
 	default:
 		d.view.Message = "Выполнение завершено."
 	}
@@ -450,6 +456,8 @@ func statusLabelDeploy(status engine.TaskStatus) string {
 		return "Ошибка"
 	case engine.Cancelled:
 		return "Отменено"
+	case engine.RebootRequired:
+		return "Ожидает проверки после перезагрузки"
 	default:
 		return string(status)
 	}

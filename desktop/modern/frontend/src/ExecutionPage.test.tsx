@@ -54,4 +54,15 @@ describe('deployment execution page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Отменить' }));
     await waitFor(() => expect(mocks.cancelDeployment).toHaveBeenCalled());
   });
+
+  it('keeps reboot verification pending and offers resume without showing success', async () => {
+    mocks.getDeployment.mockResolvedValue({ ...running, running: false, completed: false, reboot_required: true, tasks: [{ ...runningTask, status: 'RebootRequired', status_label: 'Ожидает проверки после перезагрузки', reboot_required: true }] });
+    mocks.listDeploymentSessions.mockResolvedValue([{ ...sessions[0], completed: false, succeeded: 0, remaining: 1, reboot_required: true }]);
+    render(<ExecutionPage />);
+    expect(await screen.findByText('Ожидает проверки')).toBeInTheDocument();
+    expect(await screen.findByText(/Зависимые задачи ожидают подтверждения/)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Прогресс развёртывания' })).toHaveAttribute('aria-valuenow', '0');
+    expect(screen.queryByText('Завершено')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
+  });
 });

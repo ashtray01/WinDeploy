@@ -57,6 +57,10 @@ type SnapshotStore interface {
 // ErrCheckpoint deliberately excludes raw storage diagnostics.
 var ErrCheckpoint = errors.New("could not save deployment checkpoint")
 
+// ErrRebootPending means execution finished but verification must wait for a
+// confirmed reboot. It is an outcome, not permission to repeat Execute.
+var ErrRebootPending = errors.New("verification awaits reboot")
+
 // RetryableError is an explicit promise by an adapter that retrying is safe.
 // Each retry starts with Precheck to detect effects of the previous attempt.
 // Ordinary errors are never retried, even if MaxAttempts is greater than one.
@@ -68,10 +72,10 @@ type RetryableError interface {
 // RunWithOptions adds opt-in retries to Run. A task timeout covers every attempt
 // and retry delay. Adapters must not mark unsafe operations as retryable.
 func RunWithOptions(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions) ([]TaskResult, error) {
-	return runPlan(ctx, tasks, adapter, options, nil, false)
+	return runPlan(ctx, tasks, adapter, options, nil, false, false)
 }
 
-func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions, previous map[string]TaskResult, retryFailed bool) ([]TaskResult, error) {
+func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOptions, previous map[string]TaskResult, retryFailed, verifyReboot bool) ([]TaskResult, error) {
 	if options.MaxAttempts < 0 || options.RetryDelay < 0 || options.MaxParallel < 0 {
 		return nil, fmt.Errorf("execution options must not be negative")
 	}
@@ -144,7 +148,7 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 			// Keep interrupted evidence in the initial checkpoint too. A crash
 			// between Save and the next attempt must not erase prior reboot flags.
 			results[i] = prior
-			if retainResult(prior, retryFailed) {
+			if retainResult(prior, retryFailed) && !(prior.Status == RebootRequired && verifyReboot) {
 				statuses[task.ID], started[i] = prior.Status, true
 				completed++
 			}
@@ -157,6 +161,10 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 				continue
 			}
 			if runCtx.Err() != nil {
+				if prior, ok := previous[task.ID]; ok && prior.Status == RebootRequired {
+					record(i, prior)
+					continue
+				}
 				record(i, TaskResult{TaskID: task.ID, Status: Cancelled, Error: "plan cancelled"})
 				continue
 			}
@@ -180,8 +188,16 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 			started[i] = true
 			statuses[task.ID] = Running
 			results[i] = TaskResult{TaskID: task.ID, Status: Running, StartedAt: time.Now().UTC(), Attempts: previous[task.ID].Attempts, RebootRequired: previous[task.ID].RebootRequired}
+			if prior, ok := previous[task.ID]; ok && prior.Status == RebootRequired {
+				// Preserve Verify-only recovery even if the process dies during Verify.
+				results[i] = prior
+			}
 			save()
 			if checkpointErr != nil {
+				if prior, ok := previous[task.ID]; ok && prior.Status == RebootRequired {
+					record(i, prior)
+					continue
+				}
 				record(i, TaskResult{TaskID: task.ID, Status: Cancelled, Error: "plan cancelled"})
 				continue
 			}
@@ -190,6 +206,10 @@ func runPlan(ctx context.Context, tasks []Task, adapter Adapter, options RunOpti
 			}
 			active++
 			go func(index int, task Task) {
+				if prior, ok := previous[task.ID]; ok && prior.Status == RebootRequired {
+					finished <- completion{index, verifyAfterReboot(runCtx, task, adapter, prior)}
+					return
+				}
 				result := runTask(runCtx, task, adapter, options)
 				if prior, ok := previous[task.ID]; ok {
 					result.Attempts += prior.Attempts
@@ -258,6 +278,10 @@ func runTask(parent context.Context, task Task, adapter Adapter, options RunOpti
 			result.Status = Success
 			return nil
 		}()
+		if phase == "verify" && errors.Is(err, ErrRebootPending) {
+			result.Status, result.RebootRequired, result.Error = RebootRequired, true, ""
+			return result
+		}
 		if ctx.Err() != nil {
 			break
 		}
@@ -282,5 +306,40 @@ func runTask(parent context.Context, task Task, adapter Adapter, options RunOpti
 	} else {
 		result.Status, result.Error = Failed, "task deadline exceeded"
 	}
+	return result
+}
+
+// A persisted reboot obligation never returns through Precheck or Execute.
+// Failed/cancelled verification keeps the obligation for a later safe retry.
+func verifyAfterReboot(parent context.Context, task Task, adapter Adapter, prior TaskResult) TaskResult {
+	ctx, cancel := context.WithCancel(parent)
+	if task.Timeout > 0 {
+		cancel()
+		ctx, cancel = context.WithTimeout(parent, task.Timeout)
+	}
+	defer cancel()
+	result := prior
+	result.StartedAt = time.Now().UTC()
+	task.Status = Running
+	if ctx.Err() != nil {
+		result.Error = "plan cancelled"
+		if parent.Err() == nil {
+			result.Error = "task deadline exceeded"
+		}
+		return result
+	}
+	err := adapter.Verify(ctx, task)
+	if ctx.Err() != nil {
+		result.Error = "plan cancelled"
+		if parent.Err() == nil {
+			result.Error = "task deadline exceeded"
+		}
+		return result
+	}
+	if err != nil {
+		result.Error = "verify failed"
+		return result
+	}
+	result.Status, result.RebootRequired, result.Error = Success, false, ""
 	return result
 }

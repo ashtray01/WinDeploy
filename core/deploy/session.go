@@ -42,6 +42,8 @@ type Session struct {
 	ReportHTML     string               `json:"report_html,omitempty"`
 	ReportError    string               `json:"report_error,omitempty"`
 	System         inventory.SystemInfo `json:"system"`
+	BootID         string               `json:"boot_id,omitempty"`
+	RebootBootIDs  map[string]string    `json:"reboot_boot_ids,omitempty"`
 }
 
 // Summary is a lightweight list entry.

@@ -35,14 +35,15 @@ type Report struct {
 
 // Summary aggregates status counts.
 type Summary struct {
-	Total            int `json:"total"`
-	Success          int `json:"success"`
-	AlreadyInstalled int `json:"already_installed"`
-	Failed           int `json:"failed"`
-	Skipped          int `json:"skipped"`
-	NotApplicable    int `json:"not_applicable"`
-	Cancelled        int `json:"cancelled"`
-	RebootRequired   int `json:"reboot_required"`
+	Total                int `json:"total"`
+	Success              int `json:"success"`
+	AlreadyInstalled     int `json:"already_installed"`
+	Failed               int `json:"failed"`
+	Skipped              int `json:"skipped"`
+	NotApplicable        int `json:"not_applicable"`
+	Cancelled            int `json:"cancelled"`
+	RebootRequired       int `json:"reboot_required"`
+	AwaitingVerification int `json:"awaiting_verification"`
 }
 
 // Build creates a report from the original tasks and their results. Task
@@ -73,6 +74,8 @@ func Build(sessionID, profileID, profileName string, system inventory.SystemInfo
 			report.Summary.NotApplicable++
 		case engine.Cancelled:
 			report.Summary.Cancelled++
+		case engine.RebootRequired:
+			report.Summary.AwaitingVerification++
 		}
 		if result.RebootRequired {
 			report.Summary.RebootRequired++
@@ -117,6 +120,7 @@ footer{margin-top:28px;color:#7486a0;font-size:10px}
 	writeCard("Ошибки", report.Summary.Failed, "fail")
 	writeCard("Пропущено", report.Summary.Skipped+report.Summary.NotApplicable, "muted")
 	writeCard("Нужна перезагрузка", report.Summary.RebootRequired, "warn")
+	writeCard("Ожидают проверки", report.Summary.AwaitingVerification, "warn")
 	builder.WriteString("</div>")
 	if report.RebootRequired {
 		builder.WriteString("<p class=\"warn\">Windows требует перезагрузку для завершения развёртывания.</p>")

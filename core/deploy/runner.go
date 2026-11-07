@@ -23,6 +23,7 @@ type Runner struct {
 	// ReadSystem obtains execution facts on every Start/Resume, never from a saved session.
 	// Nil uses the native provider. System is report metadata, not authorization.
 	ReadSystem func(context.Context) (inventory.SystemInfo, error)
+	ReadBootID func(context.Context) (string, error)
 	Options    engine.RunOptions
 	ReportDir  string
 	// SessionID is optional; empty generates a new ID (tests and callers that
@@ -44,6 +45,10 @@ func (r *Runner) Start(ctx context.Context, tasks []engine.Task) (Session, error
 	if err != nil {
 		return Session{}, err
 	}
+	bootID, err := r.bootID(ctx)
+	if err != nil {
+		return Session{}, err
+	}
 	now := time.Now().UTC()
 	sessionID := r.SessionID
 	if strings.TrimSpace(sessionID) == "" {
@@ -51,12 +56,12 @@ func (r *Runner) Start(ctx context.Context, tasks []engine.Task) (Session, error
 	}
 	session := Session{
 		Version: SessionVersion, ID: sessionID, ProfileID: r.ProfileID, ProfileName: r.ProfileName,
-		CreatedAt: now, UpdatedAt: now, StartedAt: now, Tasks: tasks, Snapshot: snapshot, System: r.System,
+		CreatedAt: now, UpdatedAt: now, StartedAt: now, Tasks: tasks, Snapshot: snapshot, System: r.System, BootID: bootID,
 	}
 	if err := r.Store.Save(context.Background(), session); err != nil {
 		return Session{}, err
 	}
-	checkpoint := &checkpointStore{store: r.Store, session: session}
+	checkpoint := &checkpointStore{store: r.Store, session: session, bootID: bootID}
 	options := r.Options
 	options.Store = checkpoint
 	results, runErr := engine.RunWithOptions(ctx, tasks, adapter, options)
@@ -74,18 +79,77 @@ func (r *Runner) Resume(ctx context.Context, id string, retryFailed bool) (Sessi
 		return Session{}, err
 	}
 	if session.Completed && !retryFailed {
-		return session, fmt.Errorf("deployment session is already complete")
+		// Historical sessions can contain an unverified reboot Success.
+		if !hasRebootEvidence(session.Snapshot.Results) {
+			return session, fmt.Errorf("deployment session is already complete")
+		}
+	}
+	if hasRebootEvidence(session.Snapshot.Results) && session.BootID == "" {
+		return session, fmt.Errorf("legacy reboot session lacks trusted boot evidence; automatic resume refused")
 	}
 	adapter, err := r.executionAdapter(ctx, session.Tasks)
 	if err != nil {
 		return session, err
 	}
 	session.System = r.System
-	checkpoint := &checkpointStore{store: r.Store, session: session}
-	options := engine.ResumeOptions{Execution: r.Options, RetryFailed: retryFailed}
+	bootID, err := r.bootID(ctx)
+	if err != nil {
+		return session, err
+	}
+	verifyReboot := false
+	if hasRebootEvidence(session.Snapshot.Results) {
+		for _, result := range session.Snapshot.Results {
+			if result.RebootRequired {
+				origin := session.RebootBootIDs[result.TaskID]
+				if origin == "" {
+					origin = session.BootID
+				}
+				if bootID == origin {
+					return session, engine.ErrRebootPending
+				}
+			}
+		}
+		verifyReboot = true
+		for i := range session.Snapshot.Results {
+			result := &session.Snapshot.Results[i]
+			if result.RebootRequired {
+				if result.StartedAt.IsZero() {
+					return session, fmt.Errorf("reboot task lacks execution evidence")
+				}
+				result.Status = engine.RebootRequired
+			}
+		}
+	}
+	session.Completed = false
+	checkpoint := &checkpointStore{store: r.Store, session: session, bootID: bootID}
+	options := engine.ResumeOptions{Execution: r.Options, RetryFailed: retryFailed, VerifyReboot: verifyReboot}
 	options.Execution.Store = checkpoint
 	results, runErr := engine.Resume(ctx, session.Tasks, adapter, session.Snapshot, options)
+	if runErr != nil && results == nil {
+		return session, runErr
+	}
 	return r.finish(ctx, checkpoint.session, session.Tasks, results, runErr)
+}
+
+func hasRebootEvidence(results []engine.TaskResult) bool {
+	for _, result := range results {
+		if result.RebootRequired {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Runner) bootID(ctx context.Context) (string, error) {
+	read := r.ReadBootID
+	if read == nil {
+		read = inventory.Native{}.BootID
+	}
+	id, err := read(ctx)
+	if err != nil || strings.TrimSpace(id) == "" {
+		return "", fmt.Errorf("deployment boot identity unavailable")
+	}
+	return id, nil
 }
 
 // Validate the entire plan before any adapter phase, including retained resume tasks.
@@ -138,6 +202,11 @@ func (r *Runner) finish(ctx context.Context, session Session, tasks []engine.Tas
 	}
 	session.Snapshot = snapshot
 	session.Completed = runErr == nil
+	for _, result := range results {
+		if result.Status == engine.RebootRequired {
+			session.Completed = false
+		}
+	}
 	if r.ReportDir != "" {
 		report, buildErr := reporting.Build(session.ID, r.ProfileID, r.ProfileName, r.System, tasks, results, session.StartedAt, now, session.RebootRequired, session.Cancelled)
 		if buildErr != nil {
@@ -161,9 +230,22 @@ func (r *Runner) finish(ctx context.Context, session Session, tasks []engine.Tas
 type checkpointStore struct {
 	store   Store
 	session Session
+	bootID  string
 }
 
 func (c *checkpointStore) Save(ctx context.Context, snapshot engine.Snapshot) error {
+	if c.session.RebootBootIDs == nil {
+		c.session.RebootBootIDs = map[string]string{}
+	}
+	for _, result := range snapshot.Results {
+		if result.RebootRequired {
+			if c.session.RebootBootIDs[result.TaskID] == "" {
+				c.session.RebootBootIDs[result.TaskID] = c.bootID
+			}
+		} else {
+			delete(c.session.RebootBootIDs, result.TaskID)
+		}
+	}
 	c.session.Snapshot = snapshot
 	c.session.UpdatedAt = time.Now().UTC()
 	return c.store.Save(ctx, c.session)

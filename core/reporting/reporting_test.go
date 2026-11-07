@@ -44,6 +44,26 @@ func TestBuildSummary(t *testing.T) {
 	}
 }
 
+func TestPendingRebootIsNotSuccessfulReport(t *testing.T) {
+	tasks := []engine.Task{{ID: "pending", Name: "Pending", Category: "packages", Status: engine.Pending}}
+	now := time.Now().UTC()
+	results := []engine.TaskResult{{TaskID: "pending", Status: engine.RebootRequired, RebootRequired: true, StartedAt: now, FinishedAt: now}}
+	report, err := Build("s", "p", "P", inventory.SystemInfo{}, tasks, results, now, now, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Summary.Success != 0 || report.Summary.AwaitingVerification != 1 || report.Summary.RebootRequired != 1 {
+		t.Fatalf("false success: %+v", report.Summary)
+	}
+	var html bytes.Buffer
+	if err := WriteHTML(&html, report); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html.String(), "Ожидают проверки") || !strings.Contains(html.String(), "RebootRequired") {
+		t.Fatal("pending evidence missing from HTML")
+	}
+}
+
 func TestWriteJSONAndHTML(t *testing.T) {
 	report := sampleReport(t)
 	var jsonBuffer bytes.Buffer

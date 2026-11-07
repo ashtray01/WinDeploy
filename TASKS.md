@@ -6,6 +6,8 @@
 
 ## Завершено в этой итерации
 
+- [x] P0-03 программный контракт: ErrRebootPending → RebootRequired, dependencies blocked, persisted per-task boot evidence, same-boot/unknown-boot fail closed, Verify-only recovery без Execute, pending отчёт/CLI/UI. Root и Modern test/vet/build PASS, UI 38/38. Boot GUID read-only стабильность проверена на текущем Win11; реальная reboot/install VM-матрица остаётся открытой.
+
 - [x] Startup logger сохраняет stderr при отказе файла; WebView2 data-directory probe и явный --webview-data-dir без очистки старого профиля. Console EXE с новым workspace UDF: настоящий GUI/DOM/bridge smoke PASS на текущем Win11, native Inventory совпал, pageErrors=0. Старый UDF давал 800700aa; default user launch отдельно.
 
 - [x] Диагностика раннего выхода Modern: production build tag, отдельный console EXE и `scripts/start-modern-diagnostic.ps1`. Полная сборка/37 UI tests PASS вне sandbox; запуск окна остаётся FAIL (exit 1 до main, sandbox console показывает DLL/COM init panic). Это диагностическое улучшение, не исправленный GUI runtime.

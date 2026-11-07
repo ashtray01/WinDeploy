@@ -8,7 +8,7 @@ function taskTone(status: string): 'green' | 'red' | 'amber' | 'blue' | 'muted' 
   switch (status) {
     case 'Success': case 'AlreadyInstalled': return 'green';
     case 'Failed': return 'red';
-    case 'Skipped': case 'NotApplicable': case 'Cancelled': return 'amber';
+    case 'Skipped': case 'NotApplicable': case 'Cancelled': case 'RebootRequired': return 'amber';
     case 'Running': return 'blue';
     default: return 'muted';
   }
@@ -126,11 +126,11 @@ export default function ExecutionPage() {
             : <><span className="deploy-confirm">Выполнить выбранные компоненты? Изменяющие операции требуют прав администратора.</span><Button variant="danger" disabled={busy} onClick={() => void start()}>Подтвердить запуск</Button><Button variant="ghost" onClick={() => setConfirming(false)}>Отмена</Button></>}
         </div>
       </Panel>
-      <Panel title="Ход выполнения" action={<Badge tone={active?.running ? 'blue' : active?.cancelled ? 'amber' : active?.completed ? 'green' : 'muted'}>{active?.running ? 'Выполняется' : active?.cancelled ? 'Отменено' : active?.completed ? 'Завершено' : 'Нет запуска'}</Badge>}>
+      <Panel title="Ход выполнения" action={<Badge tone={active?.running ? 'blue' : active?.cancelled || active?.reboot_required ? 'amber' : active?.completed ? 'green' : 'muted'}>{active?.running ? 'Выполняется' : active?.cancelled ? 'Отменено' : active?.reboot_required ? 'Ожидает проверки' : active?.completed ? 'Завершено' : 'Нет запуска'}</Badge>}>
         {active && total > 0 ? <>
           <div className="deploy-progress"><div><strong>{active.profile_name}</strong><small>{active.message}</small></div><span>{completed}/{total}</span></div>
           <Progress value={total > 0 ? Math.round((completed / total) * 100) : 0} label="Прогресс развёртывания" />
-          {active.reboot_required && <div className="callout">Требуется перезагрузка Windows. После перезагрузки продолжите сессию.</div>}
+          {active.reboot_required && <div className="callout">Результат ещё не проверен. Перезагрузите Windows, затем продолжите сессию для проверки. Зависимые задачи ожидают подтверждения.</div>}
           <div className="deploy-table-wrap"><table className="deploy-table"><thead><tr><th scope="col">Задача</th><th scope="col">Статус</th><th scope="col">Попытки</th><th scope="col">Диагностика</th></tr></thead><tbody>{active.tasks?.map(task => <tr key={task.id}><td><div className="deploy-task"><strong>{task.name}</strong><small>{task.category}</small></div></td><td><Badge tone={taskTone(task.status)}>{task.status_label}</Badge>{task.reboot_required && <small className="deploy-reboot">+ перезагрузка</small>}</td><td>{task.attempts}</td><td>{task.error || '—'}</td></tr>)}</tbody></table></div>
           {(active.report_html || active.report_json) && <div className="deploy-report"><small>Отчёт</small><p className="mono">{active.report_html}</p><p className="mono">{active.report_json}</p></div>}
           {(active.events ?? []).length > 0 && <div className="deploy-events">{(active.events ?? []).slice(-30).map((event, index) => <div key={index} className={`deploy-event ${event.level}`}><time>{new Date(event.time).toLocaleTimeString('ru-RU')}</time><span>{event.message}</span></div>)}</div>}

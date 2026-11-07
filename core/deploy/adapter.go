@@ -73,9 +73,16 @@ func (a *Adapter) Precheck(ctx context.Context, task engine.Task) (engine.TaskSt
 	}
 }
 
-// Execute performs the component operation. A returned reboot flag is confirmed
-// by Verify via the deferred-verification rule documented in execution.md.
+// Execute performs the operation and records any reboot obligation for Verify.
 func (a *Adapter) Execute(ctx context.Context, task engine.Task) (bool, error) {
+	reboot, err := a.execute(ctx, task)
+	if reboot {
+		a.markReboot(task.ID)
+	}
+	return reboot, err
+}
+
+func (a *Adapter) execute(ctx context.Context, task engine.Task) (bool, error) {
 	switch task.Category {
 	case "packages":
 		return a.executePackage(ctx, task)
@@ -96,11 +103,11 @@ func (a *Adapter) Execute(ctx context.Context, task engine.Task) (bool, error) {
 	}
 }
 
-// Verify confirms the final state. Components that explicitly require a reboot
-// accept the post-reboot check as pending instead of failing the current run.
+// Verify reports a persistent barrier for operations requiring reboot. A fresh
+// adapter after a confirmed boot change performs the real category read-back.
 func (a *Adapter) Verify(ctx context.Context, task engine.Task) error {
 	if a.rebootPending(task.ID) {
-		return nil
+		return engine.ErrRebootPending
 	}
 	switch task.Category {
 	case "packages":
@@ -111,7 +118,14 @@ func (a *Adapter) Verify(ctx context.Context, task engine.Task) error {
 		return a.verifyDriver(ctx, task)
 	case "printers":
 		return a.verifyPrinter(ctx, task)
-	case "browsers", "windows", "diagnostics":
+	case "windows":
+		if strings.EqualFold(strings.TrimSpace(task.Parameters["setting"]), "computer-name") {
+			if a.System.Hostname == "" || !strings.EqualFold(a.System.Hostname, strings.TrimSpace(task.Parameters["name"])) {
+				return fmt.Errorf("active computer name was not confirmed")
+			}
+		}
+		return nil
+	case "browsers", "diagnostics":
 		return nil
 	default:
 		return fmt.Errorf("unsupported component category")

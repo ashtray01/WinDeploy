@@ -44,6 +44,7 @@ func newRunner(t *testing.T, adapter engine.Adapter) (Runner, string) {
 	return Runner{
 		Adapter: adapter, Store: Store{Dir: dir}, ProfileID: "office", ProfileName: "Офис",
 		System: inventory.SystemInfo{Hostname: "PC-01"}, ReportDir: reportDir,
+		ReadBootID: func(context.Context) (string, error) { return "boot-one", nil },
 		ReadSystem: func(context.Context) (inventory.SystemInfo, error) {
 			return inventory.SystemInfo{Hostname: "PC-01", Architecture: "amd64", Windows: inventory.Version{Major: 10, Build: 26100, ProductType: 1}}, nil
 		},

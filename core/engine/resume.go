@@ -9,6 +9,9 @@ import (
 type ResumeOptions struct {
 	Execution   RunOptions
 	RetryFailed bool
+	// VerifyReboot permits Verify-only for pending reboot tasks. The caller must
+	// first prove a different boot identity; zero keeps the barrier closed.
+	VerifyReboot bool
 }
 
 // ValidateForPlan validates binding and started dependencies, not malicious
@@ -33,9 +36,6 @@ func (s Snapshot) ValidateForPlan(tasks []Task) error {
 		if _, ok := byID[result.TaskID]; !ok {
 			return fmt.Errorf("snapshot contains unknown task")
 		}
-		if result.Status == RebootRequired {
-			return fmt.Errorf("reboot barrier resume is not supported")
-		}
 		results[result.TaskID] = result
 	}
 	for _, result := range s.Results {
@@ -54,7 +54,7 @@ func (s Snapshot) ValidateForPlan(tasks []Task) error {
 
 func retainResult(result TaskResult, retryFailed bool) bool {
 	switch result.Status {
-	case Success, AlreadyInstalled, NotApplicable:
+	case Success, AlreadyInstalled, NotApplicable, RebootRequired:
 		return true
 	case Skipped:
 		return result.Error != "dependency did not succeed"
@@ -69,7 +69,8 @@ func retainResult(result TaskResult, retryFailed bool) bool {
 // Failed tasks stay failed unless RetryFailed is true. Running/Cancelled tasks
 // and dependency-blocked skips return through Precheck, which must safely detect
 // partial/installed effects before Execute. Supply the original Pending plan.
-// Attempt counts and reboot flags accumulate across resumes.
+// Pending reboot results use Verify-only when VerifyReboot is authorized.
+// Successful verification clears that reboot obligation; attempts are unchanged.
 func Resume(ctx context.Context, tasks []Task, adapter Adapter, snapshot Snapshot, options ResumeOptions) ([]TaskResult, error) {
 	if err := snapshot.ValidateForPlan(tasks); err != nil {
 		return nil, err
@@ -78,5 +79,5 @@ func Resume(ctx context.Context, tasks []Task, adapter Adapter, snapshot Snapsho
 	for _, result := range snapshot.Results {
 		previous[result.TaskID] = result
 	}
-	return runPlan(ctx, tasks, adapter, options.Execution, previous, options.RetryFailed)
+	return runPlan(ctx, tasks, adapter, options.Execution, previous, options.RetryFailed, options.VerifyReboot)
 }
