@@ -12,6 +12,17 @@ import * as inventory$0 from "../../core/inventory/models.js";
 import * as settings$0 from "../../core/settings/models.js";
 
 /**
+ * AppInfo is the release identity exposed to the desktop UI. It contains no
+ * machine, user or session data and is safe to show in screenshots.
+ */
+export interface AppInfo {
+    "name": string;
+    "version": string;
+    "commit": string;
+    "channel": string;
+}
+
+/**
  * BrowserEnvironmentView lists detected browser executables and the desktop dir.
  */
 export interface BrowserEnvironmentView {

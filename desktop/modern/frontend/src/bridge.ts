@@ -6,7 +6,7 @@ export type { NetworkReportView, NetworkCheckView } from '../bindings/windeploy/
 export type { ShareRequest, ShareResultView, ShareConnectionView } from '../bindings/windeploy/modern/service/models';
 export type { DriverInstallRequest } from '../bindings/windeploy/modern/service/models';
 export type { BrowserEnvironmentView, PowerPlanOption, WindowsSettingsView } from '../bindings/windeploy/modern/service/models';
-export type { DeploymentView, DeployTaskView, DeployEvent, DeploySessionView } from '../bindings/windeploy/modern/service/models';
+export type { DeploymentView, DeployTaskView, DeployEvent, DeploySessionView, AppInfo } from '../bindings/windeploy/modern/service/models';
 export type { Device as DriverDevice, INFInfo as DriverInfo, Result as DriverResult } from '../bindings/windeploy/core/drivers/models';
 export type { Printer as PrinterInfo, AddRequest as PrinterAddRequest, Result as PrinterResult } from '../bindings/windeploy/core/printers/models';
 export type { Policy as BrowserPolicy, Bookmark as BrowserBookmark, WebApp as BrowserWebApp, Result as BrowserResult } from '../bindings/windeploy/core/browsers/models';
@@ -16,6 +16,7 @@ export type { Report, SystemInfo, CPUInfo, Volume, InterfaceInfo, InstalledApp, 
 
 // This is the only production backend transport. No HTTP fallback or sample data.
 export const api = {
+  appInfo: Service.GetAppInfo,
   state: Service.GetState,
   startScan: Service.StartScan,
   cancelScan: Service.CancelScan,

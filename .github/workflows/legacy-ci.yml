@@ -1,0 +1,29 @@
+name: Legacy (frozen)
+
+# Legacy Windows 7 is FROZEN. It is intentionally manual and must never gate the
+# Modern beta release. It does not run on push or pull_request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy:
+    name: Legacy Go 1.20 Win32 x64/x86
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.20.14'
+          cache: false
+      - name: Legacy test, selftest and builds
+        shell: pwsh
+        run: ./scripts/build-legacy.ps1 -Go (Get-Command go).Source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: legacy-binaries
+          path: |
+            bin/WinDeploy-Legacy-Windows-x64.exe
+            bin/WinDeploy-Legacy-Windows-x86.exe

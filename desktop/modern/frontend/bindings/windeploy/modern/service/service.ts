@@ -98,6 +98,14 @@ export function CancelScan(): $CancellablePromise<$models.State> {
 }
 
 /**
+ * GetAppInfo returns the version injected at build time. The UI must not keep a
+ * second hard-coded version number.
+ */
+export function GetAppInfo(): $CancellablePromise<$models.AppInfo> {
+    return $Call.ByName("windeploy/modern/service.Service.GetAppInfo");
+}
+
+/**
  * GetBrowserEnvironment is read-only: it locates browsers without running them.
  */
 export function GetBrowserEnvironment(): $CancellablePromise<$models.BrowserEnvironmentView> {

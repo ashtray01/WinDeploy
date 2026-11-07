@@ -17,4 +17,10 @@ describe('desktop navigation', () => {
     expect(screen.getByRole('button', { name: 'Обзор' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText(/проверка SHA-256 и подписи/)).toBeInTheDocument();
   });
+
+  it('shows the injected public beta version instead of a hard-coded number', () => {
+    render(<Shell page="overview" navigate={vi.fn()} appInfo={{ name: 'WinDeploy', version: '0.1.0-beta.1', commit: 'abc123', channel: 'public-beta' }}><p>Область содержимого</p></Shell>);
+    expect(screen.getByText('PUBLIC BETA · 0.1.0-beta.1')).toBeInTheDocument();
+    expect(screen.queryByText(/MODERN 0\.2\.0/)).not.toBeInTheDocument();
+  });
 });

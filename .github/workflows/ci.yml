@@ -1,4 +1,4 @@
-name: CI
+name: Modern CI
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
           cache: false
       - name: Core tests, vet and builds
         shell: pwsh
-        run: ./scripts/test-core.ps1 -Go (Get-Command go).Source -BuildCache ci-go120
+        run: ./scripts/test-core.ps1 -Go (Get-Command go).Source -BuildCache ci-go120 -AllowNativeWrites
       - name: Build core CLIs
         shell: pwsh
         run: |
@@ -30,27 +30,9 @@ jobs:
             $env:GOARCH = $arch
             foreach ($cmd in @('windeploy-inspect','windeploy-packages','windeploy-run')) {
               go build -trimpath -o "bin/$cmd-$arch.exe" "./cmd/$cmd"
+              if ($LASTEXITCODE -ne 0) { throw "build failed: $cmd $arch" }
             }
           }
-
-  legacy:
-    name: Legacy Go 1.20 Win32 x64/x86
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.20.14'
-          cache: false
-      - name: Legacy test, selftest and builds
-        shell: pwsh
-        run: ./scripts/build-legacy.ps1 -Go (Get-Command go).Source
-      - uses: actions/upload-artifact@v4
-        with:
-          name: legacy-binaries
-          path: |
-            bin/WinDeploy-Legacy-Windows-x64.exe
-            bin/WinDeploy-Legacy-Windows-x86.exe
 
   modern:
     name: Modern Go 1.26 + React
@@ -63,24 +45,33 @@ jobs:
           cache: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+      - name: Version identity
+        shell: pwsh
+        run: ./scripts/verify-version.ps1
       - name: Frontend typecheck, tests and build
         working-directory: desktop/modern/frontend
         shell: pwsh
         run: |
           npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
           npm run typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'typecheck failed' }
           npm test
+          if ($LASTEXITCODE -ne 0) { throw 'frontend tests failed' }
           npm run build
+          if ($LASTEXITCODE -ne 0) { throw 'frontend build failed' }
       - name: Go service tests and vet
         working-directory: desktop/modern
         shell: pwsh
         run: |
-          go test ./...
+          go test ./... -count=1
+          if ($LASTEXITCODE -ne 0) { throw 'modern Go tests failed' }
           go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw 'modern vet failed' }
 
   modern-build:
-    name: Modern Wails EXE
+    name: Modern Wails EXE and release dry-run
     needs: modern
     runs-on: windows-latest
     steps:
@@ -91,17 +82,26 @@ jobs:
           cache: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Install pinned Wails v3.1.0
         shell: pwsh
         run: |
           go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+          if ($LASTEXITCODE -ne 0) { throw 'Wails install failed' }
           New-Item -ItemType Directory -Force -Path cache/tools/wails-3.1 | Out-Null
           Copy-Item -LiteralPath (Join-Path (go env GOPATH) 'bin/wails3.exe') -Destination cache/tools/wails-3.1/wails3.exe
       - name: Full Modern build
         shell: pwsh
         run: ./scripts/build-modern.ps1 -Wails cache/tools/wails-3.1/wails3.exe -InstallDependencies
-      - uses: actions/upload-artifact@v4
+      - name: Package beta artifacts and checksums
+        shell: pwsh
+        run: ./scripts/package-modern-release.ps1 -SkipBuild
+      - name: Upload EXE, checksums and portable ZIP
+        uses: actions/upload-artifact@v4
         with:
-          name: modern-binary
-          path: bin/WinDeploy-Windows-x64.exe
+          name: windeploy-modern-beta
+          path: |
+            dist/WinDeploy-Windows-x64.exe
+            dist/SHA256SUMS.txt
+            dist/RELEASE-NOTES.md
+            dist/WinDeploy-*-portable-x64.zip
