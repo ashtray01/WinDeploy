@@ -47,6 +47,10 @@ Remove-Item Env:GOBIN
 
 Далее достаточно `scripts/build-modern.ps1`: bindings → UI tests → TypeScript/Vite → Go tests/vet → module verification → Windows GUI EXE. На чистом checkout сначала строится UI из закоммиченных bindings, чтобы Go embed нашёл dist для генератора. EXE и dist не коммитятся. Перед пересборкой закройте своё окно WinDeploy.
 
+Сборка использует `-tags production`, чтобы EXE использовал production Wails runtime/embedded assets и не зависел от dev-server environment. `scripts/build-modern.ps1 -Diagnostic` дополнительно создаёт console `bin/WinDeploy-Diagnostic-x64.exe`. Запускайте `scripts/start-modern-diagnostic.ps1` из PowerShell для сохранения ранних ошибок в `local/modern-diagnostic.log`; launcher сообщает ненулевой exit, даже если main/startup.log не достигнуты. Диагностический EXE имеет те же bridge/mutation возможности — для диагностики не запускайте изменяющие операции на хосте.
+
+Проверка 2026-11-07: full build PASS, реальный GUI smoke FAIL. Свежий GUI и console вне sandbox выходят 1 без новой записи startup.log; причина не локализована. В sandbox console отдельно воспроизводит COM DLL initialization panic до main. Наличие WebView2 registration не доказывает успешную загрузку окна. Не использовать старый startup.log как доказательство нового запуска.
+
 Скрипт проверяет module cache с временным workspace `local/_modern-verify/go.work`, включающим root и Modern. В Go 1.26.2 обычный `go mod verify` вложенного модуля ошибочно пытался проверить отсутствующий zip локального `windeploy v0.0.0`; workspace делает оба локальных модуля main modules. Он используется только при verify; окружение восстанавливается. Root проверки остаются независимыми.
 
 ## Контракты и ограничения

@@ -1,5 +1,16 @@
 # WinDeploy technical audit — 2026-11-07
 
+## Controlled development update — после базы аудита
+
+Этот раздел уточняет исторические findings ниже; полный аудит не повторялся. Текущие команды/ограничения — [HANDOFF](../HANDOFF.md).
+
+- `90d9905`: Modern production build tag и optional console diagnostic EXE/launcher. Полная финальная Modern сборка PASS (bindings, UI 37/37, strict TS/Vite, Go test/vet, module verify, EXE). **GUI startup остаётся FAIL**: вне sandbox GUI/console выходят 1 без новой записи startup.log; причина не установлена. Sandbox console отдельно показывает COM DLL initialization panic в go-ole/Wails cfd.init до main. GUI smoke — `Desktop WebView2 unavailable`, DOM/bridge не достигнуты. Эти два наблюдения не доказывают общую причину.
+- P0-02 исправлен `d81df3e`: Runner Start/Resume читает fresh target, preflight всего плана до adapter phases, GuardAdapter на все фазы. Cached Inventory и Session.System не разрешают mutation. Core mismatch/unknown/read-error/cancel tests: adapter calls=0; CLI/service negative tests PASS. Успешный resume обновляет report/session System. Отклонённый resume не получает Completed в live view.
+- P0-05 исправлен для package/deployment одного Modern Service, `2d3562c`: operation lease охватывает preparation→finish; повторные closed/context/running checks, shutdown admission close. Barrier service tests и 20 повторов PASS. **Не покрыты другие standalone mutations, CLI/другие процессы и межпроцессный session lock.**
+- Итоговые root test/vet/build PASS вне sandbox с workspace TEMP; два записывающих Credential Manager/registry tests исключены. Legacy/VM/reboot/mutations не выполнялись. Race detector не запускался, compiler для него в PATH не найден. Ни тесты DI, ни сборка не подтверждают GUI runtime или Windows 10/LTSC.
+
+Остаются P0 startup, P0-03/04/06 и остальные gaps. Следующий пакет: настоящий startup/read-only desktop smoke, reboot boundary, user/machine context. Historical evidence matrix и описания исходных дефектов ниже сохраняются как база аудита.
+
 ## Project Status
 
 База аудита: `master`, `b990439`; рабочее дерево в начале чистое, remote отсутствует. Изучены последние 20 коммитов, три Go-модуля, production-пути core/CLI/Modern, тесты, конфигурации и workflows. Это выборочный технический анализ всех подсистем, а не доказательство отсутствия ошибок во всех строках. Исправление этой сессии: `972e44e`.
@@ -42,7 +53,7 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 
 `core/packages/install.go`, `Manager.runItem`: после exit 0 проверка `err == nil && !after.Installed` пропускала ошибку Detect и оставляла StatusSuccess. `TestInstallDetectionFailureCannotReportSuccess` переключает fake registry в ошибку после запуска установщика: до исправления получен `Status:success`, после — Failed/CodeVerifyFailed. Коммит `972e44e`. Реальный установщик не запускался. Reboot-ветка этим исправлением не меняется.
 
-### P0-02 — требования профиля не применяются при выполнении
+### P0-02 — требования профиля не применяются при выполнении (исправлено после аудита)
 
 `core/inventory/applicability.go:GuardAdapter` реализован и тестируется, preview использует applicability. Однако `core/deploy/adapter.go:Precheck` не проверяет `Task.Requirements`; `deploy.Runner.Start/Resume`, Modern `deploymentAdapter` и CLI execution передают незавёрнутый Adapter. Проверка package catalog не заменяет ограничения профиля. Воспроизводимый по коду сценарий: windows-компонент с несовместимыми requirements всё равно достигает Execute. Нужна единая проверка свежего system snapshot на start/resume и тест, запрещающий вызов изменяющего адаптера. Это runtime safety gate, а не Legacy-only задача.
 
@@ -54,7 +65,7 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 
 `deploy.Adapter.executeBrowser/executeShare/executePrinter` отбрасывают Result.Warnings. `browsers.Manager.createWebApps` возвращает nil с warning при отсутствии браузера/ошибке ярлыка. `Verify` для browsers/windows возвращает nil без read-back. `precheckShare` завершает задачу AlreadyInstalled при наличии UNC даже если запрошенного ярлыка нет; printer precheck проверяет только имя, driver precheck — Hardware ID/status, а не целевой driver/version. Отчёт может показывать успех недостигнутого состояния. Нужны отдельные критерии результата, перенос предупреждений и негативные тесты.
 
-### P0-05 — отсутствует общий контроль изменяющих операций
+### P0-05 — отсутствует общий контроль изменяющих операций (package/deployment исправлено после аудита)
 
 `service/packages.go:StartPackageInstall` блокирует только packageState; `service/deployment.go:StartDeployment` — только deploymentState. Можно одновременно запустить установку через две страницы; engine resource keys действуют внутри одного run. `ResumeDeployment` проверяет running до Load/создания adapter и не перепроверяет под второй блокировкой: два конкурентных запроса могут запустить два writer одной сессии. Start также не перепроверяет closed после подготовки. Нужны единый operation coordinator, повторная атомарная проверка и тест конкурентных вызовов; не считать MaxParallel=1 глобальным mutex.
 

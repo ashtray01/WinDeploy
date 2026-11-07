@@ -9,7 +9,7 @@
 | Компонент | Статус |
 | --- | --- |
 | `core/` (Go 1.20, Win7-совместимые API) | Inventory, профили, Task Engine, пакеты, сеть, SMB, драйверы, принтеры, браузеры, настройки, выполнение, отчёты |
-| Modern (Wails v3 + React, Windows 10/11 x64) | Все страницы, 37 UI-тестов; Wails EXE собирается, GUI smoke на текущем хосте заблокирован WebView2 |
+| Modern (Wails v3 + React, Windows 10/11 x64) | Все страницы, 37 UI-тестов; EXE собирается, реальный запуск/GUI smoke FAIL: ранний exit 1 до startup.log, причина не установлена |
 | Legacy (Go 1.20, нативный Walk, Windows 7 SP1 x86/x64) | Установка ПО, сеть/SMB, диагностика; реальное окно проверено на Windows 11 x64/x86, Win7 VM — нет |
 | CLI | `windeploy-inspect`, `windeploy-packages`, `windeploy-run` |
 

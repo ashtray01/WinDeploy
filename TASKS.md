@@ -2,7 +2,7 @@
 
 ## Текущий этап
 
-2026-11-07: аудит существующего preview, переход к Modern Windows 11/10 x64 (включая совместимые LTSC). Источник фактов — [docs/AUDIT.md](docs/AUDIT.md); команды и ограничения среды — [HANDOFF.md](HANDOFF.md). Наличие backend/страницы не означает завершение пользовательского сценария. Старые Stages 1–11 — история реализации, не критерий готовности MVP; полный прежний список сохранён в Git (`b990439:TASKS.md`).
+2026-11-07: startup diagnostics и P0-02/P0-05 реализованы и проверены backend/service тестами; запуск Modern GUI остаётся FAIL до main. Приоритет — Modern Windows 11/10 x64 (включая совместимые LTSC). Источник фактов — [docs/AUDIT.md](docs/AUDIT.md); команды и ограничения среды — [HANDOFF.md](HANDOFF.md). Наличие backend/страницы не означает завершение пользовательского сценария. Старые Stages 1–11 — история реализации, не критерий готовности MVP; полный прежний список сохранён в Git (`b990439:TASKS.md`).
 
 ## Завершено в этой итерации
 
@@ -18,6 +18,8 @@
 - [x] Общий process-local gate package/deployment от подготовки до завершения; повторные start/resume/shutdown checks. Конкурентные barrier tests PASS, включая 20 повторов. Другие standalone mutations и отдельные процессы этим gate не покрыты.
 
 ## P0 — блокирующие ошибки
+
+- [ ] Modern startup: свежий GUI/console EXE вне sandbox выходит 1 до новой записи startup.log. Найти причину интерактивно, восстановить окно и пройти реальный read-only GUI smoke. Sandbox console отдельно показывает COM DLL init panic; не объявлять её причиной внешнего exit 1.
 
 - [x] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
 - [ ] P0-03: убрать ложный Success при отложенной reboot verification (engine/deploy/state/reporting/UI). Готово: зависимости ждут подтверждения, состояние переживает restart, resume не переустанавливает завершённое; persistence/negative tests и затем Win11 VM. Не лечить простым изменением флага.
@@ -64,12 +66,14 @@
 
 Исторически Legacy Walk x86/x64 собиралась и окно проверялось на Windows 11; root проверялся Go 1.20.14. Это не Win7 runtime и не новый результат этой сессии. Сохранять достигнутую совместимость, если она не мешает Modern; новые несовместимые зависимости изолировать в Modern module.
 
-## Следующая итерация — 3 связанные задачи
+## Следующая итерация — 3 задачи
 
-| Задача | Приоритет / компоненты | Критерий готовности / проверка | Результат |
-|---|---|---|---|
-| 1. Runtime applicability | P0-02, deploy/CLI/service | tests start+resume с несовместимой/unknown OS, adapter calls=0; актуальная система при resume; go test/vet затронутых пакетов | Preview не противоречит safety gate выполнения |
-| 2. Общий mutation gate | P0-05, Modern service | concurrent package/deploy/resume requests, один run/writer, shutdown race tests; service test/vet | Исключены конкурирующие установки и порча сессий |
-| 3. Честная reboot boundary | P0-03, engine/deploy/reporting/UI | сначала согласовать локальный контракт; persistence/restart tests, зависимые не запускаются до verify; TS/UI tests | Непроверенная задача не выглядит успешной; явно указан предел VM verification |
+| Задача | Приоритет / компоненты | Критерий готовности / проверка |
+|---|---|---|
+| 1. Реальный запуск Modern | Startup/main/Wails/build | интерактивно локализовать exit 1 до main; минимальный доказанный fix; HWND/CDP/DOM/native Inventory и read-only bridge smoke PASS на Win11; Win10/LTSC отдельно |
+| 2. Честная reboot boundary | P0-03, engine/deploy/reporting/UI | зависимости ждут verify, persistence/restart tests, resume не переустанавливает завершённое; TS/UI tests; VM отдельно |
+| 3. User/machine context | P0-06, managers/service | fail-closed context gate или worker с исходным SID; unit tests и отдельный two-account VM gate |
 
-Каждую задачу завершать отдельным коммитом; если третья требует отдельной итерации, закончить первые две и зафиксировать её незавершённой. Не добавлять новые features вместо устранения этих блокеров. После итерации — интеграционные checks затронутых путей и HANDOFF.
+Завершённый текущий пакет: диагностика/production сборка (`90d9905`, runtime всё ещё FAIL), runtime applicability (`d81df3e`), package/deployment coordinator (`2d3562c`). Root test/vet/build и полная Modern сборка PASS; UI 37/37; конкурентные tests x20 PASS. Gate process-local и не охватывает остальные standalone mutations. Подробные команды/ограничения — HANDOFF.
+
+Каждую задачу завершать отдельным коммитом. Не добавлять новые features/Legacy; после итерации — HANDOFF и чистый Git. P0-04 остаётся следующим после указанного пакета.

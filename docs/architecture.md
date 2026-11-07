@@ -22,7 +22,7 @@ Standalone pages используют managers напрямую. Выполне�
 
 - `core/engine`: Task/TaskResult, DAG, precheck/execute/verify, bounded concurrency, opt-in retry, ResourceKey, checkpoints, resume. Не знает Windows и UI. Только Success/AlreadyInstalled удовлетворяют dependencies. MaxParallel/resources действуют внутри одного run.
 - `core/profiles`: strict bounded YAML schema v1, inheritance, clone, выбранные компоненты и dependency closure. Проверяет структуру, но не все adapter-specific parameters. `catalog` и `profiles` содержат встроенные данные; CLI/Modern `--profiles` допускают внешние YAML.
-- `core/inventory`: native system/CPU/RAM/disks/interfaces/registry apps, typed partial errors, collector и `Applicable/GuardAdapter`. GuardAdapter существует, но пока не подключён к deploy execution — P0-02.
+- `core/inventory`: native system/CPU/RAM/disks/interfaces/registry apps, typed partial errors, collector и `Applicable/GuardAdapter`. deploy.Runner получает fresh System на каждом Start/Resume (DI или Native.System), проверяет весь план до первой adapter phase и подключает GuardAdapter. Сохранённый System/preview не разрешает execution.
 - `core/packages`: source planning/detection, version comparison, HTTPS/file/WinGet, streaming hash/cache, Authenticode, silent execution и post-detection. Ошибка post-detection теперь Failed; target version, process-tree cancellation и reboot verification остаются ограничениями.
 - `core/network`: read-only DNS/TCP/ICMP/HTTP/SMB-445, gateways/DHCP. Это не изменение IP/DNS конфигурации.
 - `core/shares`: Credential Manager, WNet/1219, IShellLink; текущий пользователь процесса. `core/drivers`: SetupAPI/CM, INF catalog/signature, pnputil. `core/printers`: enumeration/PrintUI/default/GDI; TCP/IP port provisioning отсутствует.
@@ -35,7 +35,7 @@ Engine проверяет DAG, не применимость Windows автом�
 
 Success с reboot flag по контракту engine означает уже подтверждённую готовность. Текущий deploy.Adapter пропускает Verify при reboot, а Resume сохраняет Success. Post-reboot verification и boot identity **не реализованы**: P0-03, нельзя считать их готовыми по наличию кнопки Resume.
 
-Browser/windows Verify возвращает nil без read-back; некоторые warnings исчезают при deploy dispatch. Session Completed означает завершение run, а не отсутствие Failed. Глобальной сериализации изменений между standalone pages и deployment нет; P0-04/05.
+Browser/windows Verify возвращает nil без read-back; некоторые warnings исчезают при deploy dispatch. Session Completed означает завершение run, а не отсутствие Failed. Modern Service сериализует package/deployment preparation и execution общим operationGate, закрывая admission при shutdown. Gate не охватывает другие standalone mutations и другие процессы/CLI; межпроцессная защита session storage остаётся открытой.
 
 User-scoped HKCU/Desktop/CredMan разрешаются в контексте процесса. Контролируемого elevated worker, сохраняющего исходного пользователя, нет. Перезапуск под другой учётной записью может направить настройки не тому пользователю; это P0 до применения на рабочих станциях.
 
@@ -43,6 +43,6 @@ Persistent files записываются через temp/Sync/Close/Rename. Э�
 
 ## Проверка и развитие
 
-Сначала устранить execution safety/results gates, затем подтвердить один полный Modern install scenario в Win11 VM и расширять матрицу до Win10/LTSC. Следующая итерация: applicability, общий mutation gate, честная reboot boundary. Существующие Windows adapters сохраняются, необоснованный рефакторинг не нужен. Legacy CI/packaging пока исторически связаны с общим выпуском; отдельный Modern gate запланирован, workflows в этой итерации не менялись.
+Следующий пакет: восстановить реальный Modern startup, честная reboot boundary, user/machine context. Applicability и process-local package/deployment gate реализованы, подтверждены backend/service tests; UI runtime остаётся непроверенным из-за раннего exit. Затем один полный Modern install scenario в Win11 VM и расширение до Win10/LTSC. Существующие Windows adapters сохраняются. Legacy CI/packaging пока исторически связаны с общим выпуском; отдельный Modern release gate запланирован, workflows не менялись.
 
 Команды и результаты этой сессии — HANDOFF. Контракты engine — [execution.md](execution.md); аудит имеет приоритет над прежними заявлениями о готовности.
