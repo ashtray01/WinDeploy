@@ -45,7 +45,7 @@ Release workflow создаёт только draft. VM acceptance больше �
 | B2 | SMB-сервер и credentials context не проверены | Native list/.lnk read-back PASS; сервера нет | Тестовый SMB: connect, shortcut, repeat, 1219, no secret in report |
 | B3 | Лицензия не выбрана, owner/repo URL не зафиксированы | `LICENSE` — заглушка, remote отсутствует | Владелец выбирает лицензию и URL; README заменяет `OWNER` |
 | B4 | ~~Git-история не проверена на секреты/данные~~ | **Закрыт для среза:** secret-scan + history — 0 blocking; manual items — test/doc примеры | Повторить после финального docs commit; владелец проверяет findings |
-| B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual GUI EXE DOM/bridge/native smoke PASS, pageErrors=0, два viewport; screenshots обезличены | Повторять при UI/EXE изменениях |
+| B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual diagnostic/smoke GUI DOM/bridge/native smoke PASS, pageErrors=0, два viewport; production EXE без remote-debug; screenshots обезличены | Повторять при UI/EXE изменениях |
 | B6 | Нет GitHub-hosted CI и draft Release | Workflows готовы, remote нет | Remote, CI PASS, draft Release проверен |
 | B7 | Windows 10/LTSC scope | Не проверялись | **Решено:** beta только Windows 11 x64; не расширять без проверки |
 | B8 | Нет явного разрешения владельца на публикацию | Подготовка разрешена, публичный Release/репозиторий — нет | Явное решение владельца после B1/B2/B3/B6 |
