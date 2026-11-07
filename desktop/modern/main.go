@@ -6,7 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"windeploy/core/inventory"
@@ -49,12 +48,12 @@ func main() {
 	}
 	dataDir := *webviewDir
 	if dataDir == "" {
-		dataDir = filepath.Join(cache, "WinDeploy", "WebView2")
+		dataDir, err = prepareDefaultWebViewDataDir(cache, os.TempDir())
+	} else {
+		dataDir, err = prepareWebViewDataDir(dataDir)
 	}
-	dataDir, err = prepareWebViewDataDir(dataDir)
 	if err != nil {
-		logStation("каталог WebView2 недоступен: %v", err)
-		showStartupErrorMessage("WinDeploy — каталог WebView2 недоступен", "Не удалось записать данные WebView2.\n\n"+err.Error()+"\n\nУкажите доступный каталог флагом --webview-data-dir. Существующие данные не удалялись.")
+		handleWebViewDataDirFailure(err)
 		os.Exit(4)
 	}
 	logStation("каталог WebView2: %s", dataDir)

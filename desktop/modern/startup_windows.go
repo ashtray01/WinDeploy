@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
+	"windeploy/core/packages"
 )
 
 const webView2ClientGUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
@@ -37,6 +39,36 @@ func prepareWebViewDataDir(dir string) (string, error) {
 		return "", removeErr
 	}
 	return absolute, nil
+}
+
+// prepareDefaultWebViewDataDir keeps an existing user profile when it is
+// writable. A stale ACL, sandbox principal or antivirus lock must not prevent the
+// application from starting: a fresh directory under the same user cache and
+// finally under the user temp root are safe fallbacks. No existing directory is
+// deleted or repaired.
+func prepareDefaultWebViewDataDir(cache, temp string) (string, error) {
+	candidates := []string{
+		filepath.Join(cache, "WinDeploy", "WebView2"),
+		filepath.Join(cache, "WinDeploy", "WebView2-fallback"),
+	}
+	if temp != "" {
+		candidates = append(candidates, filepath.Join(temp, "WinDeploy", "WebView2"))
+	}
+	var firstErr, lastErr error
+	for index, candidate := range candidates {
+		dir, err := prepareWebViewDataDir(candidate)
+		if err == nil {
+			if index > 0 {
+				logStation("каталог WebView2 по умолчанию недоступен; используется резервный каталог: %s", dir)
+			}
+			return dir, nil
+		}
+		if firstErr == nil {
+			firstErr = err
+		}
+		lastErr = err
+	}
+	return "", fmt.Errorf("каталог WebView2 недоступен (primary: %v): %w", firstErr, lastErr)
 }
 
 // initStartupLog routes framework and internal diagnostics to a bounded local log
@@ -130,4 +162,51 @@ func showStartupErrorMessage(title, text string) {
 	titlePtr, _ := windows.UTF16PtrFromString(title)
 	textPtr, _ := windows.UTF16PtrFromString(text)
 	_, _ = windows.MessageBox(0, textPtr, titlePtr, windows.MB_OK|windows.MB_ICONERROR)
+}
+
+// handleWebViewDataDirFailure offers an explicit UAC restart when the process
+// cannot write any WebView2 data directory and the failure is a permission error.
+// It never elevates without a user click and never repairs ACLs automatically.
+func handleWebViewDataDirFailure(err error) {
+	logStation("каталог WebView2 недоступен: %v", err)
+	if isPermissionFailure(err) && !processIsElevated() {
+		const (
+			idYes = 6
+			text  = "WinDeploy не удалось записать данные WebView2.\n\n" +
+				"Возможная причина — недостаточные права на пользовательский каталог.\n\n" +
+				"Нажмите «Да», чтобы перезапустить WinDeploy от имени администратора.\n" +
+				"Будет показан запрос UAC; текущее окно закроется.\n" +
+				"«Нет» закроет приложение без изменений.\n\n" +
+				"Существующие данные WebView2 не удаляются. Системные изменения\n" +
+				"не выполнялись.\n\n" +
+				"Журнал запуска: %s"
+		)
+		titlePtr, _ := windows.UTF16PtrFromString("WinDeploy — требуется запуск от имени администратора")
+		message := fmt.Sprintf(text, startupLogPath)
+		textPtr, _ := windows.UTF16PtrFromString(message)
+		result, _ := windows.MessageBox(0, textPtr, titlePtr, windows.MB_YESNO|windows.MB_ICONWARNING|windows.MB_DEFBUTTON2)
+		if result == idYes {
+			if relaunchErr := packages.RelaunchElevated(""); relaunchErr != nil {
+				logStation("не удалось перезапустить с правами администратора: %v", relaunchErr)
+				showStartupErrorMessage("WinDeploy — не удалось перезапустить", "Запрос прав администратора не выполнен или был отменён.\n\nЗакройте окно и запустите WinDeploy вручную от имени администратора.\n\nЖурнал запуска: "+startupLogPath)
+				os.Exit(4)
+			}
+			os.Exit(0)
+		}
+		return
+	}
+	showStartupErrorMessage("WinDeploy — каталог WebView2 недоступен", "Не удалось записать данные WebView2 ни в пользовательский, ни в резервный временный каталог.\n\n"+err.Error()+"\n\nУкажите доступный каталог флагом --webview-data-dir. Существующие данные не удалялись.\n\nЖурнал запуска: "+startupLogPath)
+}
+
+func processIsElevated() bool {
+	token, err := windows.OpenCurrentProcessToken()
+	if err != nil {
+		return false
+	}
+	defer token.Close()
+	return token.IsElevated()
+}
+
+func isPermissionFailure(err error) bool {
+	return errors.Is(err, os.ErrPermission) || errors.Is(err, windows.ERROR_ACCESS_DENIED)
 }
