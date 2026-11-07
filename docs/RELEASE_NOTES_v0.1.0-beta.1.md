@@ -55,6 +55,9 @@ EXE **не подписан** сертификатом code signing. Windows Sma
 - Отчёты не содержат parameters задач; пароли SMB не пишутся в отчёт.
 - Нет автоматического повышения прав, elevated worker или скрытых изменений
   системы.
+- Production EXE не регистрирует `--smoke-port` и не включает WebView2 DevTools;
+  remote debugging доступен только в непакетируемой diagnostic-сборке с тегом
+  `smoke`.
 - Known Issues и residual risks: `docs/KNOWN_ISSUES.md`, `SECURITY.md`.
 
 ## Известные ограничения

@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"windeploy/core/inventory"
@@ -18,7 +17,6 @@ import (
 var assets embed.FS
 
 func main() {
-	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
 	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
 	webviewDir := flag.String("webview-data-dir", "", "use an explicit writable WebView2 data directory (does not delete existing data)")
 	logDir := flag.String("log-dir", "", "write startup.log in this directory instead of the default user cache")
@@ -30,11 +28,12 @@ func main() {
 	if startupLog != nil {
 		defer startupLog.Close()
 	}
-	if *smokePort != 0 && (*smokePort < 1024 || *smokePort > 65535) {
+	if err := validateSmoke(); err != nil {
 		logStation("некорректный порт отладки")
 		showStartupError()
 		os.Exit(2)
 	}
+	smoke := smokeEnabled()
 	if version, ok := webView2RuntimeVersion(); !ok {
 		logStation("WebView2 Runtime не обнаружен")
 		showWebView2Missing("не найден")
@@ -60,8 +59,8 @@ func main() {
 	}
 	logStation("каталог WebView2: %s", dataDir)
 	options := application.WindowsOptions{WebviewUserDataPath: dataDir, WndClass: mainWindowClass}
-	if *smokePort != 0 {
-		options.AdditionalBrowserArgs = []string{"--remote-debugging-address=127.0.0.1", "--remote-debugging-port=" + strconv.Itoa(*smokePort)}
+	if smoke {
+		options.AdditionalBrowserArgs = smokeBrowserArgs()
 	}
 	backend := service.New(inventory.Native{})
 	if *profileDir != "" {
@@ -84,7 +83,7 @@ func main() {
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "WinDeploy", Width: 1366, Height: 840, MinWidth: 1024, MinHeight: 640,
 		Windows:          application.WindowsWindow{Theme: application.Dark},
-		BackgroundColour: application.NewRGB(14, 18, 26), URL: "/", DevToolsEnabled: *smokePort != 0,
+		BackgroundColour: application.NewRGB(14, 18, 26), URL: "/", DevToolsEnabled: smoke,
 	})
 	logStation("окно создано, запуск Wails")
 	applyWindowIcon()

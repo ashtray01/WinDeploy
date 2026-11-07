@@ -119,7 +119,9 @@ try {
     if (!$info.FileVersion) { throw 'EXE has no file version resource' }
     if ($Diagnostic) {
         # A console subsystem preserves panics from dependency init(), before main/log setup.
-        Invoke-ModernStep go @('build', '-trimpath', '-buildvcs=false', '-tags', 'production', '-ldflags', $ldflags, '-o', (Join-Path $taskRoot 'bin/WinDeploy-Diagnostic-x64.exe'), '.')
+        # The explicit smoke tag is the only build that registers --smoke-port; it is
+        # intentionally not part of the production EXE or release package.
+        Invoke-ModernStep go @('build', '-trimpath', '-buildvcs=false', '-tags', 'production smoke', '-ldflags', $ldflags, '-o', (Join-Path $taskRoot 'bin/WinDeploy-Diagnostic-x64.exe'), '.')
     }
     Write-Host "Built $exe ($Version, $Commit)"
 } finally {

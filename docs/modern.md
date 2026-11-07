@@ -51,9 +51,9 @@ Remove-Item Env:GOBIN
 
 Сборка использует `-tags production`, чтобы EXE использовал production Wails runtime/embedded assets и не зависел от dev-server environment. `scripts/build-modern.ps1 -Diagnostic` дополнительно создаёт console `bin/WinDeploy-Diagnostic-x64.exe`. Запускайте `scripts/start-modern-diagnostic.ps1` из PowerShell для сохранения ранних ошибок в `local/modern-diagnostic.log`; launcher сообщает ненулевой exit, даже если main/startup.log не достигнуты. Диагностический EXE имеет те же bridge/mutation возможности — для диагностики не запускайте изменяющие операции на хосте.
 
-Проверка 2026-11-08 (beta `0.1.0-beta.1`): full build PASS, UI 46/46; actual GUI EXE DOM/bridge/native Inventory smoke PASS с отдельными workspace WebView2 UDF/log/state, native hostname и app count совпали, два viewport, pageErrors=0. Это не заменяет Windows 10/LTSC, real install, SMB и reboot acceptance. Скриншоты public beta — `docs/images/`; hostname в них заменён.
+Проверка 2026-11-08 (beta `0.1.0-beta.1`): full build PASS, UI 46/46; actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS с отдельными workspace WebView2 UDF/log/state, native hostname и app count совпали, два viewport, pageErrors=0. Production EXE собран без регистрации `--smoke-port`/DevTools. Это не заменяет Windows 10/LTSC, real install, SMB и reboot acceptance. Скриншоты public beta — `docs/images/`; hostname в них заменён.
 
-Запускать **файл**, не вставлять его текст в PowerShell: `.\scripts\start-modern-diagnostic.ps1 -WebViewDataDir "$PWD\local\webview-user"`. В построчном вводе `$PSScriptRoot` пуст. Launcher также принимает `-SmokePort 9223`; GUI EXE — `--webview-data-dir PATH --smoke-port 9223`. Новый каталог не копирует/удаляет старые данные и не меняет storage сессий. Скрипт блокируется до выхода приложения; ошибки/exit пишутся в терминал и local log.
+Запускать **файл**, не вставлять его текст в PowerShell: `.\scripts\start-modern-diagnostic.ps1 -WebViewDataDir "$PWD\local\webview-user"`. В построчном вводе `$PSScriptRoot` пуст. Launcher принимает `-SmokePort 9223`; поддержка `--smoke-port` есть только у diagnostic-сборки, собранной с тегом `smoke`, а не у production EXE. Новый каталог не копирует/удаляет старые данные и не меняет storage сессий. Скрипт блокируется до выхода приложения; ошибки/exit пишутся в терминал и local log.
 
 Скрипт проверяет module cache с временным workspace `local/_modern-verify/go.work`, включающим root и Modern. В Go 1.26.2 обычный `go mod verify` вложенного модуля ошибочно пытался проверить отсутствующий zip локального `windeploy v0.0.0`; workspace делает оба локальных модуля main modules. Он используется только при verify; окружение восстанавливается. Root проверки остаются независимыми.
 
@@ -72,13 +72,15 @@ Remove-Item Env:GOBIN
 ## Реальный GUI smoke
 
 Соберите CLI независимо: `go build -o bin/WinDeploy-Inspect-Windows-x64.exe ./cmd/windeploy-inspect`.
-Запустите GUI с `--smoke-port 9223` (при необходимости с отдельным `--webview-data-dir "$PWD\local\webview-user"`), затем из корня:
+Соберите diagnostic/smoke EXE: `./scripts/build-modern.ps1 -Diagnostic`, затем запустите
+`bin/WinDeploy-Diagnostic-x64.exe` с `--smoke-port 9223` (при необходимости с отдельным
+`--webview-data-dir "$PWD\local\webview-user"`), затем из корня:
 
 ```powershell
 node scripts/gui-modern-smoke.mjs
 ```
 
-Обе программы должны работать под одним пользователем. В sandbox GUI требует интерактивного запуска вне файловых ограничений для пользовательского WebView2 cache; sandbox HKCU отличается от интерактивного HKCU. Playwright подключается к настоящему WebView2, отдельный browser не скачивается. Proxy variables отключаются только внутри smoke-процесса для localhost. Порт/debug tools включаются только явным флагом; при обычном запуске они выключены.
+Обе программы должны работать под одним пользователем. В sandbox GUI требует интерактивного запуска вне файловых ограничений для пользовательского WebView2 cache; sandbox HKCU отличается от интерактивного HKCU. Playwright подключается к настоящему WebView2, отдельный browser не скачивается. Proxy variables отключаются только внутри smoke-процесса для localhost. Production EXE не регистрирует `--smoke-port` и не включает DevTools; remote debugging доступен только в непакетируемой diagnostic-сборке с тегом `smoke`.
 
 Smoke сравнивает hostname/число программ с native CLI, проверяет rescan, таблицы/поиск/сортировку, Administrator DAG, несовместимость Legacy на текущем Windows 11, каталог ПО с выбором программ, диагностику сети, страницу сетевых папок, журнал и два размера окна. Частные screenshots сохраняются только в игнорируемый `local/`. Тест предполагает текущую Windows 11, что явно проверяется; для другой ОС нужна соответствующая проверка требований профиля.
 
