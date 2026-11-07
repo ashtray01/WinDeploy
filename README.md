@@ -33,6 +33,10 @@ scripts/package-release.ps1 -Version 0.1.0-preview.1
 
 Артефакты — `bin/` и `dist/`; release-процесс и ограничения — [docs/release.md](docs/release.md).
 
+Для окна Modern запускайте `bin/WinDeploy-Windows-x64.exe`. Файлы Inspect/Packages/Run — консольные CLI: открывайте PowerShell и передавайте `help`/`--help`; двойной щелчок не открывает GUI. `bin` может содержать старые сборки: используйте свежий результат `scripts/build-modern.ps1`.
+
+Если Modern сразу закрывается: `scripts/build-modern.ps1 -Diagnostic`, затем `scripts/start-modern-diagnostic.ps1` из PowerShell. Консольная сборка сохраняет ранние ошибки DLL/COM, возникающие ещё до журнала приложения; вывод — `local/modern-diagnostic.log`. Перед передачей журнала проверьте его на персональные пути. Сборка EXE не подтверждает запуск окна.
+
 ## Документация
 
 - [Архитектура](docs/architecture.md)

@@ -6,6 +6,8 @@
 
 ## Завершено в этой итерации
 
+- [x] Диагностика раннего выхода Modern: production build tag, отдельный console EXE и `scripts/start-modern-diagnostic.ps1`. Полная сборка/37 UI tests PASS вне sandbox; запуск окна остаётся FAIL (exit 1 до main, sandbox console показывает DLL/COM init panic). Это диагностическое улучшение, не исправленный GUI runtime.
+
 - [x] Аудит всех подсистем, bridge и сценариев A–H, матрица доказательств и security findings (`5a52c7e`).
 - [x] P0-01: detection error после exit 0 больше не даёт Success (`972e44e`); regression FAIL до изменения, PASS после.
 - [x] Перепланирование P0–P3; Legacy вынесена в FROZEN.

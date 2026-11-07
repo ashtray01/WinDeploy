@@ -1,4 +1,4 @@
-param([string]$Wails = '', [switch]$InstallDependencies)
+param([string]$Wails = '', [switch]$InstallDependencies, [switch]$Diagnostic)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 if (!$Wails) { $Wails = Join-Path $taskRoot 'cache/tools/wails-3.1/wails3.exe' }
@@ -42,7 +42,11 @@ try {
     [IO.File]::WriteAllText($taskWorkFile, "go 1.26.0`nuse (`n`"$taskWorkRoot`"`n`"$taskWorkRoot/desktop/modern`"`n)`n")
     $env:GOWORK = $taskWorkFile
     try { Invoke-ModernStep go @('mod', 'verify') } finally { $env:GOWORK = $taskOldWork }
-    Invoke-ModernStep go @('build', '-ldflags', '-H windowsgui', '-o', (Join-Path $taskRoot 'bin/WinDeploy-Windows-x64.exe'), '.')
+    Invoke-ModernStep go @('build', '-tags', 'production', '-ldflags', '-H windowsgui', '-o', (Join-Path $taskRoot 'bin/WinDeploy-Windows-x64.exe'), '.')
+    if ($Diagnostic) {
+        # A console subsystem preserves panics from dependency init(), before main/log setup.
+        Invoke-ModernStep go @('build', '-tags', 'production', '-o', (Join-Path $taskRoot 'bin/WinDeploy-Diagnostic-x64.exe'), '.')
+    }
 } finally {
     Pop-Location
     $env:GOCACHE = $taskOldCache
