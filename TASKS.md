@@ -23,8 +23,9 @@ Release workflow создаёт только draft. VM acceptance больше �
 - [x] **Core journey**: preview-before-execute, explicit package selection and
   confirmation, честные failed/empty статусы, потеря polling видна, Legacy не
   выбирается по умолчанию, version в UI/EXE, startup log не теряет запись при
-  недоступном stderr. Actual diagnostic/smoke GUI smoke PASS (native hostname/app
-  count, два viewport, pageErrors=0) (`96e9fb1`, `f90b7bf`).
+  недоступном stderr, WebView2 fallback с admin-relaunch. Actual diagnostic/smoke
+  GUI smoke PASS (native hostname/app count, два viewport, pageErrors=0)
+  (`96e9fb1`, `f90b7bf`, `603919c`).
 - [x] **Release infrastructure**: `VERSION`, version gate, Modern-only CI,
   Modern release workflow (draft pre-release), SHA256SUMS/portable ZIP,
   `verify-version.ps1`, `package-modern-release.ps1`, production EXE без
