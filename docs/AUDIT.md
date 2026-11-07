@@ -98,7 +98,7 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 - Новый `TestInstallDetectionFailureCannotReportSuccess`: FAIL до исправления (ложный Success); после исправления `go test ./core/packages ./core/deploy ./cmd/windeploy-packages -count=1` и соответствующий vet — PASS. gofmt и diff check выполнены.
 - `npm test` — 37/37, 16 файлов; `npm run build` (strict tsc + Vite) — PASS. Lint НЕ запускался: script отсутствует.
 - `scripts/build-modern.ps1` — итоговый PASS: bindings, 37 UI tests, frontend build, Modern Go tests/vet, module verification, EXE. Первый sandbox запуск упал при user32 init; второй — TEMP Access denied. Успех получен с TEMP/TMP/GOTMPDIR=`<repo>/local/audit-temp` и разрешённым запуском вне sandbox. Прямой ранний service test также падал на checkpoint в системном TEMP; полная сборка с workspace TEMP прошла. Не скрывать эту зависимость среды.
-- Desktop: запуск собранного EXE с `--smoke-port 9223` и `node scripts/gui-modern-smoke.mjs` выполняется отдельно; окончательный результат записан в HANDOFF. Сам факт EXE build не доказывает UI runtime.
+- Desktop: собранный EXE запущен с `--smoke-port 9223`; `node scripts/gui-modern-smoke.mjs` завершился exit 1: `Desktop WebView2 unavailable`. CDP/DOM/bridge проверки не достигнуты. Причина именно этого запуска не локализована; исторический 0x8000FFFF не выдаётся за новую диагностику. Сам факт EXE build не доказывает UI runtime.
 - Native установки, SMB server, print job, policies/settings, Windows 10/LTSC VM, reboot, race detector и GitHub-hosted CI не подтверждены этой сессией. Test coverage измеряет выполняемые ветки, не production readiness.
 
 ## Security Findings
@@ -128,3 +128,6 @@ Root `go.mod`: Go 1.20, yaml v3.0.4, x/sys v0.6.0. `desktop/modern`: Go 1.26.0, 
 5. P3: UX, performance, дополнительные профили, редактор и документация. Legacy — отдельное FROZEN; возвращение только по решению владельца.
 
 Конкретная следующая итерация с критериями и командами — в `TASKS.md` и `HANDOFF.md`.
+
+### Итоговое измерение покрытия
+После исправления: root go test ./... -count=1 -cover с теми же двумя исключениями — PASS вне sandbox с workspace TEMP. Sandbox попытка падала на DLL initialization в native COM/KnownFolder tests. Покрытие statements: engine 96.6%, profiles 93.8%, inventory 83.6%, network 82.2%, state 80.7%, reporting 78.3%, drivers 76.3%, packages 63.6%, settings 62.7%, printers 56.1%, shares 50.9%, browsers 50.0%, deploy 43.0%. Низкое deploy coverage и отсутствие изменяющего E2E остаются пробелами; это не общий процент production-готовности.

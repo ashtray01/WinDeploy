@@ -26,7 +26,7 @@ results, err := engine.Resume(ctx, tasks, adapter, snapshot, engine.ResumeOption
 
 Resume не запускает повторно Success/AlreadyInstalled/NotApplicable и явно пропущенные задачи. Failed сохраняется, если администратор явно не задал RetryFailed. Running/Cancelled и пропуски из-за зависимостей возвращаются в план через Precheck. Успешные сохранённые результаты не перепроверяются по live inventory; это доверенный отчёт предыдущего выполнения, не факт текущего состояния системы.
 
-RebootRequired поддерживается как флаг проверенного успеха. Если адаптер вернул reboot, Verify задачи считается отложенной до перезагрузки (задача не помечается Failed); после перезагрузки администратор продолжает сохранённую сессию. `Resume` по-прежнему отклоняет сохранённый status RebootRequired, поэтому адаптер не выставляет его как статус результата. Boot-ID validation и автоматический запуск при входе не реализованы.
+RebootRequired по контракту engine — флаг проверенного успеха. Текущий deploy.Adapter нарушает этот контракт: пропускает Verify для reboot, после чего Success сохраняется Resume без новой проверки. Отложенная post-reboot verification не реализована; зависимые задачи могут стартовать преждевременно (P0-03, docs/AUDIT.md). Resume отклоняет status RebootRequired; boot-ID validation и автоматический запуск при входе отсутствуют. Не обещать корректное reboot continuation.
 
 ## Интеграция профилей: `core/deploy`
 
@@ -38,8 +38,8 @@ RebootRequired поддерживается как флаг проверенно
 | shares | перечисление WNet: UNC уже подключён → AlreadyInstalled | `shares.Manager.Add` (пароль только из Credential Manager) | подключение подтверждено |
 | drivers | устройство с Hardware ID уже ok → AlreadyInstalled | `drivers.Manager.Install` | устройство ok |
 | printers | очередь с именем существует → AlreadyInstalled | `printers.Manager.Add` | очередь существует |
-| browsers | Pending | политики Chromium/Firefox | Execute уже валидирует запись |
-| windows | Pending | computer-name/timezone/explorer/power-plan | Execute |
+| browsers | Pending | политики Chromium/Firefox | nil без read-back; warnings теряются в deploy |
+| windows | Pending | computer-name/timezone/explorer/power-plan | nil без read-back |
 | diagnostics | Pending | DNS/DHCP/gateway/TCP/ICMP/HTTP/SMB | Execute |
 
 Пароли никогда не читаются из параметров профиля; для shares используется Windows Credential Manager. Параметры компонентов в отчёт не попадают.

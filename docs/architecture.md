@@ -1,43 +1,48 @@
-# Архитектурный каркас
+# Архитектура WinDeploy
 
-Корневой Go-модуль `windeploy` содержит общее ядро с директивой `go 1.20`. Прямые зависимости — go.yaml.in/yaml/v3 v3.0.4 для профилей и golang.org/x/sys v0.6.0 для Windows API/registry. Путь модуля локальный, до появления remote не привязан к GitHub.
+## Стратегия и границы
 
-Реализованы `core` (граница общего слоя), `core/engine` (модели, DAG, исполнение и resume), `core/state` (JSON checkpoints), `core/profiles` (YAML/наследование/планы), `core/inventory` (read-only Windows providers/collector/applicability), `core/packages` (каталог/детекция/загрузка/установка), `core/network` (диагностика), `core/shares` (UNC, Credential Manager, ярлыки), `core/drivers` (PnP/INF), `core/printers` (очереди/порты/тестовая печать), `catalog` (встроенный каталог ПО) и CLI `cmd/windeploy-inspect`, `cmd/windeploy-packages`. Пустые каталоги будущих компонентов не создаются.
+Основной продукт — Modern для Windows 11/10 x64, включая совместимые LTSC; реальные builds/VM остаются отдельным доказательством. Windows 7/Legacy заморожена до решения владельца. Источник технических ограничений — [AUDIT.md](AUDIT.md), приоритетов — [../TASKS.md](../TASKS.md).
 
-Будущие границы:
+| Модуль | Ответственность |
+|---|---|
+| root `windeploy`, Go 1.20 | core, embedded catalog/profiles, CLI inspect/packages/run; без Wails |
+| `desktop/modern`, Go 1.26.0 | Wails v3.1.0, service adapters/DTO, React/TypeScript, generated bindings; local replace root |
+| `legacy`, Go 1.20/Walk | сохранённый нативный GUI; FROZEN |
 
-| Путь | Ответственность |
-| --- | --- |
-| `core/engine` | План DAG, выполнение, отмена, управление статусами |
-| `core/profiles`, `core/inventory` | Профили и факты о системе |
-| `core/packages`, `core/drivers` | Установка пакетов и драйверов (реализовано) |
-| `core/network`, `core/shares`, `core/printers` | Диагностика, сетевые ресурсы и принтеры (реализовано) |
-| `legacy/` | Нативный Windows 7 GUI (Go 1.20, Walk, x86/x64) |
-| `core/browsers`, `core/security` | Настройки браузеров (реализовано), credentials и повышение прав |
-| `core/state`, `core/reporting`, `core/deploy` | Возобновление, журнал, отчёты, выполнение профилей (реализовано) |
-| `desktop`, `frontend` | Modern UI; отдельный Go-модуль при несовместимых требованиях toolchain |
-| `legacy` | Нативный UI, Go 1.20, Windows 7 SP1 x86/x64 |
+Core остаётся на Go 1.20, Modern-specific зависимости изолируются. Ни директива go.mod, ни сборка не доказывают runtime совместимость. Старые Go 1.20.14/Win11 x86 результаты сохранены в истории; новые Win7 проверки не являются обязательными.
 
-Модель Task декларативная: параметры, требования ОС, зависимости, timeout и статус. TaskResult хранит итог, время, диагностическую строку и необходимость перезагрузки. Эти структуры допускают JSON-сериализацию, но не реализуют persistent state. Статусы в JSON совпадают с именами из ТЗ; нулевой статус недопустим. Timeout сериализуется числом наносекунд, ноль означает настройку исполнителя по умолчанию.
+## Реальный поток приложения
 
-`Task.Validate` проверяет только локальную структуру. `engine.OrderTasks([]Task) ([]Task, error)` дополнительно проверяет уникальность ID, существование зависимостей и отсутствие циклов. Возвращается новый срез задач в топологическом порядке; среди готовых задач выбирается задача с наименьшим исходным индексом. Пустой план допустим. При ошибке частичный план не возвращается. Вход не меняется; вложенные maps/slices остаются общими с выходом, поскольку копирование Task поверхностное. В диагностике цикла перечисляются все неразрешённые задачи, включая заблокированные циклом.
+React page → `frontend/src/bridge.ts` → generated Wails Service bindings → `desktop/modern/service` → core manager → Windows adapter. Transport реальный, production mock fallback отсутствует. Service содержит как read-only Inventory/preview, так и методы install/settings; старый запрет execute/install bridge больше не соответствует продукту.
 
-Проверка требований ОС реализована в inventory.Applicable/GuardAdapter; прямой engine.Run не определяет ОС автоматически. Произвольные переходы статусов не поддерживаются. Строки parameters/error не должны содержать секретов; автоматическое маскирование пока отсутствует.
+Standalone pages используют managers напрямую. Выполнение профиля идёт через BuildPlan → `deploy.Runner` → `engine.Adapter` (`deploy.Adapter`) → те же core managers. CLI собирает зависимости отдельно. Именно различия между этими путями требуют integration tests: standalone Result с warnings сейчас не полностью переносится в TaskResult/отчёт.
 
-`engine.Run(ctx, tasks, adapter)` принимает только Pending-задачи и проверяет весь план до вызова адаптера. Результаты возвращаются в порядке OrderTasks; исходные Task не обновляются. Интерфейс Adapter отделён от модели: Precheck возвращает Pending для выполнения либо AlreadyInstalled/NotApplicable/Skipped для завершения без Execute; Execute возвращает признак перезагрузки; Verify подтверждает результат. Неподдерживаемый исход Precheck — ошибка задачи. Во всех фазах адаптер получает Task со статусом Running и обязан не менять вложенные данные.
+## Компоненты
 
-Зависимости разрешают только Success и AlreadyInstalled. Ошибка задачи не останавливает независимые задачи, но транзитивно блокирует зависимые (Skipped). Success с флагом перезагрузки означает, что Verify подтвердил готовность; откладывать непроверенную операцию до перезагрузки пока нельзя. Проверка применимости ОС возложена на Precheck; реальных адаптеров ещё нет.
+- `core/engine`: Task/TaskResult, DAG, precheck/execute/verify, bounded concurrency, opt-in retry, ResourceKey, checkpoints, resume. Не знает Windows и UI. Только Success/AlreadyInstalled удовлетворяют dependencies. MaxParallel/resources действуют внутри одного run.
+- `core/profiles`: strict bounded YAML schema v1, inheritance, clone, выбранные компоненты и dependency closure. Проверяет структуру, но не все adapter-specific parameters. `catalog` и `profiles` содержат встроенные данные; CLI/Modern `--profiles` допускают внешние YAML.
+- `core/inventory`: native system/CPU/RAM/disks/interfaces/registry apps, typed partial errors, collector и `Applicable/GuardAdapter`. GuardAdapter существует, но пока не подключён к deploy execution — P0-02.
+- `core/packages`: source planning/detection, version comparison, HTTPS/file/WinGet, streaming hash/cache, Authenticode, silent execution и post-detection. Ошибка post-detection теперь Failed; target version, process-tree cancellation и reboot verification остаются ограничениями.
+- `core/network`: read-only DNS/TCP/ICMP/HTTP/SMB-445, gateways/DHCP. Это не изменение IP/DNS конфигурации.
+- `core/shares`: Credential Manager, WNet/1219, IShellLink; текущий пользователь процесса. `core/drivers`: SetupAPI/CM, INF catalog/signature, pnputil. `core/printers`: enumeration/PrintUI/default/GDI; TCP/IP port provisioning отсутствует.
+- `core/browsers`: Chromium/Firefox policies и webapp shortcuts; `core/settings`: rename/timezone/Explorer/power, read-only update/licensing. Нет единого read-back/rollback контракта.
+- `core/state`: отдельный snapshot FileStore; `core/deploy`: dispatch + полные session files + runner. `core/reporting`: JSON/escaped HTML без task parameters. Сессии содержат параметры и требуют trusted storage/ACL.
 
-Timeout охватывает три фазы, ноль оставляет только deadline родительского context. Локальный timeout даёт Failed, отмена/deadline родительского плана — Cancelled с возвратом ctx.Err(). Незапущенные задачи имеют нулевой StartedAt. FinishedAt заполняется для всех результатов. Ошибки отдельных задач представлены в TaskResult, а не в error возврата Run; вызывающий код обязан проверять результаты. Некорректный план/не-Pending статус/отсутствующий адаптер возвращают ошибку без результатов и без запуска операций.
+## Контракты и известные нарушения
 
-Отмена кооперативная: адаптер должен учитывать context и безопасно завершать операции. Run не оставляет работающие операции после возврата и дожидается адаптера. Исходные ошибки адаптера не попадают в TaskResult: сохраняется только этап ошибки. Подробная безопасная диагностика и логирование ещё не реализованы.
+Engine проверяет DAG, не применимость Windows автоматически; Adapter обязан проверить requirements. Timeouts/отмена кооперативны; engine ждёт adapter, CommandContext не гарантирует завершение дерева installer children. Errors отдельных tasks отражаются в results; nil error Run не означает успех всех задач.
 
-RunWithOptions добавляет явные ограниченные retries, MaxParallel и checkpoint storage. ResourceKey исключает конфликтующие задачи, Windows Installer использует общий windows-installer. PreviewPlan показывает независимые метаданные без Parameters. Resume связывает snapshot с точным Pending-планом, сохраняет завершённые исходы, а interrupted возвращает через Precheck; Failed требует явного RetryFailed. Контракты и ограничения — в [execution.md](execution.md).
+Success с reboot flag по контракту engine означает уже подтверждённую готовность. Текущий deploy.Adapter пропускает Verify при reboot, а Resume сохраняет Success. Post-reboot verification и boot identity **не реализованы**: P0-03, нельзя считать их готовыми по наличию кнопки Resume.
 
-Профили schema v1 используют строгий YAML, single-parent inheritance и ручной выбор с включением зависимостей. Clone и BuildPlan копируют изменяемые данные. Примеры не подтверждают наличие пакетов или совместимость установщиков. Подробности — в [profiles.md](profiles.md).
+Browser/windows Verify возвращает nil без read-back; некоторые warnings исчезают при deploy dispatch. Session Completed означает завершение run, а не отсутствие Failed. Глобальной сериализации изменений между standalone pages и deployment нет; P0-04/05.
 
-Engine не обращается к UI и не запускает системные команды. Реестр адаптеров пока отсутствует; вызывающий код передаёт один адаптер для плана.
+User-scoped HKCU/Desktop/CredMan разрешаются в контексте процесса. Контролируемого elevated worker, сохраняющего исходного пользователя, нет. Перезапуск под другой учётной записью может направить настройки не тому пользователю; это P0 до применения на рабочих станциях.
 
-Inventory отделён от UI, возвращает typed Report и секционные статусы, не запускает команды/установщики и не меняет ОС. Windows-specific API изолированы build tags, доступен injectable Provider. CLI связывает Inventory/Profiles/Preview для реальной безопасной проверки целого проекта. Контракты, ограничения и первичные источники — в [inventory.md](inventory.md).
+Persistent files записываются через temp/Sync/Close/Rename. Это не гарантия power-loss durability; Windows ACL и один writer обязательны. Plan hash связывает snapshot с планом, но не аутентифицирует владельца. Отчёты исключают parameters, а журналы ограничены и преимущественно находятся в памяти; полный durable operation log ещё требуется.
 
-Указание Go 1.20 в go.mod не доказывает совместимость: нужна проверка этим toolchain и запуск в VM. Windows-specific API следует изолировать через build tags и адаптеры; современные зависимости UI не должны попадать в общее ядро.
+## Проверка и развитие
+
+Сначала устранить execution safety/results gates, затем подтвердить один полный Modern install scenario в Win11 VM и расширять матрицу до Win10/LTSC. Следующая итерация: applicability, общий mutation gate, честная reboot boundary. Существующие Windows adapters сохраняются, необоснованный рефакторинг не нужен. Legacy CI/packaging пока исторически связаны с общим выпуском; отдельный Modern gate запланирован, workflows в этой итерации не менялись.
+
+Команды и результаты этой сессии — HANDOFF. Контракты engine — [execution.md](execution.md); аудит имеет приоритет над прежними заявлениями о готовности.

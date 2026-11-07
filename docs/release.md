@@ -41,8 +41,11 @@ Offline-файлы ищутся в `cache/Downloads/artifacts` и `local/offline
 - [x] Legacy x64/x86 test/vet/selftest + реальное окно на Windows 11.
 - [x] Portable/offline ZIP и SHA256SUMS.
 - [ ] Modern GUI smoke на машине с работающим WebView2.
-- [ ] Windows 7 SP1 VM, Windows 10/11 VM.
+- [ ] Windows 10/11 (включая выбранные LTSC) VM; Windows 7 VM — FROZEN и не gate Modern.
 - [ ] Реальные установки ПО/драйверов/принтеров, SMB, политики и настройки.
 - [ ] GitHub remote/release.
 
 До выполнения этих пунктов выпускать стабильный v0.1.0 нельзя; текущие ZIP — preview-артефакты.
+
+## Стратегия после аудита 2026-11-07
+Modern — основной продукт. Legacy код и описанные выше исторические bundles сохранены, но дальнейшая Legacy-разработка заморожена. Устранение P0 из AUDIT.md и реальный Modern MVP E2E обязательны до стабильного выпуска. Текущие workflows ещё связаны с Legacy packaging и не обеспечивают эти gates автоматически; разделение Modern release запланировано в TASKS.md.

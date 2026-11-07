@@ -4,7 +4,7 @@
 
 ## Состояние
 
-Реализованы Stages 1–11. Проект находится в статусе **preview**: ядро, Modern GUI, Legacy GUI, CLI и release-скрипты готовы, но реальные изменяющие операции и VM-матрица (особенно Windows 7 SP1) не проверены. Это не production-релиз.
+Проект находится в статусе **preview**. Приоритет — Modern Windows 11/10 x64, включая совместимые LTSC. Backend и страницы GUI реализованы, но аудит выявил блокирующие ошибки выполнения и непроверенные сценарии. Legacy Windows 7 заморожена; её код сохранён и не блокирует Modern. Фактическое состояние: [технический аудит](docs/AUDIT.md), [ближайшие задачи](TASKS.md). Это не production-релиз.
 
 | Компонент | Статус |
 | --- | --- |
@@ -16,13 +16,15 @@
 ## Сборка
 
 ```powershell
-# Core Go 1.20 amd64+386 test/vet/build
-scripts/test-core.ps1 -Go local/_toolchains/go1.20.14/go/bin/go.exe
+# Основные проверки root установленным Go (директива модуля остаётся 1.20)
+go test ./... -skip 'TestWindowsCredentialStoreRoundTrip|TestRegistryStoreRoundTrip'
+go vet ./...
+go build ./...
 
 # Modern EXE
 scripts/build-modern.ps1
 
-# Legacy x64/x86 + GUI smoke
+# FROZEN: Legacy x64/x86 + GUI smoke только после отдельного решения
 scripts/build-legacy.ps1 -GuiSmoke
 
 # Portable/offline ZIP + SHA256SUMS
