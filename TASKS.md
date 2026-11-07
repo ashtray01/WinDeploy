@@ -6,6 +6,8 @@
 
 ## Завершено в этой итерации
 
+- [x] Startup logger сохраняет stderr при отказе файла; WebView2 data-directory probe и явный --webview-data-dir без очистки старого профиля. Console EXE с новым workspace UDF: настоящий GUI/DOM/bridge smoke PASS на текущем Win11, native Inventory совпал, pageErrors=0. Старый UDF давал 800700aa; default user launch отдельно.
+
 - [x] Диагностика раннего выхода Modern: production build tag, отдельный console EXE и `scripts/start-modern-diagnostic.ps1`. Полная сборка/37 UI tests PASS вне sandbox; запуск окна остаётся FAIL (exit 1 до main, sandbox console показывает DLL/COM init panic). Это диагностическое улучшение, не исправленный GUI runtime.
 
 - [x] Аудит всех подсистем, bridge и сценариев A–H, матрица доказательств и security findings (`5a52c7e`).

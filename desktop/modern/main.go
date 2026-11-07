@@ -18,9 +18,16 @@ import (
 var assets embed.FS
 
 func main() {
-	initStartupLog()
+	startupLog, startupErr := initStartupLog()
+	if startupErr != nil {
+		logStation("не удалось открыть журнал запуска: %v", startupErr)
+	}
+	if startupLog != nil {
+		defer startupLog.Close()
+	}
 	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
 	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
+	webviewDir := flag.String("webview-data-dir", "", "use an explicit writable WebView2 data directory (does not delete existing data)")
 	flag.Parse()
 	if *smokePort != 0 && (*smokePort < 1024 || *smokePort > 65535) {
 		logStation("некорректный порт отладки")
@@ -40,7 +47,18 @@ func main() {
 		showStartupError()
 		os.Exit(4)
 	}
-	options := application.WindowsOptions{WebviewUserDataPath: filepath.Join(cache, "WinDeploy", "WebView2")}
+	dataDir := *webviewDir
+	if dataDir == "" {
+		dataDir = filepath.Join(cache, "WinDeploy", "WebView2")
+	}
+	dataDir, err = prepareWebViewDataDir(dataDir)
+	if err != nil {
+		logStation("каталог WebView2 недоступен: %v", err)
+		showStartupErrorMessage("WinDeploy — каталог WebView2 недоступен", "Не удалось записать данные WebView2.\n\n"+err.Error()+"\n\nУкажите доступный каталог флагом --webview-data-dir. Существующие данные не удалялись.")
+		os.Exit(4)
+	}
+	logStation("каталог WebView2: %s", dataDir)
+	options := application.WindowsOptions{WebviewUserDataPath: dataDir}
 	if *smokePort != 0 {
 		options.AdditionalBrowserArgs = []string{"--remote-debugging-address=127.0.0.1", "--remote-debugging-port=" + strconv.Itoa(*smokePort)}
 	}

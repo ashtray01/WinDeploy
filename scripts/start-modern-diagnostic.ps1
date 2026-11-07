@@ -1,4 +1,5 @@
 # Run from a PowerShell terminal. This only launches the app; it installs nothing.
+param([string]$WebViewDataDir = '', [int]$SmokePort = 0)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskExe = Join-Path $taskRoot 'bin/WinDeploy-Diagnostic-x64.exe'
@@ -13,12 +14,15 @@ Write-Host "Diagnostic output: $taskLog"
 $taskPreviousPreference = $ErrorActionPreference
 try {
     $ErrorActionPreference = 'Continue'
-    & $taskExe 2>&1 | Tee-Object -FilePath $taskLog
+    $taskArguments = @()
+    if ($WebViewDataDir) { $taskArguments += @('--webview-data-dir', $WebViewDataDir) }
+    if ($SmokePort) { $taskArguments += @('--smoke-port', "$SmokePort") }
+    & $taskExe @taskArguments 2>&1 | Tee-Object -FilePath $taskLog
     $taskExit = $LASTEXITCODE
 } finally {
     $ErrorActionPreference = $taskPreviousPreference
 }
 Write-Host "WinDeploy exit code: $taskExit"
 if ($taskExit -ne 0) {
-    throw "WinDeploy failed before or during startup (exit $taskExit). See $taskLog and %LOCALAPPDATA%\WinDeploy\logs\startup.log. An absent/newly unchanged startup.log means main may not have been reached."
+    throw "WinDeploy failed before or during startup (exit $taskExit). See $taskLog and %LOCALAPPDATA%\WinDeploy\logs\startup.log. The file log may be unavailable; console output contains the current startup evidence."
 }

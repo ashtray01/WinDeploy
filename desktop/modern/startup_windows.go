@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
@@ -16,42 +15,65 @@ const webView2ClientGUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 
 var startupLogPath string
 
+func prepareWebViewDataDir(dir string) (string, error) {
+	absolute, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(absolute, 0o700); err != nil {
+		return "", fmt.Errorf("WebView2 data directory %s: %w", absolute, err)
+	}
+	probe, err := os.CreateTemp(absolute, ".windeploy-write-probe-*")
+	if err != nil {
+		return "", fmt.Errorf("WebView2 data directory %s: %w", absolute, err)
+	}
+	name := probe.Name()
+	closeErr := probe.Close()
+	removeErr := os.Remove(name)
+	if closeErr != nil {
+		return "", closeErr
+	}
+	if removeErr != nil {
+		return "", removeErr
+	}
+	return absolute, nil
+}
+
 // initStartupLog routes framework and internal diagnostics to a bounded local log
 // file. GUI builds have no usable stderr, so this is the only durable evidence for
 // a failed startup. The file contains no credentials or user documents.
-func initStartupLog() {
+func initStartupLog() (io.Closer, error) {
+	log.SetOutput(os.Stderr)
 	cache, err := os.UserCacheDir()
 	if err != nil {
-		log.SetOutput(io.Discard)
-		return
+		return nil, fmt.Errorf("startup cache: %w", err)
 	}
-	dir := filepath.Join(cache, "WinDeploy", "logs")
+	return configureStartupLog(filepath.Join(cache, "WinDeploy", "logs"), os.Stderr)
+}
+
+// Keep stderr even when opening the durable log fails. Otherwise log.Fatal and
+// framework diagnostics disappear exactly when the user needs them most.
+func configureStartupLog(dir string, fallback io.Writer) (io.Closer, error) {
+	log.SetOutput(fallback)
+	startupLogPath = filepath.Join(dir, "startup.log")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		log.SetOutput(io.Discard)
-		return
+		return nil, fmt.Errorf("startup log directory: %w", err)
 	}
-	path := filepath.Join(dir, "startup.log")
+	path := startupLogPath
 	if info, statErr := os.Stat(path); statErr == nil && info.Size() > 512*1024 {
 		_ = os.Rename(path, path+".1")
 	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		log.SetOutput(io.Discard)
-		return
+		return nil, fmt.Errorf("open startup log: %w", err)
 	}
-	startupLogPath = path
-	log.SetOutput(file)
+	log.SetOutput(io.MultiWriter(fallback, file))
 	logStation("запуск приложения")
+	return file, nil
 }
 
 func logStation(format string, args ...any) {
-	line := fmt.Sprintf(format, args...)
-	if startupLogPath != "" {
-		if file, err := os.OpenFile(startupLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
-			_, _ = fmt.Fprintf(file, "%s %s\n", time.Now().Format(time.RFC3339), line)
-			_ = file.Close()
-		}
-	}
+	log.Printf(format, args...)
 }
 
 // webView2RuntimeVersion reads the Evergreen WebView2 runtime version from the

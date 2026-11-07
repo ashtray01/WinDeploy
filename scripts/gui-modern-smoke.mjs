@@ -80,6 +80,10 @@ try {
   await page.getByRole('heading', { name: 'Текущие подключения', exact: true }).waitFor();
   await nav.getByRole('button', { name: 'Драйверы', exact: true }).click();
   await page.getByRole('heading', { name: 'Драйверы', exact: true }).waitFor();
+  // The default filter legitimately has no rows on a healthy machine.
+  await page.getByRole('button', { name: /^Все \(/ }).click();
+  await page.getByRole('row').first().waitFor();
+  assert.equal(await page.getByRole('alert').count(), 0);
   assert(await page.getByRole('row').count() >= 1);
   await nav.getByRole('button', { name: 'Принтеры', exact: true }).click();
   await page.getByRole('heading', { name: 'Принтеры', exact: true }).waitFor();
