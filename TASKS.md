@@ -22,11 +22,13 @@ Release workflow создаёт только draft. VM acceptance больше �
   fail closed (`ba09bc6`).
 - [x] **Core journey**: preview-before-execute, explicit package selection and
   confirmation, честные failed/empty статусы, потеря polling видна, Legacy не
-  выбирается по умолчанию, version в UI/EXE. Actual GUI EXE smoke PASS (native
-  hostname/app count, два viewport, pageErrors=0) (`96e9fb1`).
+  выбирается по умолчанию, version в UI/EXE, startup log не теряет запись при
+  недоступном stderr. Actual diagnostic/smoke GUI smoke PASS (native hostname/app
+  count, два viewport, pageErrors=0) (`96e9fb1`, `f90b7bf`).
 - [x] **Release infrastructure**: `VERSION`, version gate, Modern-only CI,
   Modern release workflow (draft pre-release), SHA256SUMS/portable ZIP,
-  `verify-version.ps1`, `package-modern-release.ps1` (`2e7dbc6`).
+  `verify-version.ps1`, `package-modern-release.ps1`, production EXE без
+  remote-debug flag (`2e7dbc6`, `5ca5dbf`).
 - [x] **Public docs**: README со screenshots, LICENSE-заглушка, CHANGELOG,
   CONTRIBUTING, SECURITY, KNOWN_ISSUES, release notes, issue templates,
   publication checklist (`b032eb8`).

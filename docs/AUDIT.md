@@ -13,6 +13,8 @@ tests/vet PASS; frontend 46/46, strict TypeScript/Vite PASS; production EXE
 собран, version resource `0.1.0-beta.1`; actual diagnostic/smoke GUI DOM/bridge/
 native Inventory smoke PASS с native Inventory, двумя viewport и pageErrors=0.
 Production EXE не содержит remote-debug строк/флага; DevTools выключен.
+Production startup с отдельными UDF/log: окно создано, `startup.log` непустой;
+Startup logger пишет файл первым и не теряет evidence при недоступном GUI stderr.
 Реальные установка пакета, SMB-сервер, reboot, драйверы/принтеры и VM не
 выполнялись. Windows 10/LTSC не заявляются; Legacy FROZEN.
 

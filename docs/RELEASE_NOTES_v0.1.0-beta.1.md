@@ -21,6 +21,8 @@ production-ready релиз. Основной сценарий проверял�
   evidence; без ложного `Success` после reboot.
 - Modern EXE не требует Go/Node.js на целевой машине. Нужен Microsoft Edge
   WebView2 Runtime.
+- Startup log пишется в файл даже в GUI-процессе без валидного stderr; путь
+  указан в диалоге ошибки запуска.
 
 ## Поддерживаемая ОС
 

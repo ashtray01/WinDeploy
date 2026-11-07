@@ -52,6 +52,7 @@ B2 (SMB server), B3 (license/public URL) и B6 (GitHub CI/draft) открыты,
 - `9e36f03` — fix(release): avoid false positive in secret preflight.
 - `662acb9` — fix(modern): label experimental beta surfaces explicitly.
 - `5ca5dbf` — fix(release): compile remote debugging out of production EXE.
+- `f90b7bf` — fix(modern): keep startup log when stderr is unavailable.
 - Финальный docs commit с обновлёнными хешами — `git log -1 --oneline`; runtime
   не меняет. Release workflow пересоберёт EXE из тега.
 
@@ -69,12 +70,13 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   build — PASS.
 - **EXE:** `scripts/build-modern.ps1 -Diagnostic` — PASS. `bin/WinDeploy-Windows-x64.exe`,
   ProductVersion/FileVersion `0.1.0-beta.1`, company/product `WinDeploy`,
-  commit `5ca5dbf3d69921ea6ddc7f65fd3ecf1a0d2242aa`, icon/manifest/production
+  commit `f90b7bfe6c68512c00a1fbce8bab4c0fb2c5cc07`, icon/manifest/production
   assets. Production EXE не содержит строк/флага `smoke-port` и
   `remote-debugging-port` (проверено поиском по PE); DevTools выключен. Remote
   debugging есть только в непакетируемой диагностической сборке с тегом `smoke`.
   `Get-AuthenticodeSignature` — **NotSigned** (сертификата нет; не заявлять
-  подпись).
+  подпись). Startup log production EXE проверен: файл непустой, startup/Wails
+  evidence записаны.
 - **Actual GUI smoke:** запуск `bin/WinDeploy-Diagnostic-x64.exe` (console + `smoke`
   tag) с отдельными `--webview-data-dir`, `--log-dir`, `WINDEPLOY_STATE_DIR`,
   `--smoke-port 9223`; `node scripts/gui-modern-smoke.mjs` — PASS: `actualDesktop=true`,
@@ -85,9 +87,9 @@ Wails v3.1.0, WebView2 157.0.4341.42. Зависимости/toolchains не у�
   подтверждение окна владельцем.
 - **Packaging:** `scripts/package-modern-release.ps1 -SkipBuild` — PASS. Артефакты
   (candidate, не публиковать):
-  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `760e8847405abfe6f206bf9a252e1f1f836bcf9b60d0207daf3d690e085b6a47`
-  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `1de53ff088a9fb741de77878d8c4b43abbb2c3be2edf02b02040e069f2a1acc7`
-  - `dist/RELEASE-NOTES.md` SHA-256 `3f3db7984a6678ad039b428f7c34bb8030abef6e26bca4b5884309e945610280`
+  - `dist/WinDeploy-Windows-x64.exe` SHA-256 `10fa83e8bc142a6cd72f172f3e1495f44153c68ac0934f28bcbd5fc5367831ce`
+  - `dist/WinDeploy-0.1.0-beta.1-portable-x64.zip` SHA-256 `eab1fd38b41028d84cd10c8e34a5dbff40f265acd6850c5ef3891229b5686c49`
+  - `dist/RELEASE-NOTES.md` SHA-256 `64ee5b06699b80d1f85fc32d31b3a0421a68965666826de492e0cefc5d359376`
   - `dist/SHA256SUMS.txt` с этими хешами; повторная проверка скриптом PASS.
 - **Version gate:** `scripts/verify-version.ps1` — PASS.
 - **Secret scan:** 0 blocking; manual items review. См. выше.

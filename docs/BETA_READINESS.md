@@ -98,6 +98,8 @@ unit/integration/UI без реального системного эффект�
   PASS (`actualDesktop`, hostname/app count matched, 2 viewport, pageErrors=0);
   production EXE не содержит `smoke-port`/`remote-debugging-port` strings, DevTools
   выключен. Remote debugging остаётся только в непакетируемой diagnostic-сборке.
+- Production EXE запущен без debug flags: окно создано, `startup.log` непустой;
+  startup/Wails evidence сохраняются даже при недоступном stderr.
 - Screenshots `docs/images/` сняты с этой сборки; hostname заменён на
   `DEMO-WORKSTATION`.
 
