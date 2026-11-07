@@ -18,17 +18,18 @@ import (
 var assets embed.FS
 
 func main() {
-	startupLog, startupErr := initStartupLog()
+	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
+	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
+	webviewDir := flag.String("webview-data-dir", "", "use an explicit writable WebView2 data directory (does not delete existing data)")
+	logDir := flag.String("log-dir", "", "write startup.log in this directory instead of the default user cache")
+	flag.Parse()
+	startupLog, startupErr := initStartupLog(*logDir)
 	if startupErr != nil {
 		logStation("не удалось открыть журнал запуска: %v", startupErr)
 	}
 	if startupLog != nil {
 		defer startupLog.Close()
 	}
-	smokePort := flag.Int("smoke-port", 0, "opt-in localhost WebView2 debugging for UI smoke tests")
-	profileDir := flag.String("profiles", "", "read YAML profiles from this directory instead of embedded examples")
-	webviewDir := flag.String("webview-data-dir", "", "use an explicit writable WebView2 data directory (does not delete existing data)")
-	flag.Parse()
 	if *smokePort != 0 && (*smokePort < 1024 || *smokePort > 65535) {
 		logStation("некорректный порт отладки")
 		showStartupError()

@@ -42,8 +42,11 @@ func prepareWebViewDataDir(dir string) (string, error) {
 // initStartupLog routes framework and internal diagnostics to a bounded local log
 // file. GUI builds have no usable stderr, so this is the only durable evidence for
 // a failed startup. The file contains no credentials or user documents.
-func initStartupLog() (io.Closer, error) {
+func initStartupLog(dir string) (io.Closer, error) {
 	log.SetOutput(os.Stderr)
+	if dir != "" {
+		return configureStartupLog(dir, os.Stderr)
+	}
 	cache, err := os.UserCacheDir()
 	if err != nil {
 		return nil, fmt.Errorf("startup cache: %w", err)

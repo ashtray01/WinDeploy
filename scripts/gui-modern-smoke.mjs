@@ -8,7 +8,12 @@ let browser;
 for (let i = 0; i < 60; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9223', { timeout: 2000 }); break; } catch { await new Promise(resolve => setTimeout(resolve, 250)); } }
 if (!browser) throw new Error('Desktop WebView2 unavailable');
 try {
-  const page = browser.contexts().flatMap(context => context.pages()).find(page => page.url() !== 'about:blank');
+  let page;
+  for (let i = 0; i < 60; i++) {
+    page = browser.contexts().flatMap(context => context.pages()).find(page => page.url() !== 'about:blank');
+    if (page) break;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
   assert(page);
   page.setDefaultTimeout(15000);
   const errors = [];
