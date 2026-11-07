@@ -15,12 +15,14 @@
 
 - [x] Runtime applicability подключён на общей границе Runner: свежий native/provider snapshot, проверка всего плана и GuardAdapter на start/resume; core/CLI/service tests и test/vet/build PASS. Отклонённый resume не отображается Completed.
 
+- [x] Общий process-local gate package/deployment от подготовки до завершения; повторные start/resume/shutdown checks. Конкурентные barrier tests PASS, включая 20 повторов. Другие standalone mutations и отдельные процессы этим gate не покрыты.
+
 ## P0 — блокирующие ошибки
 
 - [x] P0-02: применять требования ОС/архитектуры профиля на start/resume (core/deploy, CLI, service). Готово: несовместимая или неизвестная система не достигает изменяющего adapter; свежий inventory для resume; unit + CLI/service tests.
 - [ ] P0-03: убрать ложный Success при отложенной reboot verification (engine/deploy/state/reporting/UI). Готово: зависимости ждут подтверждения, состояние переживает restart, resume не переустанавливает завершённое; persistence/negative tests и затем Win11 VM. Не лечить простым изменением флага.
 - [ ] P0-04: честные результаты составных операций. Готово: отсутствие обязательного ярлыка/read-back или default printer не теряется в отчёте; warnings доступны; fake failure tests. Не смешивать подключённый UNC с выполненным shortcut requirement.
-- [ ] P0-05: единое исключение изменяющих операций и атомарный start/resume/shutdown. Готово: package page и deployment не запускают конкурирующие установки; два resume не пишут одну сессию; barrier-based concurrent service tests.
+- [x] P0-05: единое исключение изменяющих операций и атомарный start/resume/shutdown. Готово: package page и deployment не запускают конкурирующие установки; два resume не пишут одну сессию; barrier-based concurrent service tests.
 - [ ] P0-06: явная граница user/machine context. Готово: при Run as another admin пользовательские операции не направляются молча в чужие HKCU/Desktop/CredMan; fail-closed gate или проверенный elevated worker; two-account VM test.
 
 ## P1 — рабочий MVP

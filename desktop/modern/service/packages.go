@@ -223,6 +223,16 @@ func (s *Service) GetPackages() (PackageCatalogView, error) {
 // StartPackageInstall starts one background install run. Only one run may be
 // active; progress is polled through GetPackageInstall.
 func (s *Service) StartPackageInstall(ids []string) (PackageInstallView, error) {
+	release, err := s.operations.acquire()
+	if err != nil {
+		return PackageInstallView{}, err
+	}
+	started := false
+	defer func() {
+		if !started {
+			release()
+		}
+	}()
 	p := s.packages
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -254,6 +264,9 @@ func (s *Service) StartPackageInstall(ids []string) (PackageInstallView, error) 
 			}
 		}
 	}
+	if p.ctx.Err() != nil {
+		return p.install, errors.New("Приложение завершает работу.")
+	}
 	p.nextGen++
 	ctx, cancel := context.WithCancel(p.ctx)
 	p.cancel = cancel
@@ -266,8 +279,10 @@ func (s *Service) StartPackageInstall(ids []string) (PackageInstallView, error) 
 	}
 	idsCopy := append([]string{}, ids...)
 	p.wg.Add(1)
+	started = true
 	go func() {
 		defer p.wg.Done()
+		defer release()
 		p.run(ctx, idsCopy)
 	}()
 	return p.install, nil

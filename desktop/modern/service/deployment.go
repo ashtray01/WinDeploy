@@ -138,9 +138,19 @@ func (s *Service) deploymentAdapter(system inventory.SystemInfo) (*deploy.Adapte
 
 // StartDeployment executes the selected profile components in the background.
 func (s *Service) StartDeployment(profileID string, selected []string) (DeploymentView, error) {
+	release, err := s.operations.acquire()
+	if err != nil {
+		return DeploymentView{}, err
+	}
+	started := false
+	defer func() {
+		if !started {
+			release()
+		}
+	}()
 	d := s.deployment
 	d.mu.Lock()
-	if d.closed {
+	if d.closed || d.ctx.Err() != nil {
 		d.mu.Unlock()
 		return DeploymentView{}, errors.New("Приложение завершает работу.")
 	}
@@ -166,6 +176,10 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 		return DeploymentView{}, err
 	}
 	d.mu.Lock()
+	if d.closed || d.ctx.Err() != nil {
+		d.mu.Unlock()
+		return DeploymentView{}, errors.New("Приложение завершает работу.")
+	}
 	if d.running {
 		d.mu.Unlock()
 		return DeploymentView{}, errors.New("Развёртывание уже выполняется.")
@@ -183,8 +197,10 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 	d.view = DeploymentView{Running: true, Generation: d.nextGen, SessionID: sessionID, ProfileID: profile.ID, ProfileName: profile.Name, StartedAt: time.Now().UTC(), Tasks: taskViews, Events: []DeployEvent{}, Message: "Выполнение запущено."}
 	view := d.view
 	d.wg.Add(1)
+	started = true
 	go func() {
 		defer d.wg.Done()
+		defer release()
 		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: profile.ID, ProfileName: profile.Name, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports, SessionID: sessionID}
 		session, runErr := runner.Start(ctx, tasks)
 		d.finish(session, runErr)
@@ -195,6 +211,16 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 
 // ResumeDeployment continues a saved session after a reboot or interruption.
 func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (DeploymentView, error) {
+	release, err := s.operations.acquire()
+	if err != nil {
+		return DeploymentView{}, err
+	}
+	started := false
+	defer func() {
+		if !started {
+			release()
+		}
+	}()
 	d := s.deployment
 	d.mu.Lock()
 	if d.closed {
@@ -222,6 +248,10 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 		return DeploymentView{}, err
 	}
 	d.mu.Lock()
+	if d.closed || d.ctx.Err() != nil || d.running {
+		d.mu.Unlock()
+		return DeploymentView{}, errors.New("Развёртывание недоступно: операция уже выполняется или приложение завершает работу.")
+	}
 	d.nextGen++
 	ctx, cancel := context.WithCancel(d.ctx)
 	d.cancel = cancel
@@ -243,8 +273,10 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 	d.view = DeploymentView{Running: true, Generation: d.nextGen, SessionID: session.ID, ProfileID: session.ProfileID, ProfileName: session.ProfileName, StartedAt: time.Now().UTC(), Tasks: taskViews, Events: []DeployEvent{}, Message: "Продолжение сессии."}
 	view := d.view
 	d.wg.Add(1)
+	started = true
 	go func() {
 		defer d.wg.Done()
+		defer release()
 		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: session.ProfileID, ProfileName: session.ProfileName, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports}
 		resumed, runErr := runner.Resume(ctx, session.ID, retryFailed)
 		d.finish(resumed, runErr)

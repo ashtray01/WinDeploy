@@ -49,6 +49,7 @@ type Service struct {
 	nextEntry     uint64
 	packages      *packageState
 	deployment    *deploymentState
+	operations    operationGate
 }
 
 func New(provider inventory.Provider) *Service {
@@ -170,6 +171,7 @@ func (s *Service) CancelScan() State {
 
 // ServiceShutdown is the Wails lifecycle hook, excluded from generated bindings.
 func (s *Service) ServiceShutdown() error {
+	s.operations.close()
 	s.mu.Lock()
 	s.closed = true
 	s.stop()
