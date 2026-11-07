@@ -66,6 +66,7 @@ export interface DeployTaskView {
     "attempts": number;
     "reboot_required": boolean;
     "error"?: string;
+    "warnings": string[] | null;
     "started_at"?: string;
     "finished_at"?: string;
 }

@@ -157,6 +157,29 @@ func TestStartDeploymentExecutesAndReports(t *testing.T) {
 	}
 }
 
+func TestGetDeploymentSessionShowsTaskWarnings(t *testing.T) {
+	service := newDeploymentTestService(t)
+	if _, err := service.StartDeployment("selftest", nil); err != nil {
+		t.Fatal(err)
+	}
+	final := waitDeployment(t, service)
+	session, err := service.deployment.store.Load(context.Background(), final.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.Snapshot.Results[0].Warnings = []string{"Ярлык не подтверждён"}
+	if err := service.deployment.store.Save(context.Background(), session); err != nil {
+		t.Fatal(err)
+	}
+	view, err := service.GetDeploymentSession(final.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Tasks) != 1 || len(view.Tasks[0].Warnings) != 1 || view.Tasks[0].Warnings[0] != "Ярлык не подтверждён" {
+		t.Fatalf("session warnings missing: %+v", view.Tasks)
+	}
+}
+
 func TestStartDeploymentRejectsUnknownProfile(t *testing.T) {
 	service := newDeploymentTestService(t)
 	if _, err := service.StartDeployment("missing", nil); err == nil {

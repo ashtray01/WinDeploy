@@ -31,6 +31,7 @@ type DeployTaskView struct {
 	Attempts    int       `json:"attempts"`
 	Reboot      bool      `json:"reboot_required"`
 	Error       string    `json:"error,omitempty"`
+	Warnings    []string  `json:"warnings"`
 	StartedAt   time.Time `json:"started_at,omitempty"`
 	FinishedAt  time.Time `json:"finished_at,omitempty"`
 }
@@ -192,7 +193,7 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 	d.seen = map[string]bool{}
 	taskViews := make([]DeployTaskView, 0, len(tasks))
 	for _, task := range tasks {
-		taskViews = append(taskViews, DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(engine.Pending), StatusLabel: statusLabelDeploy(engine.Pending)})
+		taskViews = append(taskViews, DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(engine.Pending), StatusLabel: statusLabelDeploy(engine.Pending), Warnings: []string{}})
 	}
 	sessionID := deploy.NewSessionID()
 	d.view = DeploymentView{Running: true, Generation: d.nextGen, SessionID: sessionID, ProfileID: profile.ID, ProfileName: profile.Name, StartedAt: time.Now().UTC(), Tasks: taskViews, Events: []DeployEvent{}, Message: "Выполнение запущено."}
@@ -269,7 +270,7 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 		if ok {
 			status = result.Status
 		}
-		taskViews = append(taskViews, DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(status), StatusLabel: statusLabelDeploy(status), Attempts: result.Attempts, Reboot: result.RebootRequired, Error: result.Error, StartedAt: result.StartedAt, FinishedAt: result.FinishedAt})
+		taskViews = append(taskViews, DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(status), StatusLabel: statusLabelDeploy(status), Attempts: result.Attempts, Reboot: result.RebootRequired, Error: result.Error, Warnings: append([]string{}, result.Warnings...), StartedAt: result.StartedAt, FinishedAt: result.FinishedAt})
 	}
 	d.view = DeploymentView{Running: true, Generation: d.nextGen, SessionID: session.ID, ProfileID: session.ProfileID, ProfileName: session.ProfileName, StartedAt: time.Now().UTC(), Tasks: taskViews, Events: []DeployEvent{}, Message: "Продолжение сессии."}
 	view := d.view
@@ -419,7 +420,7 @@ func (s *Service) GetDeploymentSession(sessionID string) (DeploymentView, error)
 		known[result.TaskID] = result
 	}
 	for _, task := range session.Tasks {
-		item := DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(engine.Pending), StatusLabel: statusLabelDeploy(engine.Pending)}
+		item := DeployTaskView{ID: task.ID, Name: task.Name, Category: task.Category, Status: string(engine.Pending), StatusLabel: statusLabelDeploy(engine.Pending), Warnings: []string{}}
 		if result, ok := known[task.ID]; ok {
 			item = deployTaskView(result, task.Name, task.Category)
 		}
@@ -436,7 +437,11 @@ func (d *deploymentState) appendEventLocked(level, message string) {
 }
 
 func deployTaskView(result engine.TaskResult, name, category string) DeployTaskView {
-	return DeployTaskView{ID: result.TaskID, Name: name, Category: category, Status: string(result.Status), StatusLabel: statusLabelDeploy(result.Status), Attempts: result.Attempts, Reboot: result.RebootRequired, Error: translateTaskError(result.Error), StartedAt: result.StartedAt, FinishedAt: result.FinishedAt}
+	warnings := append([]string{}, result.Warnings...)
+	if warnings == nil {
+		warnings = []string{}
+	}
+	return DeployTaskView{ID: result.TaskID, Name: name, Category: category, Status: string(result.Status), StatusLabel: statusLabelDeploy(result.Status), Attempts: result.Attempts, Reboot: result.RebootRequired, Error: translateTaskError(result.Error), Warnings: warnings, StartedAt: result.StartedAt, FinishedAt: result.FinishedAt}
 }
 
 func statusLabelDeploy(status engine.TaskStatus) string {

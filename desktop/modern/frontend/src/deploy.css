@@ -24,6 +24,7 @@
 .deploy-task strong {display:block;font-size:12px;font-weight:560}
 .deploy-task small {display:block;color:#8494ad;font-size:10px;margin-top:3px;word-break:break-all}
 .deploy-reboot {display:block;color:#e4c07f;font-size:9px;margin-top:3px}
+.deploy-warning {display:block;color:#e4c07f;font-size:10px;margin-top:3px}
 .deploy-report {padding:14px 20px;border-top:1px solid var(--line)}
 .deploy-report small {color:#8494ad;font-size:9px;text-transform:uppercase;letter-spacing:.7px}
 .deploy-report p {margin:6px 0 0;color:#9fb6d6;word-break:break-all}

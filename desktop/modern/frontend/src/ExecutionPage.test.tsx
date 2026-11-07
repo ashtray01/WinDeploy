@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('./bridge', () => ({ api: mocks }));
 
 const idle: DeploymentView = { running: false, cancel_requested: false, generation: 0, session_id: '', profile_id: '', profile_name: '', started_at: '', finished_at: '', tasks: [], events: [], message: '', reboot_required: false, cancelled: false, completed: false };
-const runningTask = { id: 'dns-check', name: 'Проверить DNS', category: 'diagnostics', status: 'Running', status_label: 'Выполняется', attempts: 0, reboot_required: false };
+const runningTask = { id: 'dns-check', name: 'Проверить DNS', category: 'diagnostics', status: 'Running', status_label: 'Выполняется', attempts: 0, reboot_required: false, warnings: [] };
 const running: DeploymentView = { ...idle, running: true, generation: 1, session_id: 'd1', profile_id: 'office', profile_name: 'Офис', message: 'Выполнение запущено.', tasks: [runningTask] };
 const sessions: DeploySessionView[] = [{ id: 'd1', profile_id: 'office', profile_name: 'Офис', updated_at: new Date().toISOString(), total: 1, succeeded: 1, failed: 0, remaining: 0, completed: true, cancelled: false, reboot_required: false }];
 
@@ -64,5 +64,11 @@ describe('deployment execution page', () => {
     expect(screen.getByRole('progressbar', { name: 'Прогресс развёртывания' })).toHaveAttribute('aria-valuenow', '0');
     expect(screen.queryByText('Завершено')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
+  });
+
+  it('shows unconfirmed effect warnings for a task', async () => {
+    mocks.getDeployment.mockResolvedValue({ ...running, running: false, completed: true, tasks: [{ ...runningTask, status: 'Success', status_label: 'Успешно', warnings: ['Принтер по умолчанию не изменён'] }] });
+    render(<ExecutionPage />);
+    expect(await screen.findByText('Принтер по умолчанию не изменён')).toBeInTheDocument();
   });
 });
