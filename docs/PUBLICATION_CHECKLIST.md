@@ -64,7 +64,7 @@ Get-AuthenticodeSignature dist/WinDeploy-Windows-x64.exe
 
 - [x] Remote создан только с разрешения владельца; `origin` указывает на
       `https://github.com/ashtray01/WinDeploy.git`; backup/теги не переписаны.
-- [ ] Modern CI (`ci.yml`) PASS на GitHub-hosted runner.
+- [x] Modern CI (`ci.yml`) PASS на GitHub-hosted runner: run `42419867600`.
 - [ ] Legacy CI не требуется для beta release.
 - [ ] Release workflow запускается по тегу `v0.1.0-beta.1`; tag совпадает с
       `VERSION`.

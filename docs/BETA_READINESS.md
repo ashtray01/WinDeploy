@@ -7,8 +7,9 @@
 ## Итог
 
 **Статус: beta candidate; source push разрешён, binary Release пока нельзя.**
-MIT/URL/source-разрешение зафиксированы; остаются B1, B2 и B6, а публикация
-binary Release требует отдельного решения владельца.
+MIT/URL/source-разрешение зафиксированы; source опубликован, GitHub CI PASS.
+Остаются B1, B2 и проверка draft Release; публикация binary Release требует
+отдельного решения владельца.
 
 | # | Блокер | Доказательство | Что нужно |
 |---|---|---|---|
@@ -17,7 +18,7 @@ binary Release требует отдельного решения владель
 | B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт 2026-11-08:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый source push после финального secret preflight |
 | B4 | ~~Git-история не проверена на секреты и персональные данные~~ | **Закрыт для текущего среза:** `check-release-secrets.ps1 -IncludeHistory` — 0 blocking findings; manual-review items — тестовые/документационные примеры. Повторить после финального docs commit | Владелец проверяет findings; повторный прогон перед открытием repo |
 | B5 | ~~Нет подтверждённого desktop smoke этой beta-сборки~~ | **Закрыт 2026-11-08:** actual diagnostic/smoke GUI DOM/bridge/native Inventory smoke PASS; native hostname/app count совпали, 2 viewport, pageErrors=0; production EXE не содержит remote-debug strings. Screenshots обезличены | Повторять при изменении UI/EXE |
-| B6 | Нет GitHub-hosted run и draft Release | Публичный пустой remote настроен с разрешения владельца; workflow подготовлены | Source push, CI PASS; затем отдельно проверить draft release |
+| B6 | GitHub CI / draft Release | **CI закрыт:** run `42419867600` PASS для `619ca04` (Core Go 1.20 amd64/386, Modern, Wails build/package/upload); draft не запускался | Проверить draft отдельно после B1/B2 и разрешения владельца |
 | B7 | Windows 10/LTSC не проверены | Нет VM; текущий хост — Windows 11 | **Решено:** beta scope — только Windows 11 x64; Win10/LTSC не заявляются |
 | B8 | Разрешение на source и Release разделено | Владелец явно разрешил source push 2026-11-08; binary Release не разрешён | Release требует отдельного подтверждения после B1/B2/B6 |
 
@@ -48,7 +49,7 @@ unit/integration/UI без реального системного эффект�
 | Принтеры | Enumeration, default/read-back, INF install | Да | Read-only; install нет | TCP/IP port не создаётся (P1-01), печать/VM нет | **Эксперимент** | Добавление принтера не обещать | Нет |
 | Политики браузеров | Registry write + read-back, webapps | Да | Fake-store + negative tests; VM нет | Полная VM-проверка и восстановление старых значений не закрыты | **Эксперимент** | Нет | Нет |
 | Windows settings | Rename/timezone/Explorer/power, preview/read-back | Да | Read-only API + fake-store; VM нет | Rename/reboot/домен, restore, VM | **Эксперимент** | Нет | Нет |
-| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | Сборка/тесты локально | GitHub run, remote, signing | Инфраструктура готова | Нет | B4–B6 |
+| Modern CI/release | Modern-only CI, tag/version check, SHA256, draft release | Нет (CI) | GitHub CI/package dry-run PASS | Draft Release и signing не проверены | CI готов | Нет | Draft после B1/B2 |
 | Windows 7 Legacy | Отдельный frozen-модуль | Нет в beta | Не проверялась | FROZEN | Нет | Да, не включать | Нет |
 
 ## Что включается в beta

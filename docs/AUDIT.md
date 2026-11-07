@@ -17,6 +17,14 @@ TypeScript/Vite и сборка EXE — PASS. В ограниченном agent 
 smoke PASS, два viewport, `pageErrors=0`. Ручной видимый запуск владельцем
 нового EXE и Windows 10/LTSC этим не подтверждены.
 
+Follow-up GitHub runner выявил elevated default owner `Administrators` и short
+8.3 temp path `RUNNER~1`. Первый разрешён, поскольку Administrators уже входит в
+доверенную write-модель и может взять ownership; обычные чужие owners/write ACE
+по-прежнему отклоняются. Reparse gate теперь проверяет атрибут каждого ancestor,
+а не сравнивает short/long strings. Test helper назначает current-user owner.
+GitHub Modern CI run `42419867600` для `619ca04` — PASS: Core Go 1.20 amd64/386,
+Modern Go/React, Wails EXE, package/checksum dry-run и artifact upload.
+
 ## Public beta preparation — 2026-11-08
 
 Полный аудит не повторялся. База — `master` `9010d95`; проверялись только

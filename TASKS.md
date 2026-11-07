@@ -7,8 +7,9 @@ LTSC не заявляются без проверки. Windows 7 Legacy FROZEN.
 задачи с тестами и коммитами.
 
 Текущий срез — beta candidate. Владелец выбрал MIT и разрешил отправить исходный
-код в `ashtray01/WinDeploy`. Публикация binary Release не разрешена: остаются
-B1/B2/B6 из [BETA_READINESS](docs/BETA_READINESS.md).
+код в `ashtray01/WinDeploy`; `main` опубликован. GitHub Modern CI PASS для
+`619ca04`. Публикация binary Release не разрешена: остаются B1/B2 и проверка
+draft Release из [BETA_READINESS](docs/BETA_READINESS.md).
 Release workflow создаёт только draft. VM acceptance больше не является
 обязательным общим критерием, но конкретные изменяющие сценарии без проверки не
 заявляются.
@@ -53,7 +54,7 @@ Release workflow создаёт только draft. VM acceptance больше �
 | B3 | ~~Лицензия/URL не выбраны~~ | **Закрыт:** владелец выбрал MIT; URL `https://github.com/ashtray01/WinDeploy`; `origin` настроен, README обновлён | Первый public source push после финального preflight |
 | B4 | ~~Git-история не проверена на секреты/данные~~ | **Закрыт для среза:** secret-scan + history — 0 blocking; manual items — test/doc примеры | Повторить после финального docs commit; владелец проверяет findings |
 | B5 | Desktop smoke текущей beta-сборки | **Закрыт:** actual diagnostic/smoke GUI DOM/bridge/native smoke PASS, pageErrors=0, два viewport; production EXE без remote-debug; screenshots обезличены | Повторять при UI/EXE изменениях |
-| B6 | Нет GitHub-hosted CI и draft Release | Workflows готовы; публичный пустой remote настроен | Source push, CI PASS; draft Release проверяется отдельно |
+| B6 | GitHub CI / draft Release | **CI закрыт:** run `42419867600` PASS (Core Go 1.20 amd64/386, Modern, Wails build/package/upload); draft Release не запускался | Проверить draft отдельно после B1/B2 и разрешения владельца |
 | B7 | Windows 10/LTSC scope | Не проверялись | **Решено:** beta только Windows 11 x64; не расширять без проверки |
 | B8 | Разрешение разделено для source и Release | **Source push явно разрешён 2026-11-08**; binary Release не разрешён | Release — отдельное решение после B1/B2/B6 |
 
@@ -64,14 +65,16 @@ Release workflow создаёт только draft. VM acceptance больше �
 
 - [x] Production EXE не регистрирует `--smoke-port`/DevTools; remote debugging
   вынесен в непакетируемую diagnostic-сборку с тегом `smoke`.
-- [ ] Повторная production-сборка после финального коммита; SHA-256 и
+- [x] Повторная production-сборка после runtime-коммита; SHA-256 и
   `SHA256SUMS.txt` совпадают, версия EXE `0.1.0-beta.1`.
-- [ ] Portable ZIP содержит EXE/docs/Known Issues, без debug/test EXE и секретов.
+- [x] CI package dry-run создал EXE/checksums/portable ZIP и загрузил artifact.
 - [ ] Release notes отражают реальные проверки и отсутствие code signing.
 - [ ] README screenshots обезличены; hostname/IP/имена не публикуются.
-- [ ] Run `scripts/check-release-secrets.ps1 -IncludeHistory`, review findings.
+- [x] `scripts/check-release-secrets.ps1 -IncludeHistory`: 0 blocking findings;
+  manual-review entries — test/docs fixtures.
 - [x] Owner selected MIT and replaced the placeholder before public source access.
-- [ ] GitHub Actions run on disposable runner; draft release assets verified.
+- [x] GitHub Actions PASS на disposable runner; package artifact загружен.
+- [ ] Draft Release отдельно не создавался и не проверялся.
 - [ ] Visible/manual desktop smoke владельцем (текущий automated DOM/bridge smoke
   не заменяет ручное подтверждение окна и UAC-сценария).
 
@@ -106,8 +109,8 @@ Windows 7 Legacy: `legacy/`, `profiles/legacy.yaml`, tests/docs сохранен
    отчёт.
 2. **B2**: поднять/получить тестовый SMB-сервер и проверить connect/credentials/
    shortcut/1219 без секретов в отчёте.
-3. **B4/B6**: завершить secret-scan, отправить source в настроенный remote и
-   проверить CI; draft Release оставить отдельным этапом.
+3. **B6/Release**: после B1/B2 и отдельного разрешения создать только draft
+   pre-release, сверить assets/SHA-256; не нажимать Publish автоматически.
 
 Не начинать новые крупные модули, Legacy или VM-wide roadmap. После задач —
 тесты, отдельные коммиты, TASKS/HANDOFF/BETA_READINESS и git status.

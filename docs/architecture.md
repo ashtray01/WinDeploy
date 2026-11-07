@@ -28,7 +28,7 @@ Standalone pages используют managers напрямую. Выполне�
 - `core/shares`: Credential Manager, WNet/1219, IShellLink; текущий пользователь процесса. `core/drivers`: SetupAPI/CM, INF catalog/signature, pnputil. `core/printers`: enumeration/PrintUI/default/GDI; TCP/IP port provisioning отсутствует.
 - `core/browsers`: Chromium/Firefox policies и webapp shortcuts; `core/settings`: rename/timezone/Explorer/power, read-only update/licensing. Нет единого read-back/rollback контракта.
 - `core/state`: отдельный snapshot FileStore; `core/deploy`: dispatch + полные session files + runner. `core/reporting`: JSON/escaped HTML без task parameters. Сессии содержат параметры и требуют trusted storage/ACL.
-- `core/trust`: read-only проверка владельца/DACL файла и каталога перед мутирующим resume и запуском скачанного artifact. Разрешены записи только текущему пользователю, SYSTEM, Administrators и owner-mapped CREATOR OWNER; ссылки и reparse-точки каталога отклоняются. Это не аутентификация: администратор может сменить владельца.
+- `core/trust`: read-only проверка владельца/DACL файла и каталога перед мутирующим resume и запуском скачанного artifact. Owner — текущий SID либо встроенная Administrators (default owner elevated token); запись разрешена только текущему пользователю, SYSTEM, Administrators и owner-mapped CREATOR OWNER. Обычные чужие SID могут иметь read-only доступ; write/delete/change-ACL отклоняются. Ссылки и reparse-точки каталога отклоняются. Это не аутентификация: администратор уже разрешён DACL и может сменить владельца.
 
 ## Контракты и известные нарушения
 
