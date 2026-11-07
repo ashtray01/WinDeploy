@@ -91,6 +91,11 @@ func (s *Service) ApplyTimezone(timezoneID string, dryRun bool) (settings.Result
 
 // ApplyExplorer previews or writes Explorer options.
 func (s *Service) ApplyExplorer(options settings.ExplorerOptions, dryRun bool) (settings.Result, error) {
+	if !dryRun {
+		if err := s.requireUserContext(context.Background()); err != nil {
+			return settings.Result{}, err
+		}
+	}
 	result, err := s.settingsManager().ApplyExplorer(context.Background(), options, dryRun)
 	if err != nil {
 		return result, errors.New("Не удалось изменить параметры Проводника.")

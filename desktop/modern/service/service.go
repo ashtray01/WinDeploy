@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"windeploy/core/inventory"
+	"windeploy/core/packages"
 	"windeploy/core/profiles"
 )
 
@@ -36,20 +37,21 @@ type State struct {
 // Reports are immutable once published. Native calls run outside the UI thread;
 // cancellation is cooperative and a second scan cannot overlap an unfinished one.
 type Service struct {
-	profileSource fs.FS
-	registry      map[string]profiles.Profile
-	mu            sync.Mutex
-	wg            sync.WaitGroup
-	provider      inventory.Provider
-	ctx           context.Context
-	stop          context.CancelFunc
-	cancel        context.CancelFunc
-	closed        bool
-	state         State
-	nextEntry     uint64
-	packages      *packageState
-	deployment    *deploymentState
-	operations    operationGate
+	profileSource    fs.FS
+	registry         map[string]profiles.Profile
+	mu               sync.Mutex
+	wg               sync.WaitGroup
+	provider         inventory.Provider
+	ctx              context.Context
+	stop             context.CancelFunc
+	cancel           context.CancelFunc
+	closed           bool
+	state            State
+	nextEntry        uint64
+	packages         *packageState
+	deployment       *deploymentState
+	operations       operationGate
+	userContextCheck func(context.Context) error
 }
 
 func New(provider inventory.Provider) *Service {
@@ -59,6 +61,7 @@ func New(provider inventory.Provider) *Service {
 	ctx, stop := context.WithCancel(context.Background())
 	s := &Service{provider: provider, ctx: ctx, stop: stop, state: State{Status: "idle", Journal: []Entry{}}}
 	s.packages = newPackageState(ctx, defaultPackageDeps(), s.currentSystem)
+	s.packages.deps.runner = packages.ContextRunner{Next: s.packages.deps.runner, Check: s.requireUserContext}
 	base := os.Getenv("WINDEPLOY_STATE_DIR")
 	if base == "" {
 		base = filepath.Join(os.TempDir(), "WinDeploy")

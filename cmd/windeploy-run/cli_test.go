@@ -16,7 +16,7 @@ import (
 
 func testEnvironment(t *testing.T) environment {
 	t.Helper()
-	return environment{Sessions: t.TempDir(), Reports: t.TempDir(), RunOptions: engine.RunOptions{MaxAttempts: 1}}
+	return environment{CheckUserContext: func(context.Context) error { return nil }, Sessions: t.TempDir(), Reports: t.TempDir(), RunOptions: engine.RunOptions{MaxAttempts: 1}}
 }
 
 type forbiddenAdapter struct{ calls int }

@@ -14,18 +14,20 @@ import (
 	pkgcatalog "windeploy/catalog"
 	"windeploy/core/inventory"
 	"windeploy/core/packages"
+	"windeploy/core/usercontext"
 )
 
 type cliAdapters struct {
-	facts     packages.Facts
-	fetcher   packages.Fetcher
-	runner    packages.Runner
-	signer    packages.Signer
-	elevation packages.Elevation
-	winget    packages.WingetProbe
-	cacheDir  string
-	system    inventory.SystemInfo
-	systemErr error
+	facts            packages.Facts
+	fetcher          packages.Fetcher
+	runner           packages.Runner
+	signer           packages.Signer
+	elevation        packages.Elevation
+	winget           packages.WingetProbe
+	cacheDir         string
+	system           inventory.SystemInfo
+	systemErr        error
+	checkUserContext func(context.Context) error
 }
 
 const (
@@ -110,9 +112,13 @@ func splitIDs(value string) []string {
 }
 
 func newManager(catalog packages.Catalog, adapters cliAdapters) *packages.Manager {
+	check := adapters.checkUserContext
+	if check == nil {
+		check = usercontext.Native{}.Check
+	}
 	return &packages.Manager{
 		Catalog: catalog, Facts: adapters.facts, System: adapters.system, Winget: adapters.winget,
-		Fetcher: adapters.fetcher, Runner: adapters.runner, Signer: adapters.signer,
+		Fetcher: adapters.fetcher, Runner: packages.ContextRunner{Next: adapters.runner, Check: check}, Signer: adapters.signer,
 		Elevation: adapters.elevation, CacheDir: adapters.cacheDir,
 		Report: func(event packages.Event) {
 			if event.Level == "warning" || event.Level == "error" {
@@ -335,6 +341,16 @@ func runInstall(args []string, stdout, stderr io.Writer, adapters cliAdapters) i
 	if !*confirmed && !*dryRun {
 		fmt.Fprintln(stderr, "Установка изменяет систему. Повторите с явным подтверждением --yes.")
 		return exitConfirm
+	}
+	if !*dryRun {
+		check := adapters.checkUserContext
+		if check == nil {
+			check = usercontext.Native{}.Check
+		}
+		if err := check(context.Background()); err != nil {
+			fmt.Fprintln(stderr, "Пользовательский контекст не подтверждён. Запустите WinDeploy под владельцем рабочего стола.")
+			return exitPlan
+		}
 	}
 	catalog, err := loadCatalog(*catalogPath)
 	if err != nil {

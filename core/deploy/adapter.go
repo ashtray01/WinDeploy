@@ -22,16 +22,17 @@ import (
 // Adapter implements engine.Adapter for profile components. It dispatches by
 // Component category and never reads credentials from task parameters.
 type Adapter struct {
-	PackageManager *packages.Manager
-	Shares         *shares.Manager
-	Drivers        *drivers.Manager
-	Printers       *printers.Manager
-	Browsers       *browsers.Manager
-	Settings       *settings.Manager
-	NetworkDeps    network.Dependencies
-	NetworkConfig  func(context.Context) ([]inventory.AdapterConfig, error)
-	ShortcutDir    string
-	System         inventory.SystemInfo
+	PackageManager   *packages.Manager
+	Shares           *shares.Manager
+	Drivers          *drivers.Manager
+	Printers         *printers.Manager
+	Browsers         *browsers.Manager
+	Settings         *settings.Manager
+	NetworkDeps      network.Dependencies
+	NetworkConfig    func(context.Context) ([]inventory.AdapterConfig, error)
+	ShortcutDir      string
+	System           inventory.SystemInfo
+	CheckUserContext func(context.Context) error
 
 	rebootMu sync.Mutex
 	reboot   map[string]bool
@@ -57,6 +58,11 @@ func (a *Adapter) Precheck(ctx context.Context, task engine.Task) (engine.TaskSt
 	if err := ctx.Err(); err != nil {
 		return engine.Pending, err
 	}
+	if RequiresUserContext(task) {
+		if err := checkUserContext(ctx, a.CheckUserContext); err != nil {
+			return engine.Pending, err
+		}
+	}
 	switch task.Category {
 	case "packages":
 		return a.precheckPackage(ctx, task)
@@ -75,6 +81,11 @@ func (a *Adapter) Precheck(ctx context.Context, task engine.Task) (engine.TaskSt
 
 // Execute performs the operation and records any reboot obligation for Verify.
 func (a *Adapter) Execute(ctx context.Context, task engine.Task) (bool, error) {
+	if RequiresUserContext(task) {
+		if err := checkUserContext(ctx, a.CheckUserContext); err != nil {
+			return false, err
+		}
+	}
 	reboot, err := a.execute(ctx, task)
 	if reboot {
 		a.markReboot(task.ID)
@@ -106,6 +117,11 @@ func (a *Adapter) execute(ctx context.Context, task engine.Task) (bool, error) {
 // Verify reports a persistent barrier for operations requiring reboot. A fresh
 // adapter after a confirmed boot change performs the real category read-back.
 func (a *Adapter) Verify(ctx context.Context, task engine.Task) error {
+	if RequiresUserContext(task) {
+		if err := checkUserContext(ctx, a.CheckUserContext); err != nil {
+			return err
+		}
+	}
 	if a.rebootPending(task.ID) {
 		return engine.ErrRebootPending
 	}

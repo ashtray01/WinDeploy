@@ -90,7 +90,7 @@ func newTestServiceState(t *testing.T, catalog packages.Catalog, facts *packageF
 		return inventory.SystemInfo{Architecture: "amd64", Windows: inventory.Version{Major: 10, Minor: 0, Build: 22631, ProductType: 1}}
 	})
 	t.Cleanup(state.shutdown)
-	return state, &Service{packages: state}
+	return state, &Service{packages: state, userContextCheck: func(context.Context) error { return nil }}
 }
 
 type fakePackageSigner struct{ verified bool }

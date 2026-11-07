@@ -116,22 +116,23 @@ func (s *Service) deploymentAdapter(system inventory.SystemInfo) (*deploy.Adapte
 	deps := s.packages.deps
 	packageManager := &packages.Manager{
 		Catalog: deps.catalog, Facts: deps.facts, System: system, Winget: deps.winget,
-		Fetcher: deps.fetcher, Runner: deps.runner, Signer: deps.signer, Elevation: deps.elevation, CacheDir: deps.cacheDir,
+		Fetcher: deps.fetcher, Runner: packages.ContextRunner{Next: deps.runner, Check: s.requireUserContext}, Signer: deps.signer, Elevation: deps.elevation, CacheDir: deps.cacheDir,
 	}
 	shareStore, shareConnector, shareShortcuts := sharePlatform()
 	desktop, _ := desktopDirectory()
 	browserDesktop, _ := browsers.DesktopDirectory()
 	adapter := &deploy.Adapter{
-		PackageManager: packageManager,
-		Shares:         &shares.Manager{Store: shareStore, Connector: shareConnector, Shortcuts: shareShortcuts},
-		Drivers:        &drivers.Manager{Devices: drivers.WindowsDevices{}, Installer: drivers.WindowsInstaller{Runner: drivers.WindowsRunner{}, System: system}, Verifier: drivers.WindowsINFVerifier{}, Elevation: drivers.WindowsElevation{}},
-		Printers:       &printers.Manager{Printers: printers.WindowsPrinters{}, Installer: printers.WindowsInstaller{}, Defaults: printers.WindowsDefaults{}, Tester: printers.WindowsTestPrinter{}, Elevation: printers.WindowsElevation{}},
-		Browsers:       &browsers.Manager{Store: browsers.NewRegistryStore(), Shortcuts: browsers.WindowsShortcut{}, Locator: browsers.WindowsLocator{}, Elevation: browsers.WindowsElevation{}, DesktopDir: browserDesktop},
-		Settings:       &settings.Manager{Registry: settings.WindowsRegistry{}, Runner: settings.WindowsRunner{}, Services: settings.WindowsServices{}, Elevation: settings.WindowsElevation{}, Activation: settings.WindowsActivation{}, Computer: settings.WindowsComputerName{}, System: system},
-		NetworkDeps:    network.NativeDependencies(),
-		NetworkConfig:  func(ctx context.Context) ([]inventory.AdapterConfig, error) { return s.provider.NetworkConfig(ctx) },
-		ShortcutDir:    desktop,
-		System:         system,
+		CheckUserContext: s.requireUserContext,
+		PackageManager:   packageManager,
+		Shares:           &shares.Manager{Store: shareStore, Connector: shareConnector, Shortcuts: shareShortcuts},
+		Drivers:          &drivers.Manager{Devices: drivers.WindowsDevices{}, Installer: drivers.WindowsInstaller{Runner: drivers.WindowsRunner{}, System: system}, Verifier: drivers.WindowsINFVerifier{}, Elevation: drivers.WindowsElevation{}},
+		Printers:         &printers.Manager{Printers: printers.WindowsPrinters{}, Installer: printers.WindowsInstaller{}, Defaults: printers.WindowsDefaults{}, Tester: printers.WindowsTestPrinter{}, Elevation: printers.WindowsElevation{}},
+		Browsers:         &browsers.Manager{Store: browsers.NewRegistryStore(), Shortcuts: browsers.WindowsShortcut{}, Locator: browsers.WindowsLocator{}, Elevation: browsers.WindowsElevation{}, DesktopDir: browserDesktop},
+		Settings:         &settings.Manager{Registry: settings.WindowsRegistry{}, Runner: settings.WindowsRunner{}, Services: settings.WindowsServices{}, Elevation: settings.WindowsElevation{}, Activation: settings.WindowsActivation{}, Computer: settings.WindowsComputerName{}, System: system},
+		NetworkDeps:      network.NativeDependencies(),
+		NetworkConfig:    func(ctx context.Context) ([]inventory.AdapterConfig, error) { return s.provider.NetworkConfig(ctx) },
+		ShortcutDir:      desktop,
+		System:           system,
 	}
 	return adapter, nil
 }
@@ -201,7 +202,7 @@ func (s *Service) StartDeployment(profileID string, selected []string) (Deployme
 	go func() {
 		defer d.wg.Done()
 		defer release()
-		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: profile.ID, ProfileName: profile.Name, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports, SessionID: sessionID}
+		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: profile.ID, ProfileName: profile.Name, ReadSystem: s.provider.System, CheckUserContext: s.requireUserContext, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports, SessionID: sessionID}
 		session, runErr := runner.Start(ctx, tasks)
 		d.finish(session, runErr)
 	}()
@@ -277,7 +278,7 @@ func (s *Service) ResumeDeployment(sessionID string, retryFailed bool) (Deployme
 	go func() {
 		defer d.wg.Done()
 		defer release()
-		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: session.ProfileID, ProfileName: session.ProfileName, ReadSystem: s.provider.System, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports}
+		runner := deploy.Runner{Adapter: adapter, Store: d.store, ProfileID: session.ProfileID, ProfileName: session.ProfileName, ReadSystem: s.provider.System, CheckUserContext: s.requireUserContext, Options: engine.RunOptions{MaxAttempts: 2, RetryDelay: 2 * time.Second, MaxParallel: 1}, ReportDir: d.reports}
 		resumed, runErr := runner.Resume(ctx, session.ID, retryFailed)
 		d.finish(resumed, runErr)
 	}()

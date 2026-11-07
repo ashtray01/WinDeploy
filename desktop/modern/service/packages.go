@@ -223,6 +223,9 @@ func (s *Service) GetPackages() (PackageCatalogView, error) {
 // StartPackageInstall starts one background install run. Only one run may be
 // active; progress is polled through GetPackageInstall.
 func (s *Service) StartPackageInstall(ids []string) (PackageInstallView, error) {
+	if err := s.requireUserContext(context.Background()); err != nil {
+		return PackageInstallView{}, err
+	}
 	release, err := s.operations.acquire()
 	if err != nil {
 		return PackageInstallView{}, err

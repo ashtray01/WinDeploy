@@ -22,10 +22,11 @@ type Runner struct {
 	System      inventory.SystemInfo
 	// ReadSystem obtains execution facts on every Start/Resume, never from a saved session.
 	// Nil uses the native provider. System is report metadata, not authorization.
-	ReadSystem func(context.Context) (inventory.SystemInfo, error)
-	ReadBootID func(context.Context) (string, error)
-	Options    engine.RunOptions
-	ReportDir  string
+	ReadSystem       func(context.Context) (inventory.SystemInfo, error)
+	ReadBootID       func(context.Context) (string, error)
+	CheckUserContext func(context.Context) error
+	Options          engine.RunOptions
+	ReportDir        string
 	// SessionID is optional; empty generates a new ID (tests and callers that
 	// need to poll the session file may supply one).
 	SessionID string
@@ -176,6 +177,14 @@ func (r *Runner) executionAdapter(ctx context.Context, tasks []engine.Task) (eng
 		}
 		if !ok {
 			return nil, fmt.Errorf("task %s: %w", task.ID, inventory.ErrNotApplicable)
+		}
+	}
+	for _, task := range tasks {
+		if RequiresUserContext(task) {
+			if err := checkUserContext(ctx, r.CheckUserContext); err != nil {
+				return nil, err
+			}
+			break
 		}
 	}
 	r.System = system

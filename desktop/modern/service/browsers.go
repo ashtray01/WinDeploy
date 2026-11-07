@@ -43,6 +43,11 @@ func (s *Service) GetBrowserEnvironment() BrowserEnvironmentView {
 // ApplyBrowserPolicy writes supported enterprise policies and optional shortcuts.
 // It never edits existing browser profile databases.
 func (s *Service) ApplyBrowserPolicy(policy browsers.Policy, dryRun bool) (browsers.Result, error) {
+	if !dryRun && (policy.Scope != browsers.ScopeMachine || len(policy.WebApps) > 0) {
+		if err := s.requireUserContext(context.Background()); err != nil {
+			return browsers.Result{}, err
+		}
+	}
 	desktop, _ := browsers.DesktopDirectory()
 	manager := &browsers.Manager{
 		Store:      browsers.NewRegistryStore(),

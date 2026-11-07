@@ -58,6 +58,11 @@ func (s *Service) ListShareConnections() ([]ShareConnectionView, error) {
 // AddShare connects a UNC resource. Only an explicit user action calls it; a
 // credential conflict is reported for a second, confirmed attempt.
 func (s *Service) AddShare(request ShareRequest) (ShareResultView, error) {
+	if !request.DryRun {
+		if err := s.requireUserContext(context.Background()); err != nil {
+			return ShareResultView{}, err
+		}
+	}
 	share := shares.Share{ID: strings.ToLower(strings.TrimSpace(request.ID)), UNC: strings.TrimSpace(request.UNC), Name: strings.TrimSpace(request.Name), Username: strings.TrimSpace(request.Username), Persistent: request.Persistent, Shortcut: request.Shortcut}
 	if share.ID == "" {
 		share.ID = "share-" + strings.TrimLeft(strings.ReplaceAll(strings.ToLower(share.UNC), `\`, "-"), "-")

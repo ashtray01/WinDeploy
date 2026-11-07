@@ -25,6 +25,7 @@ import (
 	"windeploy/core/reporting"
 	"windeploy/core/settings"
 	"windeploy/core/shares"
+	"windeploy/core/usercontext"
 	profileassets "windeploy/profiles"
 )
 
@@ -38,13 +39,14 @@ const (
 )
 
 type environment struct {
-	Adapter    engine.Adapter
-	ReadSystem func(context.Context) (inventory.SystemInfo, error)
-	ReadBootID func(context.Context) (string, error)
-	Sessions   string
-	Reports    string
-	System     inventory.SystemInfo
-	RunOptions engine.RunOptions
+	Adapter          engine.Adapter
+	ReadSystem       func(context.Context) (inventory.SystemInfo, error)
+	ReadBootID       func(context.Context) (string, error)
+	CheckUserContext func(context.Context) error
+	Sessions         string
+	Reports          string
+	System           inventory.SystemInfo
+	RunOptions       engine.RunOptions
 }
 
 func buildEnvironment(base string, system inventory.SystemInfo) (environment, error) {
@@ -55,7 +57,7 @@ func buildEnvironment(base string, system inventory.SystemInfo) (environment, er
 	facts := packages.WindowsFacts{}
 	packagesManager := &packages.Manager{
 		Catalog: catalog, Facts: facts, System: system, Winget: &packages.WindowsWinget{},
-		Fetcher: packages.NewHTTPFetcher(), Runner: packages.WindowsRunner{}, Signer: packages.WindowsSigner{},
+		Fetcher: packages.NewHTTPFetcher(), Runner: packages.ContextRunner{Next: packages.WindowsRunner{}, Check: usercontext.Native{}.Check}, Signer: packages.WindowsSigner{},
 		Elevation: packages.WindowsElevation{}, CacheDir: filepath.Join(base, "Downloads"),
 	}
 	desktop, _ := shares.DesktopDirectory()
@@ -273,7 +275,7 @@ func runDeployment(ctx context.Context, args []string, stdout, stderr io.Writer,
 		fmt.Fprintln(stderr, "выполнение изменяет систему; повторите с --yes")
 		return exitConfirm
 	}
-	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, ReadBootID: env.ReadBootID, Store: deploy.Store{Dir: *sessions}, ProfileID: profile.ID, ProfileName: profile.Name, System: env.System, Options: env.RunOptions, ReportDir: *reports}
+	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, ReadBootID: env.ReadBootID, CheckUserContext: env.CheckUserContext, Store: deploy.Store{Dir: *sessions}, ProfileID: profile.ID, ProfileName: profile.Name, System: env.System, Options: env.RunOptions, ReportDir: *reports}
 	session, runErr := runner.Start(ctx, tasks)
 	fmt.Fprintf(stdout, "Сессия: %s; отчёт: %s\n", session.ID, session.ReportHTML)
 	if runErr != nil {
@@ -308,7 +310,7 @@ func runResume(ctx context.Context, args []string, stdout, stderr io.Writer, env
 		fmt.Fprintf(stderr, "сессия недоступна: %v\n", err)
 		return exitSession
 	}
-	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, ReadBootID: env.ReadBootID, Store: store, ProfileID: loaded.ProfileID, ProfileName: loaded.ProfileName, System: env.System, Options: env.RunOptions, ReportDir: *reports}
+	runner := deploy.Runner{Adapter: env.Adapter, ReadSystem: env.ReadSystem, ReadBootID: env.ReadBootID, CheckUserContext: env.CheckUserContext, Store: store, ProfileID: loaded.ProfileID, ProfileName: loaded.ProfileName, System: env.System, Options: env.RunOptions, ReportDir: *reports}
 	session, runErr := runner.Resume(ctx, *sessionID, *retryFailed)
 	fmt.Fprintf(stdout, "Сессия: %s; отчёт: %s\n", session.ID, session.ReportHTML)
 	if runErr != nil {

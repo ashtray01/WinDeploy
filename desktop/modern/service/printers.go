@@ -22,6 +22,11 @@ func (s *Service) GetPrinters() ([]printers.Printer, error) {
 
 // AddPrinter installs a print queue from an INF and a TCP/IP address.
 func (s *Service) AddPrinter(request printers.AddRequest) (printers.Result, error) {
+	if !request.DryRun && request.SetDefault {
+		if err := s.requireUserContext(context.Background()); err != nil {
+			return printers.Result{}, err
+		}
+	}
 	manager := &printers.Manager{
 		Printers:  printers.WindowsPrinters{},
 		Installer: printers.WindowsInstaller{},
@@ -47,6 +52,9 @@ func (s *Service) AddPrinter(request printers.AddRequest) (printers.Result, erro
 
 // SetDefaultPrinter selects the current user's default printer.
 func (s *Service) SetDefaultPrinter(name string) error {
+	if err := s.requireUserContext(context.Background()); err != nil {
+		return err
+	}
 	manager := &printers.Manager{Printers: printers.WindowsPrinters{}, Defaults: printers.WindowsDefaults{}}
 	if err := manager.SetDefault(context.Background(), strings.TrimSpace(name)); err != nil {
 		return errors.New("Не удалось изменить принтер по умолчанию.")
@@ -56,6 +64,9 @@ func (s *Service) SetDefaultPrinter(name string) error {
 
 // PrintTestPage sends a real test page to an existing printer.
 func (s *Service) PrintTestPage(name string) error {
+	if err := s.requireUserContext(context.Background()); err != nil {
+		return err
+	}
 	manager := &printers.Manager{Printers: printers.WindowsPrinters{}, Tester: printers.WindowsTestPrinter{}}
 	if err := manager.TestPage(context.Background(), strings.TrimSpace(name)); err != nil {
 		return errors.New("Не удалось отправить тестовую страницу на принтер.")

@@ -55,7 +55,7 @@ func (fakePinger) Ping(context.Context, string) (time.Duration, error) { return 
 func shareAdapter() (*Adapter, *fakeConnector) {
 	connector := &fakeConnector{}
 	manager := &shares.Manager{Store: fakeShareStore{}, Connector: connector, Shortcuts: fakeShortcut{}}
-	return &Adapter{Shares: manager, ShortcutDir: `C:\Desktop`}, connector
+	return &Adapter{Shares: manager, ShortcutDir: `C:\Desktop`, CheckUserContext: func(context.Context) error { return nil }}, connector
 }
 
 func TestRebootVerifyAndComputerNameReadback(t *testing.T) {

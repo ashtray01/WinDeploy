@@ -6,6 +6,8 @@
 
 ## Завершено в этой итерации
 
+- [x] P0-06 software gate: native TokenUser SID сравнивается с владельцем shell текущего desktop; unknown/mismatch отклоняют user-scoped Modern/CLI/deploy операции. Whole-plan start/resume gate и recheck перед installer EXE. Negative core/CLI/service tests + native read-only same-SID PASS; two-account VM/worker остаются открытыми.
+
 - [x] Пользователь подтвердил запуск. Launcher исправляет UTF-8, сохраняет startup log в явном workspace каталоге (--log-dir), ACL/старый AppData log не меняет. Реальный launcher/DOM/bridge smoke PASS, UTF-8 русский текст подтверждён, Access denied в новом логе нет. Smoke ждёт асинхронное появление страницы CDP.
 
 - [x] Startup stderr fallback, file-open failure tests, WebView2 write probe/explicit UDF без очистки старого профиля, launcher arguments; actual GUI EXE DOM/bridge smoke PASS с новым UDF (`b1b6dac`). Native Inventory совпал, pageErrors=0; visible/default-user acceptance отдельно.

@@ -10,6 +10,7 @@ import (
 
 	"windeploy/core/inventory"
 	"windeploy/core/packages"
+	"windeploy/core/usercontext"
 )
 
 type cliTestFacts struct {
@@ -68,10 +69,23 @@ func (cliTestWinget) Available(context.Context) (bool, string) { return true, "1
 
 func cliTestAdapters(cacheDir string) cliAdapters {
 	return cliAdapters{
-		facts: &cliTestFacts{}, fetcher: &cliTestFetcher{data: []byte("artifact")}, runner: cliTestRunner{},
+		checkUserContext: func(context.Context) error { return nil },
+		facts:            &cliTestFacts{}, fetcher: &cliTestFetcher{data: []byte("artifact")}, runner: cliTestRunner{},
 		signer: cliTestSigner{}, elevation: cliTestElevation(true), winget: cliTestWinget{},
 		cacheDir: cacheDir,
 		system:   inventory.SystemInfo{Architecture: "amd64", Windows: inventory.Version{Major: 10, Minor: 0, Build: 22631, ProductType: 1}},
+	}
+}
+
+func TestInstallCLIRejectsOtherUserBeforeDownload(t *testing.T) {
+	adapters := cliTestAdapters(t.TempDir())
+	adapters.checkUserContext = func(context.Context) error { return usercontext.ErrUnconfirmed }
+	var out, stderr bytes.Buffer
+	if code := run([]string{"install", "--id", "sevenzip", "--yes"}, &out, &stderr, adapters); code != exitPlan {
+		t.Fatalf("context gate code=%d stderr=%s", code, stderr.String())
+	}
+	if adapters.fetcher.(*cliTestFetcher).count != 0 {
+		t.Fatal("rejected install downloaded artifact")
 	}
 }
 
