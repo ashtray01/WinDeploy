@@ -8,7 +8,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 if (!$Wails) { $Wails = Join-Path $taskRoot 'cache/tools/wails-3.1/wails3.exe' }
+elseif (![IO.Path]::IsPathRooted($Wails)) { $Wails = Join-Path $taskRoot $Wails }
 if (!(Test-Path -LiteralPath $Wails)) { throw 'Install the pinned Wails CLI v3.1.0 first; see docs/modern.md' }
+$Wails = (Resolve-Path -LiteralPath $Wails).Path
 
 if (!$Version) {
     $versionFile = Join-Path $taskRoot 'VERSION'
