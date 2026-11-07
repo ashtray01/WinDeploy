@@ -42,6 +42,9 @@ try {
     [IO.File]::WriteAllText($taskWorkFile, "go 1.26.0`nuse (`n`"$taskWorkRoot`"`n`"$taskWorkRoot/desktop/modern`"`n)`n")
     $env:GOWORK = $taskWorkFile
     try { Invoke-ModernStep go @('mod', 'verify') } finally { $env:GOWORK = $taskOldWork }
+    # Plain go build does not generate Windows resources, so embed the icon and
+    # manifest from assets/ before linking the GUI executable.
+    Invoke-ModernStep $Wails @('generate', 'syso', '-arch', 'amd64', '-icon', 'assets/windows/icon.ico', '-manifest', 'assets/windows/windeploy.manifest', '-out', 'rsrc_windows_amd64.syso')
     Invoke-ModernStep go @('build', '-tags', 'production', '-ldflags', '-H windowsgui', '-o', (Join-Path $taskRoot 'bin/WinDeploy-Windows-x64.exe'), '.')
     if ($Diagnostic) {
         # A console subsystem preserves panics from dependency init(), before main/log setup.

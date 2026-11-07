@@ -59,7 +59,7 @@ func main() {
 		os.Exit(4)
 	}
 	logStation("каталог WebView2: %s", dataDir)
-	options := application.WindowsOptions{WebviewUserDataPath: dataDir}
+	options := application.WindowsOptions{WebviewUserDataPath: dataDir, WndClass: mainWindowClass}
 	if *smokePort != 0 {
 		options.AdditionalBrowserArgs = []string{"--remote-debugging-address=127.0.0.1", "--remote-debugging-port=" + strconv.Itoa(*smokePort)}
 	}
@@ -87,6 +87,7 @@ func main() {
 		BackgroundColour: application.NewRGB(14, 18, 26), URL: "/", DevToolsEnabled: *smokePort != 0,
 	})
 	logStation("окно создано, запуск Wails")
+	applyWindowIcon()
 	if err := app.Run(); err != nil {
 		logStation("Wails завершился с ошибкой: %v", err)
 		showStartupError()

@@ -45,7 +45,9 @@ Remove-Item Env:GOBIN
 .\scripts\build-modern.ps1 -InstallDependencies
 ```
 
-Далее достаточно `scripts/build-modern.ps1`: bindings → UI tests → TypeScript/Vite → Go tests/vet → module verification → Windows GUI EXE. На чистом checkout сначала строится UI из закоммиченных bindings, чтобы Go embed нашёл dist для генератора. EXE и dist не коммитятся. Перед пересборкой закройте своё окно WinDeploy.
+Далее достаточно `scripts/build-modern.ps1`: bindings → UI tests → TypeScript/Vite → Go tests/vet → module verification → Windows resources → Windows GUI EXE. На чистом checkout сначала строится UI из закоммиченных bindings, чтобы Go embed нашёл dist для генератора. EXE и dist не коммитятся. Перед пересборкой закройте своё окно WinDeploy.
+
+Иконка приложения и манифест хранятся в `desktop/modern/assets/`: `appicon.png` — исходник, `windows/icon.ico` — многоразмерный ICO (16–256 px), `windows/windeploy.manifest` — asInvoker, Common Controls v6 и supportedOS. Скрипт перед линковкой вызывает `wails3 generate syso` и создаёт `desktop/modern/rsrc_windows_amd64.syso` (в Git не коммитится): ресурс даёт иконку файла EXE в Explorer/панели задач, а `icon_windows.go` встраивает тот же ICO и назначает его окну через `WM_SETICON` после регистрации класса `WinDeployMainWindow`. Обычный `go build` без шага syso соберёт EXE без иконки в Explorer.
 
 Сборка использует `-tags production`, чтобы EXE использовал production Wails runtime/embedded assets и не зависел от dev-server environment. `scripts/build-modern.ps1 -Diagnostic` дополнительно создаёт console `bin/WinDeploy-Diagnostic-x64.exe`. Запускайте `scripts/start-modern-diagnostic.ps1` из PowerShell для сохранения ранних ошибок в `local/modern-diagnostic.log`; launcher сообщает ненулевой exit, даже если main/startup.log не достигнуты. Диагностический EXE имеет те же bridge/mutation возможности — для диагностики не запускайте изменяющие операции на хосте.
 
