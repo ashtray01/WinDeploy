@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -44,6 +45,9 @@ type fakeDefaults struct {
 func (f *fakeDefaults) Default(context.Context) (string, error) { return f.defaultName, nil }
 func (f *fakeDefaults) SetDefault(_ context.Context, name string) error {
 	f.setCalls = append(f.setCalls, name)
+	if f.setErr == nil {
+		f.defaultName = name
+	}
 	return f.setErr
 }
 
@@ -145,7 +149,9 @@ func TestAddPrinterSetsDefault(t *testing.T) {
 	request := validRequest(t)
 	request.SetDefault = true
 	provider := &fakeProvider{}
-	installer := &fakeInstaller{onInstall: func() { provider.items = []Printer{{Name: request.Name, Status: "ok"}} }}
+	installer := &fakeInstaller{onInstall: func() {
+		provider.items = []Printer{{Name: request.Name, Port: "IP_" + request.IPAddress, Status: "ok"}}
+	}}
 	defaults := &fakeDefaults{}
 	manager := &Manager{Printers: provider, Installer: installer, Defaults: defaults, Elevation: fakeElevation(true)}
 	result, err := manager.Add(context.Background(), request)
@@ -203,5 +209,82 @@ func TestSetDefaultAndTestPageOnlyForExistingPrinters(t *testing.T) {
 	}
 	if err := manager.TestPage(context.Background(), "Missing"); err == nil {
 		t.Fatal("test page for missing printer accepted")
+	}
+}
+
+// stubbornDefaults simulates a system that accepts SetDefault but keeps another
+// default printer.
+type stubbornDefaults struct{ current string }
+
+func (d stubbornDefaults) Default(context.Context) (string, error) { return d.current, nil }
+func (stubbornDefaults) SetDefault(context.Context, string) error  { return nil }
+
+func TestAddPrinterRejectsUnexpectedPort(t *testing.T) {
+	request := validRequest(t)
+	provider := &fakeProvider{}
+	installer := &fakeInstaller{onInstall: func() {
+		provider.items = []Printer{{Name: request.Name, Driver: request.Model, Port: "WSD-8f3c", Status: "ok"}}
+	}}
+	manager := &Manager{Printers: provider, Installer: installer, Elevation: fakeElevation(true)}
+	if _, err := manager.Add(context.Background(), request); err == nil {
+		t.Fatal("printer on an unexpected port was accepted")
+	}
+	if installer.calls != 1 {
+		t.Fatal("installer was not attempted")
+	}
+}
+
+func TestAddPrinterWarnsAboutDriverMismatch(t *testing.T) {
+	request := validRequest(t)
+	request.Model = "Generic PostScript"
+	provider := &fakeProvider{}
+	installer := &fakeInstaller{onInstall: func() {
+		provider.items = []Printer{{Name: request.Name, Driver: "Another Driver", Port: "IP_" + request.IPAddress, Status: "ok"}}
+	}}
+	manager := &Manager{Printers: provider, Installer: installer, Elevation: fakeElevation(true)}
+	result, err := manager.Add(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Installed || len(result.Warnings) == 0 {
+		t.Fatalf("driver mismatch was not reported: %+v", result)
+	}
+}
+
+func TestAddPrinterUnconfirmedDefaultIsNotSuccess(t *testing.T) {
+	request := validRequest(t)
+	request.SetDefault = true
+	provider := &fakeProvider{}
+	installer := &fakeInstaller{onInstall: func() {
+		provider.items = []Printer{{Name: request.Name, Driver: request.Model, Port: "IP_" + request.IPAddress, Status: "ok"}}
+	}}
+	manager := &Manager{Printers: provider, Installer: installer, Defaults: stubbornDefaults{current: "Another Printer"}, Elevation: fakeElevation(true)}
+	result, err := manager.Add(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Default {
+		t.Fatal("unconfirmed default reported as applied")
+	}
+	found := false
+	for _, warning := range result.Warnings {
+		if strings.Contains(warning, "по умолчанию") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing default warning: %+v", result.Warnings)
+	}
+}
+
+func TestSetDefaultRequiresReadBack(t *testing.T) {
+	provider := &fakeProvider{items: []Printer{{Name: "Office", Status: "ok"}}}
+	manager := &Manager{Printers: provider, Defaults: stubbornDefaults{current: "Another Printer"}}
+	if err := manager.SetDefault(context.Background(), "Office"); err == nil {
+		t.Fatal("unconfirmed default printer accepted")
+	}
+	manager.Defaults = &fakeDefaults{}
+	if err := manager.SetDefault(context.Background(), "Office"); err != nil {
+		t.Fatalf("confirmed default rejected: %v", err)
 	}
 }

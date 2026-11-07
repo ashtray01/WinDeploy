@@ -183,10 +183,8 @@ func (m *Manager) SetTimezone(ctx context.Context, timezoneID string, dryRun boo
 		return Result{}, fmt.Errorf("unknown time zone ID")
 	}
 	current := ""
-	if m.Runner != nil {
-		if output, err := m.Runner.Run(ctx, "tzutil.exe", "/g"); err == nil {
-			current = strings.TrimSpace(output)
-		}
+	if active, err := m.TimezoneID(ctx); err == nil {
+		current = active
 	}
 	change := Change{Name: "timezone", OldValue: current, NewValue: timezoneID, Action: "planned"}
 	result := Result{Changes: []Change{change}, Warnings: []string{}}
@@ -203,8 +201,40 @@ func (m *Manager) SetTimezone(ctx context.Context, timezoneID string, dryRun boo
 	change.Action = "applied"
 	result.Changes = []Change{change}
 	result.Applied = true
+	// The command exit code is not evidence: read the active zone back.
+	if active, err := m.TimezoneID(ctx); err != nil || !strings.EqualFold(active, timezoneID) {
+		result.Warnings = append(result.Warnings, "Часовой пояс изменён, но не подтверждён чтением.")
+	}
 	result.Message = "Часовой пояс изменён."
 	return result, nil
+}
+
+// TimezoneID reads the active Windows time zone identifier through tzutil.
+func (m *Manager) TimezoneID(ctx context.Context) (string, error) {
+	if m.Runner == nil {
+		return "", ErrUnsupported
+	}
+	output, err := m.Runner.Run(ctx, "tzutil.exe", "/g")
+	if err != nil {
+		return "", fmt.Errorf("time zone could not be read")
+	}
+	id := strings.TrimSpace(output)
+	if !timezoneIDPattern.MatchString(id) {
+		return "", fmt.Errorf("time zone response is invalid")
+	}
+	return id, nil
+}
+
+// VerifyTimezone confirms the active time zone matches the expected identifier.
+func (m *Manager) VerifyTimezone(ctx context.Context, timezoneID string) error {
+	active, err := m.TimezoneID(ctx)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(active, strings.TrimSpace(timezoneID)) {
+		return fmt.Errorf("time zone was not confirmed")
+	}
+	return nil
 }
 
 // ExplorerValues returns the current Explorer option values.
@@ -230,48 +260,59 @@ var explorerValueNames = map[string]string{
 	"LaunchTo":        "open-this-pc",
 }
 
-// ApplyExplorer writes selected Explorer values and returns previous values for
-// restore. Explorer is not restarted automatically.
-func (m *Manager) ApplyExplorer(ctx context.Context, options ExplorerOptions, dryRun bool) (Result, error) {
-	if m.Registry == nil {
-		return Result{}, ErrUnsupported
-	}
-	type write struct {
-		name  string
-		value uint32
-		label string
-	}
-	writes := []write{}
+// explorerWrite is one planned Explorer registry value.
+type explorerWrite struct {
+	name  string
+	value uint32
+	label string
+}
+
+func explorerWrites(options ExplorerOptions) ([]explorerWrite, error) {
+	writes := []explorerWrite{}
 	if options.ShowHidden != nil {
 		value := uint32(2)
 		if *options.ShowHidden {
 			value = 1
 		}
-		writes = append(writes, write{"Hidden", value, "show-hidden"})
+		writes = append(writes, explorerWrite{"Hidden", value, "show-hidden"})
 	}
 	if options.ShowExtensions != nil {
 		value := uint32(1)
 		if *options.ShowExtensions {
 			value = 0
 		}
-		writes = append(writes, write{"HideFileExt", value, "show-extensions"})
+		writes = append(writes, explorerWrite{"HideFileExt", value, "show-extensions"})
 	}
 	if options.ShowSuperHidden != nil {
 		value := uint32(0)
 		if *options.ShowSuperHidden {
 			value = 1
 		}
-		writes = append(writes, write{"ShowSuperHidden", value, "show-super-hidden"})
+		writes = append(writes, explorerWrite{"ShowSuperHidden", value, "show-super-hidden"})
 	}
 	if options.OpenThisPC != nil {
 		value := uint32(2)
 		if *options.OpenThisPC {
 			value = 1
 		}
-		writes = append(writes, write{"LaunchTo", value, "open-this-pc"})
+		writes = append(writes, explorerWrite{"LaunchTo", value, "open-this-pc"})
 	}
 	if len(writes) == 0 {
-		return Result{}, fmt.Errorf("no Explorer options selected")
+		return nil, fmt.Errorf("no Explorer options selected")
+	}
+	return writes, nil
+}
+
+// ApplyExplorer writes selected Explorer values, returns previous values for
+// restore and confirms every written value by reading it back. Explorer is not
+// restarted automatically.
+func (m *Manager) ApplyExplorer(ctx context.Context, options ExplorerOptions, dryRun bool) (Result, error) {
+	if m.Registry == nil {
+		return Result{}, ErrUnsupported
+	}
+	writes, err := explorerWrites(options)
+	if err != nil {
+		return Result{}, err
 	}
 	result := Result{Changes: []Change{}, Warnings: []string{}}
 	for _, item := range writes {
@@ -292,9 +333,30 @@ func (m *Manager) ApplyExplorer(ctx context.Context, options ExplorerOptions, dr
 		result.Changes[index].Action = "applied"
 	}
 	result.Applied = true
+	if err := m.VerifyExplorer(ctx, options); err != nil {
+		result.Warnings = append(result.Warnings, "Параметры Проводника записаны, но не подтверждены чтением.")
+	}
 	result.Warnings = append(result.Warnings, "Изменения появятся после обновления окна Проводника или повторного входа.")
 	result.Message = "Параметры Проводника изменены."
 	return result, nil
+}
+
+// VerifyExplorer confirms every requested Explorer value by reading it back.
+func (m *Manager) VerifyExplorer(ctx context.Context, options ExplorerOptions) error {
+	if m.Registry == nil {
+		return ErrUnsupported
+	}
+	writes, err := explorerWrites(options)
+	if err != nil {
+		return err
+	}
+	for _, item := range writes {
+		value, ok, err := m.Registry.DWordValue(ctx, RootUser, explorerPath, item.name)
+		if err != nil || !ok || value != item.value {
+			return fmt.Errorf("Explorer option was not confirmed")
+		}
+	}
+	return nil
 }
 
 // SetPowerPlan activates a known Windows power scheme GUID.
@@ -311,12 +373,8 @@ func (m *Manager) SetPowerPlan(ctx context.Context, guid string, dryRun bool) (R
 		return Result{}, fmt.Errorf("unknown power scheme GUID")
 	}
 	current := ""
-	if m.Runner != nil {
-		if output, err := m.Runner.Run(ctx, "powercfg.exe", "/getactivescheme"); err == nil {
-			if match := guidInText.FindString(output); match != "" {
-				current = strings.ToLower(match)
-			}
-		}
+	if active, err := m.ActivePowerPlan(ctx); err == nil {
+		current = active
 	}
 	change := Change{Name: "power-plan", OldValue: current, NewValue: strings.ToLower(guid), Action: "planned"}
 	result := Result{Changes: []Change{change}, Warnings: []string{}}
@@ -333,8 +391,42 @@ func (m *Manager) SetPowerPlan(ctx context.Context, guid string, dryRun bool) (R
 	change.Action = "applied"
 	result.Changes = []Change{change}
 	result.Applied = true
+	if active, err := m.ActivePowerPlan(ctx); err != nil || active != strings.ToLower(guid) {
+		result.Warnings = append(result.Warnings, "Схема электропитания изменена, но не подтверждена чтением.")
+	}
 	result.Message = "Схема электропитания изменена."
 	return result, nil
+}
+
+// ActivePowerPlan reads the active scheme GUID through powercfg.
+func (m *Manager) ActivePowerPlan(ctx context.Context) (string, error) {
+	if m.Runner == nil {
+		return "", ErrUnsupported
+	}
+	output, err := m.Runner.Run(ctx, "powercfg.exe", "/getactivescheme")
+	if err != nil {
+		return "", fmt.Errorf("power scheme could not be read")
+	}
+	match := guidInText.FindString(output)
+	if match == "" {
+		return "", fmt.Errorf("power scheme response is invalid")
+	}
+	return strings.ToLower(match), nil
+}
+
+// VerifyPowerPlan confirms the active scheme matches the expected GUID.
+func (m *Manager) VerifyPowerPlan(ctx context.Context, guid string) error {
+	if !guidPattern.MatchString(strings.TrimSpace(guid)) {
+		return fmt.Errorf("invalid power scheme GUID")
+	}
+	active, err := m.ActivePowerPlan(ctx)
+	if err != nil {
+		return err
+	}
+	if active != strings.ToLower(strings.TrimSpace(guid)) {
+		return fmt.Errorf("power scheme was not confirmed")
+	}
+	return nil
 }
 
 // UpdateDiagnostics checks update service state, pending reboot markers and

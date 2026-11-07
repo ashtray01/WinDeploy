@@ -69,8 +69,8 @@ type installingPrinter struct {
 	name     string
 }
 
-func (i installingPrinter) AddPrinter(context.Context, printers.AddRequest) error {
-	i.provider.items = append(i.provider.items, printers.Printer{Name: i.name, Status: "ok"})
+func (i installingPrinter) AddPrinter(_ context.Context, request printers.AddRequest) error {
+	i.provider.items = append(i.provider.items, printers.Printer{Name: i.name, Port: "IP_" + request.IPAddress, Driver: request.Model, Status: "ok"})
 	return nil
 }
 
@@ -104,8 +104,13 @@ func TestPrinterDefaultWarningIsPersisted(t *testing.T) {
 	if results[0].Status != engine.Success {
 		t.Fatalf("printer without confirmed default reported failure: %+v", results[0])
 	}
-	if len(results[0].Warnings) != 1 || !strings.Contains(results[0].Warnings[0], "по умолчанию") {
+	if len(results[0].Warnings) == 0 {
 		t.Fatalf("printer default warning lost: %q", results[0].Warnings)
+	}
+	for _, warning := range results[0].Warnings {
+		if !strings.Contains(warning, "по умолчанию") {
+			t.Fatalf("unexpected printer warning: %q", results[0].Warnings)
+		}
 	}
 }
 

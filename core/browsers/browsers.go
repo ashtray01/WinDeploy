@@ -76,6 +76,14 @@ type ValueStore interface {
 	DeleteValue(ctx context.Context, scope Scope, browser Browser, name string) error
 }
 
+// ValueReader reads applied policy values back. Stores that do not implement it
+// cannot confirm their writes, so Apply reports an explicit unconfirmed warning
+// instead of an unconditional success.
+type ValueReader interface {
+	ReadString(ctx context.Context, scope Scope, browser Browser, name string) (string, bool, error)
+	ReadDWord(ctx context.Context, scope Scope, browser Browser, name string) (uint32, bool, error)
+}
+
 // ShortcutCreator creates desktop .lnk files.
 type ShortcutCreator interface {
 	Create(ctx context.Context, path, target, arguments, description string) error
@@ -187,12 +195,28 @@ func (m *Manager) Apply(ctx context.Context, policy Policy, dryRun bool) (Result
 			return result, ErrWebAppsRequired
 		}
 	}
+	writes := []policyWrite{}
 	writeString := func(name, value string) error {
 		result.Applied = append(result.Applied, Change{Browser: policy.Browser, Scope: policy.Scope, Name: name, Action: actionFor(dryRun)})
 		if dryRun {
 			return nil
 		}
-		return m.Store.WriteString(ctx, policy.Scope, policy.Browser, name, value)
+		if err := m.Store.WriteString(ctx, policy.Scope, policy.Browser, name, value); err != nil {
+			return err
+		}
+		writes = append(writes, policyWrite{name: name, value: value})
+		return nil
+	}
+	writeDWord := func(name string, value uint32) error {
+		result.Applied = append(result.Applied, Change{Browser: policy.Browser, Scope: policy.Scope, Name: name, Action: actionFor(dryRun)})
+		if dryRun {
+			return nil
+		}
+		if err := m.Store.WriteDWord(ctx, policy.Scope, policy.Browser, name, value); err != nil {
+			return err
+		}
+		writes = append(writes, policyWrite{name: name, dword: value, isDWord: true})
+		return nil
 	}
 	if policy.Browser == Chrome || policy.Browser == Edge {
 		if policy.Homepage != "" {
@@ -201,15 +225,11 @@ func (m *Manager) Apply(ctx context.Context, policy Policy, dryRun bool) (Result
 			}
 		}
 		if len(policy.StartupURLs) > 0 {
-			result.Applied = append(result.Applied, Change{Browser: policy.Browser, Scope: policy.Scope, Name: "RestoreOnStartup", Action: actionFor(dryRun)})
-			result.Applied = append(result.Applied, Change{Browser: policy.Browser, Scope: policy.Scope, Name: "RestoreOnStartupURLs", Action: actionFor(dryRun)})
-			if !dryRun {
-				if err := m.Store.WriteDWord(ctx, policy.Scope, policy.Browser, "RestoreOnStartup", 4); err != nil {
-					return result, fmt.Errorf("startup policy could not be written")
-				}
-				if err := m.Store.WriteString(ctx, policy.Scope, policy.Browser, "RestoreOnStartupURLs", strings.Join(policy.StartupURLs, "\n")); err != nil {
-					return result, fmt.Errorf("startup URLs policy could not be written")
-				}
+			if err := writeDWord("RestoreOnStartup", 4); err != nil {
+				return result, fmt.Errorf("startup policy could not be written")
+			}
+			if err := writeString("RestoreOnStartupURLs", strings.Join(policy.StartupURLs, "\n")); err != nil {
+				return result, fmt.Errorf("startup URLs policy could not be written")
 			}
 		}
 		if len(policy.Bookmarks) > 0 {
@@ -241,12 +261,50 @@ func (m *Manager) Apply(ctx context.Context, policy Policy, dryRun bool) (Result
 			}
 		}
 	}
+	m.verifyWrites(ctx, policy, &result, writes)
 	if len(policy.WebApps) > 0 {
 		if err := m.createWebApps(ctx, policy, &result); err != nil {
 			return result, err
 		}
 	}
 	return result, nil
+}
+
+type policyWrite struct {
+	name    string
+	value   string
+	dword   uint32
+	isDWord bool
+}
+
+// verifyWrites reads every applied value back. A store without read support, a
+// missing value, a different value or a read error becomes an unconfirmed warning:
+// the run must not report an unconditional success.
+func (m *Manager) verifyWrites(ctx context.Context, policy Policy, result *Result, writes []policyWrite) {
+	if len(writes) == 0 {
+		return
+	}
+	reader, ok := m.Store.(ValueReader)
+	if !ok {
+		result.Warnings = append(result.Warnings, "Записанные политики не подтверждены: чтение недоступно")
+		return
+	}
+	for _, write := range writes {
+		if ctx.Err() != nil {
+			return
+		}
+		if write.isDWord {
+			value, found, err := reader.ReadDWord(ctx, policy.Scope, policy.Browser, write.name)
+			if err != nil || !found || value != write.dword {
+				result.Warnings = append(result.Warnings, "Политика не подтверждена: "+write.name)
+			}
+			continue
+		}
+		value, found, err := reader.ReadString(ctx, policy.Scope, policy.Browser, write.name)
+		if err != nil || !found || value != write.value {
+			result.Warnings = append(result.Warnings, "Политика не подтверждена: "+write.name)
+		}
+	}
 }
 
 func (m *Manager) createWebApps(ctx context.Context, policy Policy, result *Result) error {

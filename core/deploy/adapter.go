@@ -62,6 +62,13 @@ func (a *Adapter) TaskWarnings(task engine.Task) []string {
 	return append([]string{}, a.warnings[task.ID]...)
 }
 
+// noteWarnings forwards adapter-level warnings without exposing raw errors.
+func (a *Adapter) noteWarnings(taskID string, warnings []string) {
+	for _, warning := range warnings {
+		a.noteWarning(taskID, warning)
+	}
+}
+
 func (a *Adapter) markReboot(taskID string) {
 	a.rebootMu.Lock()
 	defer a.rebootMu.Unlock()
@@ -159,12 +166,7 @@ func (a *Adapter) Verify(ctx context.Context, task engine.Task) error {
 	case "printers":
 		return a.verifyPrinter(ctx, task)
 	case "windows":
-		if strings.EqualFold(strings.TrimSpace(task.Parameters["setting"]), "computer-name") {
-			if a.System.Hostname == "" || !strings.EqualFold(a.System.Hostname, strings.TrimSpace(task.Parameters["name"])) {
-				return fmt.Errorf("active computer name was not confirmed")
-			}
-		}
-		return nil
+		return a.verifyWindows(ctx, task)
 	case "browsers", "diagnostics":
 		return nil
 	default:
@@ -467,9 +469,7 @@ func (a *Adapter) executePrinter(ctx context.Context, task engine.Task) error {
 		return err
 	}
 	result, err := a.Printers.Add(ctx, request)
-	for _, warning := range result.Warnings {
-		a.noteWarning(task.ID, warning)
-	}
+	a.noteWarnings(task.ID, result.Warnings)
 	return err
 }
 
@@ -487,6 +487,15 @@ func (a *Adapter) verifyPrinter(ctx context.Context, task engine.Task) error {
 	}
 	for _, printer := range items {
 		if strings.EqualFold(printer.Name, request.Name) {
+			if request.IPAddress != "" && !strings.EqualFold(printer.Port, "IP_"+strings.TrimSpace(request.IPAddress)) {
+				return fmt.Errorf("printer port was not confirmed")
+			}
+			if request.SetDefault && a.Printers.Defaults != nil {
+				confirmed, err := a.Printers.Defaults.Default(ctx)
+				if err != nil || !strings.EqualFold(confirmed, request.Name) {
+					a.noteWarning(task.ID, "Принтер по умолчанию не подтверждён")
+				}
+			}
 			return nil
 		}
 	}
@@ -534,9 +543,7 @@ func (a *Adapter) executeBrowser(ctx context.Context, task engine.Task) error {
 		return err
 	}
 	result, err := a.Browsers.Apply(ctx, policy, false)
-	for _, warning := range result.Warnings {
-		a.noteWarning(task.ID, warning)
-	}
+	a.noteWarnings(task.ID, result.Warnings)
 	if err != nil {
 		return err
 	}
@@ -548,6 +555,18 @@ func (a *Adapter) executeBrowser(ctx context.Context, task engine.Task) error {
 
 // --- windows settings ---
 
+func explorerOptionsFromTask(task engine.Task) (settings.ExplorerOptions, error) {
+	showHidden, err := optionalBool(task.Parameters, "show_hidden")
+	if err != nil {
+		return settings.ExplorerOptions{}, err
+	}
+	showExtensions, err := optionalBool(task.Parameters, "show_extensions")
+	if err != nil {
+		return settings.ExplorerOptions{}, err
+	}
+	return settings.ExplorerOptions{ShowHidden: showHidden, ShowExtensions: showExtensions}, nil
+}
+
 func (a *Adapter) executeWindows(ctx context.Context, task engine.Task) (bool, error) {
 	if a.Settings == nil {
 		return false, fmt.Errorf("settings manager is unavailable")
@@ -555,26 +574,54 @@ func (a *Adapter) executeWindows(ctx context.Context, task engine.Task) (bool, e
 	switch strings.ToLower(strings.TrimSpace(task.Parameters["setting"])) {
 	case "computer-name":
 		result, err := a.Settings.SetComputerName(ctx, task.Parameters["name"], false)
+		a.noteWarnings(task.ID, result.Warnings)
 		return result.RebootRequired, err
 	case "timezone":
-		_, err := a.Settings.SetTimezone(ctx, task.Parameters["timezone"], false)
+		result, err := a.Settings.SetTimezone(ctx, task.Parameters["timezone"], false)
+		a.noteWarnings(task.ID, result.Warnings)
 		return false, err
 	case "power-plan":
-		_, err := a.Settings.SetPowerPlan(ctx, task.Parameters["guid"], false)
+		result, err := a.Settings.SetPowerPlan(ctx, task.Parameters["guid"], false)
+		a.noteWarnings(task.ID, result.Warnings)
 		return false, err
 	case "explorer":
-		showHidden, err := optionalBool(task.Parameters, "show_hidden")
+		options, err := explorerOptionsFromTask(task)
 		if err != nil {
 			return false, err
 		}
-		showExtensions, err := optionalBool(task.Parameters, "show_extensions")
-		if err != nil {
-			return false, err
-		}
-		_, err = a.Settings.ApplyExplorer(ctx, settings.ExplorerOptions{ShowHidden: showHidden, ShowExtensions: showExtensions}, false)
+		result, err := a.Settings.ApplyExplorer(ctx, options, false)
+		a.noteWarnings(task.ID, result.Warnings)
 		return false, err
 	default:
 		return false, fmt.Errorf("unsupported windows setting")
+	}
+}
+
+// verifyWindows confirms supported Windows settings by reading them back instead
+// of trusting the command exit code.
+func (a *Adapter) verifyWindows(ctx context.Context, task engine.Task) error {
+	if strings.EqualFold(strings.TrimSpace(task.Parameters["setting"]), "computer-name") {
+		if a.System.Hostname == "" || !strings.EqualFold(a.System.Hostname, strings.TrimSpace(task.Parameters["name"])) {
+			return fmt.Errorf("active computer name was not confirmed")
+		}
+		return nil
+	}
+	if a.Settings == nil {
+		return fmt.Errorf("settings manager is unavailable")
+	}
+	switch strings.ToLower(strings.TrimSpace(task.Parameters["setting"])) {
+	case "timezone":
+		return a.Settings.VerifyTimezone(ctx, task.Parameters["timezone"])
+	case "power-plan":
+		return a.Settings.VerifyPowerPlan(ctx, task.Parameters["guid"])
+	case "explorer":
+		options, err := explorerOptionsFromTask(task)
+		if err != nil {
+			return err
+		}
+		return a.Settings.VerifyExplorer(ctx, options)
+	default:
+		return fmt.Errorf("unsupported windows setting")
 	}
 }
 

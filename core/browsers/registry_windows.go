@@ -108,6 +108,66 @@ func (s *RegistryStore) WriteDWord(ctx context.Context, scope Scope, browser Bro
 	return nil
 }
 
+func (s *RegistryStore) ReadString(ctx context.Context, scope Scope, browser Browser, name string) (string, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return "", false, err
+	}
+	key, err := s.openRead(browser, scope)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotExist) || errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("policy value could not be read")
+	}
+	defer key.Close()
+	value, _, err := key.GetStringValue(name)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotExist) || errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("policy value could not be read")
+	}
+	return value, true, nil
+}
+
+func (s *RegistryStore) ReadDWord(ctx context.Context, scope Scope, browser Browser, name string) (uint32, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, false, err
+	}
+	key, err := s.openRead(browser, scope)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotExist) || errors.Is(err, os.ErrNotExist) {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("policy value could not be read")
+	}
+	defer key.Close()
+	value, _, err := key.GetIntegerValue(name)
+	if err != nil {
+		if errors.Is(err, registry.ErrNotExist) || errors.Is(err, os.ErrNotExist) {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("policy value could not be read")
+	}
+	return uint32(value), true, nil
+}
+
+func (s *RegistryStore) openRead(browser Browser, scope Scope) (registry.Key, error) {
+	root, path := s.keyPath(browser, scope)
+	if path == "" {
+		return 0, fmt.Errorf("unsupported browser policy path")
+	}
+	flag := uint32(0)
+	if scope == ScopeMachine {
+		flag = registry.WOW64_64KEY
+	}
+	key, err := registry.OpenKey(root, path, registry.QUERY_VALUE|flag)
+	if err != nil {
+		return 0, err
+	}
+	return key, nil
+}
+
 func (s *RegistryStore) DeleteValue(ctx context.Context, scope Scope, browser Browser, name string) error {
 	if err := ctx.Err(); err != nil {
 		return err

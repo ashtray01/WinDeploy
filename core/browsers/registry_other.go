@@ -22,6 +22,12 @@ func (RegistryStore) WriteDWord(context.Context, Scope, Browser, string, uint32)
 func (RegistryStore) DeleteValue(context.Context, Scope, Browser, string) error {
 	return ErrUnsupported
 }
+func (RegistryStore) ReadString(context.Context, Scope, Browser, string) (string, bool, error) {
+	return "", false, ErrUnsupported
+}
+func (RegistryStore) ReadDWord(context.Context, Scope, Browser, string) (uint32, bool, error) {
+	return 0, false, ErrUnsupported
+}
 
 type WindowsLocator struct{}
 

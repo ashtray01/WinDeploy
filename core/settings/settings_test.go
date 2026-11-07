@@ -139,18 +139,35 @@ func TestSetComputerNameDryRunAndApply(t *testing.T) {
 
 func TestSetTimezone(t *testing.T) {
 	registry := &fakeRegistry{keys: map[string]bool{"HKLM/SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\UTC": true}}
-	runner := &fakeRunner{output: []string{"UTC\n", ""}}
+	runner := &fakeRunner{output: []string{"UTC\n", "", "UTC\n"}}
 	manager := testManager(registry)
 	manager.Runner = runner
 	result, err := manager.SetTimezone(context.Background(), "UTC", false)
 	if err != nil {
 		t.Fatalf("timezone failed: %v", err)
 	}
-	if !result.Applied || len(runner.calls) != 2 || runner.calls[1][1] != "/s" || runner.calls[1][2] != "UTC" {
+	if !result.Applied || len(result.Warnings) != 0 || len(runner.calls) != 3 || runner.calls[1][1] != "/s" || runner.calls[1][2] != "UTC" {
 		t.Fatalf("unexpected calls: %+v, result=%+v", runner.calls, result)
 	}
 	if _, err := manager.SetTimezone(context.Background(), "Missing Zone", false); err == nil {
 		t.Fatal("unknown time zone accepted")
+	}
+}
+
+func TestSetTimezoneUnconfirmedIsWarning(t *testing.T) {
+	registry := &fakeRegistry{keys: map[string]bool{"HKLM/SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\UTC": true}}
+	runner := &fakeRunner{output: []string{"UTC\n", "", "Pacific Standard Time\n"}}
+	manager := testManager(registry)
+	manager.Runner = runner
+	result, err := manager.SetTimezone(context.Background(), "UTC", false)
+	if err != nil {
+		t.Fatalf("timezone failed: %v", err)
+	}
+	if !result.Applied || len(result.Warnings) == 0 {
+		t.Fatalf("unconfirmed timezone reported as confirmed: %+v", result)
+	}
+	if err := manager.VerifyTimezone(context.Background(), "UTC"); err == nil {
+		t.Fatal("verification accepted the wrong time zone")
 	}
 }
 
@@ -173,21 +190,68 @@ func TestApplyExplorer(t *testing.T) {
 	}
 }
 
+func TestApplyExplorerUnconfirmedIsWarning(t *testing.T) {
+	registry := &fakeRegistry{dwords: map[string]uint32{}, keys: map[string]bool{}}
+	manager := testManager(ignoringRegistry{fakeRegistry: registry})
+	showHidden := true
+	result, err := manager.ApplyExplorer(context.Background(), ExplorerOptions{ShowHidden: &showHidden}, false)
+	if err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+	if !result.Applied || len(result.Warnings) < 1 {
+		t.Fatalf("unconfirmed Explorer value reported as confirmed: %+v", result)
+	}
+	if err := manager.VerifyExplorer(context.Background(), ExplorerOptions{ShowHidden: &showHidden}); err == nil {
+		t.Fatal("verification accepted a value that was never written")
+	}
+	registry.dwords["HKCU/Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced/Hidden"] = 1
+	if err := manager.VerifyExplorer(context.Background(), ExplorerOptions{ShowHidden: &showHidden}); err != nil {
+		t.Fatalf("confirmed Explorer value rejected: %v", err)
+	}
+}
+
+// ignoringRegistry accepts writes without storing them, like a policy removed by
+// another process immediately after the write.
+type ignoringRegistry struct{ *fakeRegistry }
+
+func (ignoringRegistry) SetDWordValue(context.Context, Root, string, string, uint32) error {
+	return nil
+}
+
 func TestSetPowerPlan(t *testing.T) {
 	guid := "381b4222-f694-41f0-9685-ff5bb260df2e"
 	registry := &fakeRegistry{keys: map[string]bool{"HKLM/SYSTEM\\CurrentControlSet\\Control\\Power\\User\\PowerSchemes\\" + guid: true}}
-	runner := &fakeRunner{output: []string{"Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)\n", ""}}
+	runner := &fakeRunner{output: []string{"Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)\n", "", "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)\n"}}
 	manager := testManager(registry)
 	manager.Runner = runner
 	result, err := manager.SetPowerPlan(context.Background(), guid, false)
 	if err != nil {
 		t.Fatalf("power plan failed: %v", err)
 	}
-	if !result.Applied || result.Changes[0].OldValue != guid {
+	if !result.Applied || result.Changes[0].OldValue != guid || len(result.Warnings) != 0 {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 	if _, err := manager.SetPowerPlan(context.Background(), "not-a-guid", false); err == nil {
 		t.Fatal("invalid GUID accepted")
+	}
+}
+
+func TestSetPowerPlanUnconfirmedIsWarning(t *testing.T) {
+	guid := "381b4222-f694-41f0-9685-ff5bb260df2e"
+	other := "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+	registry := &fakeRegistry{keys: map[string]bool{"HKLM/SYSTEM\\CurrentControlSet\\Control\\Power\\User\\PowerSchemes\\" + guid: true}}
+	runner := &fakeRunner{output: []string{"", "", "Power Scheme GUID: " + other + "  (High performance)\n"}}
+	manager := testManager(registry)
+	manager.Runner = runner
+	result, err := manager.SetPowerPlan(context.Background(), guid, false)
+	if err != nil {
+		t.Fatalf("power plan failed: %v", err)
+	}
+	if !result.Applied || len(result.Warnings) == 0 {
+		t.Fatalf("unconfirmed scheme reported as confirmed: %+v", result)
+	}
+	if err := manager.VerifyPowerPlan(context.Background(), guid); err == nil {
+		t.Fatal("verification accepted the wrong scheme")
 	}
 }
 

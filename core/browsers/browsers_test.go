@@ -38,6 +38,30 @@ func (s *fakeStore) WriteDWord(_ context.Context, scope Scope, browser Browser, 
 
 func (s *fakeStore) DeleteValue(context.Context, Scope, Browser, string) error { return nil }
 
+func (s *fakeStore) ReadString(_ context.Context, scope Scope, browser Browser, name string) (string, bool, error) {
+	value, ok := s.strings[s.key(scope, browser, name)]
+	return value, ok, nil
+}
+
+func (s *fakeStore) ReadDWord(_ context.Context, scope Scope, browser Browser, name string) (uint32, bool, error) {
+	value, ok := s.dwords[s.key(scope, browser, name)]
+	return value, ok, nil
+}
+
+// tamperingStore accepts writes but reads back a different value, like a policy
+// overwritten by another management tool.
+type tamperingStore struct {
+	*fakeStore
+	readErr error
+}
+
+func (s tamperingStore) ReadString(context.Context, Scope, Browser, string) (string, bool, error) {
+	if s.readErr != nil {
+		return "", false, s.readErr
+	}
+	return "different", true, nil
+}
+
 type fakeShortcut struct {
 	paths []string
 	args  []string
@@ -113,6 +137,76 @@ func TestApplyChromiumPolicies(t *testing.T) {
 	}
 	if len(result.Applied) != 4 {
 		t.Fatalf("unexpected changes: %+v", result.Applied)
+	}
+}
+
+func TestApplyChromiumConfirmsEveryWrittenPolicy(t *testing.T) {
+	store := &fakeStore{}
+	manager := &Manager{Store: store, Elevation: fakeElevation(true)}
+	result, err := manager.Apply(context.Background(), chromePolicy(), false)
+	if err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+	if len(result.Warnings) != 0 {
+		t.Fatalf("confirmed policies produced warnings: %+v", result.Warnings)
+	}
+}
+
+func TestApplyReportsUnconfirmedPolicyValues(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		store ValueStore
+	}{
+		{"different value", tamperingStore{fakeStore: &fakeStore{}}},
+		{"read error", tamperingStore{fakeStore: &fakeStore{}, readErr: errors.New("denied")}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			manager := &Manager{Store: test.store, Elevation: fakeElevation(true)}
+			result, err := manager.Apply(context.Background(), chromePolicy(), false)
+			if err != nil {
+				t.Fatalf("apply failed: %v", err)
+			}
+			if len(result.Warnings) == 0 {
+				t.Fatal("unconfirmed policy values reported as confirmed")
+			}
+			joined := strings.Join(result.Warnings, " ")
+			if !strings.Contains(joined, "не подтверждена") {
+				t.Fatalf("unexpected warnings: %+v", result.Warnings)
+			}
+		})
+	}
+}
+
+// writeOnlyStore implements ValueStore without ValueReader.
+type writeOnlyStore struct {
+	strings map[string]string
+	dwords  map[string]uint32
+}
+
+func (s *writeOnlyStore) WriteString(_ context.Context, _ Scope, _ Browser, name, value string) error {
+	if s.strings == nil {
+		s.strings = map[string]string{}
+	}
+	s.strings[name] = value
+	return nil
+}
+func (s *writeOnlyStore) WriteDWord(_ context.Context, _ Scope, _ Browser, name string, value uint32) error {
+	if s.dwords == nil {
+		s.dwords = map[string]uint32{}
+	}
+	s.dwords[name] = value
+	return nil
+}
+func (s *writeOnlyStore) DeleteValue(context.Context, Scope, Browser, string) error { return nil }
+
+func TestApplyWithoutReaderIsNotSilentlySuccessful(t *testing.T) {
+	manager := &Manager{Store: &writeOnlyStore{}}
+	result, err := manager.Apply(context.Background(), chromePolicy(), false)
+	if err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+	if len(result.Warnings) == 0 {
+		t.Fatal("store without read-back reported unconditional success")
 	}
 }
 

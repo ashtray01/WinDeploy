@@ -188,11 +188,21 @@ func (m *Manager) Add(ctx context.Context, request AddRequest) (Result, error) {
 	if !result.Installed {
 		return result, fmt.Errorf("installed printer was not confirmed")
 	}
+	// The installer creates the queue on an IP_<address> port. A different port means
+	// the queue points somewhere else even though the driver reported success.
+	if request.IPAddress != "" && !strings.EqualFold(result.Printer.Port, "IP_"+strings.TrimSpace(request.IPAddress)) {
+		return result, fmt.Errorf("installed printer uses an unexpected port")
+	}
+	if model := strings.TrimSpace(request.Model); model != "" && !strings.Contains(strings.ToLower(result.Printer.Driver), strings.ToLower(model)) {
+		result.Warnings = append(result.Warnings, "Драйвер принтера не совпадает с выбранной моделью; проверьте очередь.")
+	}
 	if request.SetDefault {
 		if m.Defaults == nil {
 			result.Warnings = append(result.Warnings, "Принтер по умолчанию не изменён: компонент недоступен")
 		} else if err := m.Defaults.SetDefault(ctx, result.Name); err != nil {
 			result.Warnings = append(result.Warnings, "Не удалось назначить принтер по умолчанию")
+		} else if confirmed, err := m.Defaults.Default(ctx); err != nil || !strings.EqualFold(confirmed, result.Name) {
+			result.Warnings = append(result.Warnings, "Принтер по умолчанию назначен, но не подтверждён")
 		} else {
 			result.Default = true
 		}
@@ -218,6 +228,11 @@ func (m *Manager) SetDefault(ctx context.Context, name string) error {
 		if strings.EqualFold(printer.Name, name) {
 			if err := m.Defaults.SetDefault(ctx, printer.Name); err != nil {
 				return fmt.Errorf("default printer could not be changed")
+			}
+			// The call is not evidence: read the default back.
+			confirmed, err := m.Defaults.Default(ctx)
+			if err != nil || !strings.EqualFold(confirmed, printer.Name) {
+				return fmt.Errorf("default printer was not confirmed")
 			}
 			return nil
 		}
