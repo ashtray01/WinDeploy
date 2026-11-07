@@ -8,9 +8,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// restrict replaces the directory DACL with full control for the current user,
-// SYSTEM and Administrators only, and stops inheritance so sandbox or share ACLs
-// cannot keep write access for other principals.
+// restrict makes the directory owned by the current user and replaces its DACL
+// with full control for that user, SYSTEM and Administrators only. GitHub-hosted
+// Windows runners create workspace temp directories owned by Administrators, so
+// changing only the DACL does not satisfy the production owner gate.
 func restrict(dir string) error {
 	processUser, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil || processUser.User.Sid == nil {
@@ -42,6 +43,7 @@ func restrict(dir string) error {
 		return err
 	}
 	return windows.SetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT,
-		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION,
-		nil, nil, acl, nil)
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION|
+			windows.PROTECTED_DACL_SECURITY_INFORMATION,
+		processUser.User.Sid, nil, acl, nil)
 }
