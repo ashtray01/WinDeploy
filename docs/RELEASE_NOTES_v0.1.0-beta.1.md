@@ -1,11 +1,12 @@
 # WinDeploy v0.1.0-beta.1 — Public Beta
 
 Исходный код: https://github.com/ashtray01/WinDeploy (MIT License).
-Публикация binary Release выполняется отдельно после закрытия release gates.
+Первый Modern-only GitHub Pre-release; лицензия MIT.
 
 **Public Beta — software under active development.** Это не stable и не
-production-ready релиз. Основной сценарий проверялся на Windows 11 x64; Windows
-10/LTSC и изменяющие VM-сценарии остаются ограничениями.
+production-ready релиз. GUI/Inventory smoke проверялся на Windows 11 x64;
+реальные package-install/SMB acceptance не выполнены. Windows 10/LTSC и
+изменяющие VM-сценарии остаются неподтверждёнными.
 
 ## Что работает
 

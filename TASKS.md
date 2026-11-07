@@ -1,5 +1,18 @@
 # WinDeploy — controlled development (Public Beta)
 
+## Решение владельца о выпуске — 2026-11-08
+
+Текущая задача явно разрешает публичный Pre-release v0.1.0-beta.1 после
+успешного CI, проверки draft и SHA-256 скачанных assets. Это решение заменяет
+прежний запрет binary Release и требование B1/B2 как общего release gate.
+B1/B2 не выполнены: package-install/SMB acceptance остаются открытыми
+ограничениями beta, не подтверждением безопасности или E2E. Runtime gates
+не изменяются. B8 закрыт разрешением; B6 ожидает release workflow и assets.
+В release workflow добавлен существующий secret preflight с Git history;
+сборка/typecheck/tests/vet/packaging сохранены. Локально version gate PASS,
+secret preflight — 0 blocking; manual items остаются test/doc fixtures.
+
+
 ## Текущий этап
 
 Цель — **v0.1.0-beta.1**, Modern Windows 11 x64. Public Beta, не stable. Windows 10/

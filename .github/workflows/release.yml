@@ -17,6 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Secret preflight including Git history
+        shell: pwsh
+        run: ./scripts/check-release-secrets.ps1 -IncludeHistory
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.20.14'
